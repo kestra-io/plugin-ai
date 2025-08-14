@@ -21,7 +21,7 @@ repositories {
     }
 }
 
-final targetJavaVersion = JavaVersion.VERSION_21
+final targetJavaVersion = JavaVersion.VERSION_25
 
 java {
     sourceCompatibility = targetJavaVersion
@@ -80,8 +80,6 @@ dependencies {
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
 
-    implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
-
     // Langchain4j embeddings stores
     implementation "dev.langchain4j:langchain4j-chroma"
     implementation "dev.langchain4j:langchain4j-elasticsearch"
@@ -94,6 +92,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-weaviate"
 
     // tools
+    implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
     implementation "dev.langchain4j:langchain4j-web-search-engine-google-custom"
     implementation "dev.langchain4j:langchain4j-web-search-engine-tavily"
     implementation "dev.langchain4j:langchain4j-mcp"

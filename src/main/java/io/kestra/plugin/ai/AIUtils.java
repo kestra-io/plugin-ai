@@ -5,11 +5,14 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.FilesService;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
+import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -56,5 +59,13 @@ public final class AIUtils {
 
     private static Integer orZero(Integer value) {
         return value != null ? value : 0;
+    }
+
+    // output files should all be inside the working directory
+    public static Map<String, URI> gatherOutputFiles(Property<List<String>> outputFiles, RunContext runContext) throws Exception {
+        if (outputFiles != null) {
+            return FilesService.outputFiles(runContext, runContext.render(outputFiles).asList(String.class));
+        }
+        return Collections.emptyMap();
     }
 }

@@ -713,7 +713,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             AIUtils.sendMetrics(runContext, tokenUsage);
 
             return AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
-                .outputFiles(gatherOutputFiles(runContext))
+                .outputFiles(AIUtils.gatherOutputFiles(outputFiles, runContext))
                 .build();
         } finally {
             toolProviders.forEach(tool -> tool.close(runContext));
