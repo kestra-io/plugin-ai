@@ -98,6 +98,10 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-experimental-sql"
     compileOnly "com.zaxxer:HikariCP"
 
+    // agents
+    implementation "dev.langchain4j:langchain4j-agentic"
+    implementation "dev.langchain4j:langchain4j-agentic-a2a"
+
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
     implementation 'org.awaitility:awaitility:4.3.0'
