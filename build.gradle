@@ -73,7 +73,6 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-vertex-ai"
     implementation "dev.langchain4j:langchain4j-vertex-ai-gemini"
 
-    implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
 
     // Langchain4j embeddings stores
     implementation "dev.langchain4j:langchain4j-chroma"
@@ -87,9 +86,13 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-weaviate"
 
     // tools
+    implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
     implementation "dev.langchain4j:langchain4j-web-search-engine-google-custom"
     implementation "dev.langchain4j:langchain4j-web-search-engine-tavily"
     implementation "dev.langchain4j:langchain4j-mcp"
+
+    // agentic
+    implementation "dev.langchain4j:langchain4j-agentic"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
