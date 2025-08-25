@@ -226,4 +226,61 @@ class KestraFlowCallingTest {
 
         flowRepository.delete(flow);
     }
+
+    @Test
+    void helloWorldFromLLM() throws Exception {
+        String flowYaml = """
+            id: hello-world
+            namespace: company.team
+
+            tasks:
+              - id: hello
+                type: io.kestra.plugin.core.log.Log
+                message: Hello World! 🚀
+            """;
+        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", "demo",
+            "modelName", "gpt-4o-mini",
+            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+        ));
+
+        var chat = ChatCompletion.builder()
+            .provider(OpenAI.builder()
+                .type(OpenAI.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .tools(List.of(
+                KestraFlowCalling.builder().build())
+            )
+            .messages(Property.ofValue(
+                List.of(
+                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to execute the flow 'hello-world' from the namespace 'company.team', please answer with its execution id.").build()
+                )))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var output = chat.run(runContext);
+        assertThat(output.getToolExecutions()).isNotEmpty();
+        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_flow");
+        assertThat(output.getIntermediateResponses()).isNotEmpty();
+        assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
+        assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
+        assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow");
+        assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
+
+        // check that an execution has been created
+        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world", Pageable.UNPAGED);
+        assertThat(executions).hasSize(1);
+        assertThat(output.getTextOutput()).contains(executions.getFirst().getId());
+
+        flowRepository.delete(flow);
+        executionRepository.delete(executions.getFirst());
+    }
 }
