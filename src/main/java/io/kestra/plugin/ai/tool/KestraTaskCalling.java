@@ -84,7 +84,7 @@ public class KestraTaskCalling extends ToolProvider {
     private static final String LLM_PLACEHOLDER = "...";
 
     // Tool description, it could be fine-tuned if needed
-    private static final String TOOL_DESCRIPTION = "This tool allows you to call a Kestra task. A Kestra task will respond with its output, which is a map of key/value pairs from which you can extract variables.";
+    private static final String TOOL_DESCRIPTION = "This tool allows you to call a Kestra task. A Kestra task will respond with its output, which is a map of key/value pairs.";
 
     @Schema(title = "List of Kestra runnable tasks")
     @NotNull

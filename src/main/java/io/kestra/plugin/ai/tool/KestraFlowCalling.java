@@ -64,7 +64,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         values:
                           - Business Automation
                           - Business Processes
-                          - Data Engineering Pipelines
+                          - Data Engineering Pipeline
                           - Data Warehouse and Analytics
                           - Infrastructure Automation
                           - Microservices and APIs
@@ -77,7 +77,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlowCalling
                             namespace: tutorial
@@ -158,7 +158,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlowCalling"""
             }
@@ -184,7 +184,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         The LLM will infer the `namespace` and `flowId` parameters from the prompt.
 
         The LLM can also set `inputs`, `labels`, and `scheduledDate` if required.
-        If no `correlationId` is provided, the called flow will inherit `correlationId` from the current execution."""
+        If no `correlationId` is provided, the called flow will inherit `correlationId` from the agent's execution."""
 )
 public class KestraFlowCalling extends ToolProvider {
     // Tool description, it could be fine-tuned if needed
@@ -232,7 +232,7 @@ public class KestraFlowCalling extends ToolProvider {
     @Schema(
         title = "Whether the flow should inherit labels from this execution that triggered it",
         description = """
-            By default, labels are not inherited. If you set this option to `true`, the flow execution will inherit all labels from the parent execution.
+            By default, labels are not inherited. If you set this option to `true`, the flow execution will inherit all labels from the agent's execution.
             Any labels passed by the LLM will override those defined here."""
     )
     private final Property<Boolean> inheritLabels = Property.ofValue(false);

@@ -52,13 +52,13 @@ import java.util.stream.Collectors;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.SseMcpClient # in the future: StreamableMcpClient
                         sseUrl: https://mcp.apify.com/?actors=compass/crawler-google-places
                         timeout: PT5M
                         # headers: # blocked by https://github.com/langchain4j/langchain4j/pull/3570
-                        #  Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}"""
+                        #  Authorization: Bearer {{ secret('APIFY_API_TOKEN') }}"""
             }
         ),
     },
