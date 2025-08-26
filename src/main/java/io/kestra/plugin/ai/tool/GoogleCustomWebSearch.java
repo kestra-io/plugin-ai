@@ -72,10 +72,10 @@ public class GoogleCustomWebSearch extends ToolProvider {
     private Property<String> apiKey;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         final WebSearchEngine searchEngine = GoogleCustomWebSearchEngine.builder()
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .csi((runContext.render(this.csi).as(String.class).orElseThrow()))
+            .apiKey(runContext.render(this.apiKey).as(String.class, additionalVariables).orElseThrow())
+            .csi((runContext.render(this.csi).as(String.class, additionalVariables).orElseThrow()))
             .build();
 
         return extract(new WebSearchTool(searchEngine));

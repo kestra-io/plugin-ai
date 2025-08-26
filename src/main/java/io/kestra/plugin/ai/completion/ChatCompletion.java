@@ -24,6 +24,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
+import java.util.Collections;
 import java.util.List;
 
 @SuperBuilder
@@ -201,7 +202,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                         .orElse(null)
                 )
                 .chatMemory(chatMemory)
-                .tools(AIUtils.buildTools(runContext, toolProviders))
+                .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .build();
             Result<AiMessage> aiResponse = assistant.chat(((UserMessage)chatMessages.getLast()).singleText());
             logger.debug("AI Response: {}", aiResponse.content());

@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.Result;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.utils.ListUtils;
@@ -17,6 +18,7 @@ import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import org.apache.commons.lang3.time.StopWatch;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -53,9 +55,13 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Schema(title = "Request duration in milliseconds")
     private Long requestDuration;
 
+    @Schema(title = "The output files' URIs in Kestra's internal storage.")
+    @PluginProperty(additionalProperties = URI.class)
+    private final Map<String, URI> outputFiles;
+
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
-    public static AIOutput from(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
+    public static AIOutputBuilder<?,?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
         return AIOutput.builder()
             .textOutput(responseFormatType == ResponseFormatType.TEXT ? result.content().text() : null)
             .jsonOutput(responseFormatType == ResponseFormatType.JSON ? JacksonMapper.toMap(result.content().text()) : null)
@@ -69,7 +75,11 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                 .map(throwFunction(resp -> AIResponse.from(runContext, resp)))
                 .toList())
             )
-            .requestDuration(extractTiming(runContext, result.finalResponse().id()))
+            .requestDuration(extractTiming(runContext, result.finalResponse().id()));
+    }
+
+    public static AIOutput from(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
+        return builderFrom(runContext, result, responseFormatType)
             .build();
     }
 

@@ -305,7 +305,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatProvider.chatModel(runContext, chatConfiguration))
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
-                .tools(AIUtils.buildTools(runContext, toolProviders))
+                .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)));
 
             if (memory != null) {

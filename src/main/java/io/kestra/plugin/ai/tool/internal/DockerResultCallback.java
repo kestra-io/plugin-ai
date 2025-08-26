@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class DockerResultCallback extends ResultCallback.Adapter<Frame> {
+    private static final Logger LOG = LoggerFactory.getLogger(DockerResultCallback.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
     private static final Pattern NEWLINE_PATTERN = Pattern.compile("([^\\r\\n]+)[\\r\\n]+");
@@ -33,9 +34,10 @@ public class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     public void onNext(Frame frame) {
         String frameStr = new String(frame.getPayload());
         if (frame.getStreamType() == StreamType.STDERR) {
-            throw new RuntimeException("Received a frame in STDERR: " + frameStr);
-        } else if (frame.getStreamType() == StreamType.STDOUT) {
-            this.send(frameStr);
+            LOG.debug("[ERROR] {}", frameStr);
+        }
+        else if (frame.getStreamType() == StreamType.STDOUT) {
+           this.send(frameStr);
         }
     }
 

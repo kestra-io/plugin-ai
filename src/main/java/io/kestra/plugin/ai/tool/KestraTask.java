@@ -90,7 +90,7 @@ public class KestraTask extends ToolProvider {
     private List<Task> tasks;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         var defaultRunContext = (DefaultRunContext) runContext;
         var jsonSchemaGenerator = defaultRunContext.getApplicationContext().getBean(JsonSchemaGenerator.class);
 

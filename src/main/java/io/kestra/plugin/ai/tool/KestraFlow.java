@@ -244,7 +244,7 @@ public class KestraFlow extends ToolProvider {
     private Property<ZonedDateTime> scheduleDate;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         boolean hasDefinedFlow = this.namespace != null && this.flowId != null;
         if (this.namespace != null && this.flowId == null) {
             throw new IllegalArgumentException("Flow ID must be specified when you set the namespace");
@@ -256,7 +256,7 @@ public class KestraFlow extends ToolProvider {
         var rInputs = runContext.render(MapUtils.emptyOnNull(inputs));
 
         // compute labels
-        boolean rInheritedLabels = runContext.render(inheritLabels).as(Boolean.class).orElse(false);
+        boolean rInheritedLabels = runContext.render(inheritLabels).as(Boolean.class, additionalVariables).orElse(false);
         List<Label> executionLabels = MapUtils.nestedToFlattenMap(MapUtils.emptyOnNull((Map<String, Object>) runContext.getVariables().get("labels"))).entrySet().stream()
             .map(entry -> new Label(entry.getKey(), entry.getValue().toString()))
             .toList();
@@ -279,9 +279,9 @@ public class KestraFlow extends ToolProvider {
                 .build());
 
         if (hasDefinedFlow) {
-            var rNamespace = runContext.render(this.namespace).as(String.class).orElseThrow();
-            var rFlowId = runContext.render(this.flowId).as(String.class).orElseThrow();
-            var rRevision = runContext.render(this.revision).as(Integer.class);
+            var rNamespace = runContext.render(this.namespace).as(String.class, additionalVariables).orElseThrow();
+            var rFlowId = runContext.render(this.flowId).as(String.class, additionalVariables).orElseThrow();
+            var rRevision = runContext.render(this.revision).as(Integer.class, additionalVariables);
 
             var defaultRunContext = (DefaultRunContext) runContext;
             var flowMetaStoreInterface = defaultRunContext.getApplicationContext().getBean(FlowMetaStoreInterface.class);
@@ -289,7 +289,7 @@ public class KestraFlow extends ToolProvider {
             var flowInterface = flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), rNamespace, rFlowId, rRevision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
                 .orElseThrow(() -> new IllegalArgumentException("Unable to find flow at '"+ rFlowId + "' in namespace '" + rNamespace + "'"));
 
-            var rDescription = runContext.render(this.description).as(String.class).orElse(flowInterface.getDescription());
+            var rDescription = runContext.render(this.description).as(String.class, additionalVariables).orElse(flowInterface.getDescription());
             if (rDescription == null) {
                 throw new IllegalArgumentException("You must provide a description in the tool's description property or in the flow description");
             }

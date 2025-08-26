@@ -23,13 +23,13 @@ public final class AIUtils {
         // utility class pattern
     }
 
-    public static Map<ToolSpecification, ToolExecutor> buildTools(RunContext runContext, List<ToolProvider> toolProviders) throws IllegalVariableEvaluationException {
+    public static Map<ToolSpecification, ToolExecutor> buildTools(RunContext runContext, Map<String, Object> additionalVariables, List<ToolProvider> toolProviders) throws IllegalVariableEvaluationException {
         if (toolProviders.isEmpty()) {
             return Collections.emptyMap();
         }
 
         Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
-        toolProviders.forEach(throwConsumer(provider -> tools.putAll(provider.tool(runContext))));
+        toolProviders.forEach(throwConsumer(provider -> tools.putAll(provider.tool(runContext, additionalVariables))));
         return tools;
     }
 

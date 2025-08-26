@@ -29,7 +29,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class ToolProvider extends AdditionalPlugin {
-    public abstract Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException;
+    public abstract Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException;
 
     public void close(RunContext runContext) {
         // by default: no-op
