@@ -39,31 +39,27 @@ import java.util.stream.Collectors;
 @Plugin(
     examples =  {
         @Example(
-            title = "Call a Kestra runnable task as a tool, letting the agent setting the `message` property for you.",
+                title = "Call a Kestra runnable task as a tool, letting the agent set the `message` property for you.",
             full = true,
             code = {
                 """
-                id: kestra-tool
-                    namespace: company.team
+                    id: call_a_kestra_task
+                    namespace: company.ai
 
                     tasks:
-                      - id: first
-                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraTaskCalling
                             tasks:
                               - id: log
                                 type: io.kestra.plugin.core.log.Log
-                                message: "..." # This is a placeholder, the agent will fill it
-                        messages:
-                          - type: SYSTEM
-                            content: You are an AI agent, please use the provided tool to fulfill the request.
-                          - type: USER
-                            content: "I want to log the following message: 'Hello World!'"
+                                message: "..." # This is a placeholder; the agent will fill it.
+                        prompt: "Log the following message: 'Hello World!'"
                 """
             }
         ),
@@ -73,22 +69,22 @@ import java.util.stream.Collectors;
 @Schema(
     title = "Call a Kestra runnable task as a tool",
     description = """
-       This tool provider will provide one tool by Kestra tasks, the name of the tool will be `kestra_task_<taskId>`.
+       This tool exposes a tool for each Kestra task. The name of the tool will be `kestra_task_<taskId>`.
 
-       When you define the task inside the tool:
-        - You can set task properties as usual, those would not be overridden by the agent.
-        - If you want the agent to fill a mandatory property, set it with the value `...` and the agent will fill it.
-        - Optional properties not already set may be filled by the agent if it decides to.
+       When you define the tasks:
+        - You can set task properties as usual; these will not be overridden by the agent.
+        - If you want the agent to fill a mandatory property, set its value to `...` and the agent will fill it.
+        - Optional properties that are not set may be filled by the agent if it chooses to do so.
 
-        WARNING: as some model providers don't support JSON schema with `anyOf`, when creating the JSON Schema to call the task, each `anyOf` will be replaced by one of the sub-schema.
-        You can see the generated schema in debug logs."""
+        WARNING: Since some model providers don't support JSON schema with `anyOf`, when creating the JSON Schema to call the task, each `anyOf` will be replaced by one of its sub-schemas.
+        You can view the generated schema in the debug logs."""
 )
 public class KestraTaskCalling extends ToolProvider {
     // This placeholder would be used in the flow definition to denote a property that the LLM must set.
     private static final String LLM_PLACEHOLDER = "...";
 
     // Tool description, it could be fine-tuned if needed
-    private static final String TOOL_DESCRIPTION = "This tool allows to call a Kestra task. A Kestra task will respond with its output that is a map of key/value pairs from where you can extract variables.";
+    private static final String TOOL_DESCRIPTION = "This tool allows you to call a Kestra task. A Kestra task will respond with its output, which is a map of key/value pairs from which you can extract variables.";
 
     @Schema(title = "List of Kestra runnable tasks")
     @NotNull
@@ -108,7 +104,7 @@ public class KestraTaskCalling extends ToolProvider {
 
             var schemaAnnotation = Optional.ofNullable(task.getClass().getAnnotation(Schema.class));
             if (schemaAnnotation.isEmpty()) {
-                runContext.logger().warn("The task {} has no description, the LLM may not understand what it's purpose is so you may need to explicitly describe it in the prompt.", task.getId());
+                runContext.logger().warn("The task {} has no description, so the LLM may not understand what is its purpose; you may need to explicitly describe it in the prompt.", task.getId());
             }
             var description = schemaAnnotation.map(s -> s.title()).orElse(null);
             var schema = jsonSchemaGenerator.properties(Task.class, task.getClass());

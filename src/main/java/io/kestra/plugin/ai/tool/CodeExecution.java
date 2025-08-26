@@ -26,22 +26,20 @@ import java.util.Map;
 @Plugin(
     examples = {
         @Example(
-            title = "Chat Completion with Google Gemini and a CodeExecution tool with Judge0",
+            title = "Agent performing mathematical calculations using Judge0 Code Execution API",
             full = true,
             code = """
-                id: chat_completion_with_code_execution_tool
-                namespace: company.team
+                id: calculator_agent
+                namespace: company.ai
 
                 tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    messages:
-                      - type: USER
-                        content: "What is the square root of 49506838032859?"
+                    prompt: What is the square root of 49506838032859?
                     tools:
                       - type: io.kestra.plugin.ai.tool.CodeExecution
                         apiKey: "{{ secret('RAPID_API_KEY') }}"
@@ -55,7 +53,7 @@ import java.util.Map;
 )
 public class CodeExecution extends ToolProvider {
 
-    @Schema(title = "Rapid API Key")
+    @Schema(title = "Rapid API Key for Judge0 - you can obtain it from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing)")
     @NotNull
     private Property<String> apiKey;
 

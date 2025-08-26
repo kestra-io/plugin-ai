@@ -33,33 +33,32 @@ import java.util.stream.Collectors;
 @Plugin(
     examples = {
         @Example(
-            title = "Chat Completion with Google Gemini and an HTTP MCP Client tool",
+            title = "Agent calling an MCP Server via SSE",
             full = true,
             code = {
                 """
-                id: chat_completion_with_tools
-                namespace: company.team
+                id: mcp_client_sse
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
                     type: STRING
+                    defaults: Find 2 restaurants in Lille France with best reviews
 
                 tasks:
-                  - id: chat_completion_with_tools
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: "{{inputs.prompt}}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     tools:
-                      - type: io.kestra.plugin.ai.tool.HttpMcpClient
-                        sseUrl: http://localhost:8080
-                """
+                      - type: io.kestra.plugin.ai.tool.SseMcpClient # in the future: StreamableMcpClient
+                        sseUrl: https://mcp.apify.com/?actors=compass/crawler-google-places
+                        timeout: PT5M
+                        # headers: # blocked by https://github.com/langchain4j/langchain4j/pull/3570
+                        #  Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}"""
             }
         ),
     },
