@@ -28,29 +28,26 @@ import java.util.Map;
 @Plugin(
     examples = {
         @Example(
-            title = "Chat Completion with Google Gemini and a WebSearch tool",
+            title = "Agent searching the web using the Tavily API",
             full = true,
             code = {
                 """
-                id: chat_completion_with_tools
-                namespace: company.team
+                id: research_agent
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
                     type: STRING
+                    defaults: What is the latest Kestra release and what new features does it include?
 
                 tasks:
-                  - id: chat_completion_with_tools
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.TavilyWebSearchTool
                         apiKey: "{{ secret('TAVILY_API_KEY') }}"
@@ -65,7 +62,7 @@ import java.util.Map;
     title = "WebSearch tool for Tavily Search"
 )
 public class TavilyWebSearch extends ToolProvider {
-    @Schema(title = "API Key")
+    @Schema(title = "Tavily API Key - you can obtain one from [the Tavily website](https://www.tavily.com/#pricing)")
     @NotNull
     private Property<String> apiKey;
 

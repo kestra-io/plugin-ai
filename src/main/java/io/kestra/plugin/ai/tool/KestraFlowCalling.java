@@ -49,117 +49,118 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin(
     examples =  {
         @Example(
-            title = "Call a Kestra flow as a tool",
+            title = "Call a Kestra flow as a tool, explicitly defining the flow id and namespace in the tool definition",
             full = true,
             code = {
                 """
-                    id: kestra-flow-tool
-                    namespace: company.team
+                    id: agent_calling_flows_explicitly
+                    namespace: company.ai
 
                     inputs:
-                      - id: first
-                        type: STRING
-                        defaults: |
-                          I want to execute a flow to say Hello World.
+                      - id: use_case
+                        type: SELECT
+                        description: Your Orchestration Use Case
+                        defaults: Hello World
+                        values:
+                          - Business Automation
+                          - Business Processes
+                          - Data Engineering Pipeline
+                          - Data Warehouse and Analytics
+                          - Infrastructure Automation
+                          - Microservices and APIs
+                          - Hello World
 
                     tasks:
-                      - id: first
-                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        prompt: Execute a flow that best matches the {{ inputs.use_case }} use case selected by the user
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlowCalling
-                            namespace: company.team
+                            namespace: tutorial
+                            flowId: business-automation
+                            description: Business Automation
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
+                            flowId: business-processes
+                            description: Business Processes
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
+                            flowId: data-engineering-pipeline
+                            description: Data Engineering Pipeline
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
+                            flowId: dwh-and-analytics
+                            description: Data Warehouse and Analytics
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
+                            flowId: file-processing
+                            description: File Processing
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
                             flowId: hello-world
-                            # The target flow has no description so we must add one here for the LLM so it choose to call it
-                            description: A flow that say Hello World
-                        messages:
-                          - type: SYSTEM
-                            content: You are an AI agent, please use the provided tool to fulfill the request.
-                          - type: USER
-                            content: "{{inputs.first}}\""""
+                            description: Hello World
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
+                            flowId: infrastructure-automation
+                            description: Infrastructure Automation
+
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                            namespace: tutorial
+                            flowId: microservices-and-apis
+                            description: Microservices and APIs"""
             }
         ),
         @Example(
-            title = "Call a Kestra flow as a tool, passing the flow id and namespace inside the prompt",
+            title = "Call a Kestra flow as a tool, implicitly passing the flow id and namespace in the prompt",
             full = true,
             code = {
                 """
-                    id: kestra-flow-tool
-                    namespace: company.team
+                    id: agent_calling_flows_implicitly
+                    namespace: company.ai
 
                     inputs:
-                      - id: first
-                        type: STRING
-                        defaults: |
-                          I want to execute a flow id 'hello-world' from the 'company.team' namespace.
+                      - id: use_case
+                        type: SELECT
+                        description: Your Orchestration Use Case
+                        defaults: Hello World
+                        values:
+                          - Business Automation
+                          - Business Processes
+                          - Data Engineering Pipeline
+                          - Data Warehouse and Analytics
+                          - Infrastructure Automation
+                          - Microservices and APIs
+                          - Hello World
 
                     tasks:
-                      - id: first
-                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        prompt: |
+                          Execute a flow that best matches the {{ inputs.use_case }} use case selected by the user. Use the following mapping of use cases to flow ids:
+                          - Business Automation: business-automation
+                          - Business Processes: business-processes
+                          - Data Engineering Pipeline: data-engineering-pipeline
+                          - Data Warehouse and Analytics: dwh-and-analytics
+                          - Infrastructure Automation: infrastructure-automation
+                          - Microservices and APIs: microservices-and-apis
+                          - Hello World: hello-world
+                          Remember that all those flows are in the tutorial namespace.
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
-                        messages:
-                          - type: SYSTEM
-                            content: You are an AI agent, please use the provided tool to fulfill the request.
-                          - type: USER
-                            content: "{{inputs.first}}\""""
-            }
-        ),
-        @Example(
-            title = "Do sentiment analysis and summarize a product review and call a flow as a tool with the summary as input and the sentiment as label",
-            full = true,
-            code = {
-                """
-                    id: analyse-product-review
-                    namespace: company.team
-
-                    inputs:
-                      - id: review
-                        type: STRING
-                        defaults: |
-                          I tested the product and it is not good, it lack functionalities and the first time I use it, it becomes warm and made stange noise. I think I would not recommand it to anybody, except it's low price, there is nothing for it.
-
-                    tasks:
-                      - id: first
-                        type: io.kestra.plugin.ai.completion.ChatCompletion
-                        provider:
-                          type: io.kestra.plugin.ai.provider.GoogleGemini
-                          modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
-                        tools:
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
-                            namespace: company.team
-                            flowId: product-review-summary
-                        messages:
-                          - type: SYSTEM
-                            content: You are an AI agent, call the flow that handle product reviews via the provided tool. The flow must have an input with id 'summary' which contains the summary of the review which will be passed as a user message. Also add a label to the flow named 'sentiment' with the sentiment of the review.
-                          - type: USER
-                            content: "{{inputs.review}}"
-
-                ---
-
-                    id: product-review-summary
-                    namespace: company.team
-                    description: Handle product review
-
-                    inputs:
-                      - id: summary
-                        type: STRING
-
-                    tasks:
-                      - id: logSummary
-                        type: io.kestra.plugin.core.log.Log
-                        message: "This is the summary of the product review: {{inputs.summary}}"
-                      - id: logSentiment
-                        type: io.kestra.plugin.core.log.Log
-                        message: "This is the sentiment of the review: {{labels.sentiment}}\""""
+                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling"""
             }
         ),
     }
@@ -168,22 +169,26 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Schema(
     title = "Call a Kestra flow as a tool.",
     description = """
-        This tool provider will provide a tool that can call a Kestra flow.
-        It can be used in two ways: by defining the flow inside the tool, or by defining it inside the LLM prompt.
-        The LLM can set `inputs`, `labels`, and a `scheduledDate` if needed.
-        The called flow will have the `correlationId` label of the current flow if none is provided by the LLM.
+        This tool allows an LLM to call a Kestra flow.
 
-        **Flow defined inside the tool**
-        In this case, the provider will create a tool named `kestra_flow_<namespace>_<flowId>` so you can add multiple time the tool for different flows and let the LLM decide which one to use..
-        To instruct what the flow is doing, the provider either use the description set as the `description` property or the description of the flow itself. If none are provided an error will be thrown.
+        It supports two usage modes:
 
-        **Flow defined inside the LLM prompt**
-        In this case, the provider will create a tool named `kestra_flow`.
-        The LLM must set both `namespace` and `flowId` tool parameter."""
+        **1. Call a flow explicitly defined in the tool specification**
+        In this mode, the AI Agent creates a tool named `kestra_flow_<namespace>_<flowId>`.
+        Multiple flows can be added as separate tools, and the LLM can choose which one to call.
+        The tool's description comes from the tool's `description` property or the flow's description.
+        If no description is available, an error will be raised.
+
+        **2. Call a flow defined in the LLM prompt**
+        In this mode, the AI Agent creates a single tool named `kestra_flow`.
+        The LLM will infer the `namespace` and `flowId` parameters from the prompt.
+
+        The LLM can also set `inputs`, `labels`, and `scheduledDate` if required.
+        If no `correlationId` is provided, the called flow will inherit `correlationId` from the agent's execution."""
 )
 public class KestraFlowCalling extends ToolProvider {
     // Tool description, it could be fine-tuned if needed
-    private static final String TOOL_DEFINED_DESCRIPTION = "This tool allows to execute a Kestra workflow also called a flow. This tool will respond with the flow execution information.";
+    private static final String TOOL_DEFINED_DESCRIPTION = "This tool allows to execute a Kestra flow and output the execution details.";
     private static final String TOOL_LLM_DESCRIPTION = """
         This tool allows to execute a Kestra workflow also called a flow. This tool will respond with the flow execution information.
         The namespace and the id of the flow must be passed as tool parameters""";
@@ -191,30 +196,30 @@ public class KestraFlowCalling extends ToolProvider {
     @Schema(
         title = "Description of the flow if not already provided inside the flow itself",
         description = """
-            Use it only if you define the flow inside the tool provider.
-            The LLM needs a description for the tool to be able to know if it needs to use it or not.
-            If the flow has a description, the tool provider will use it, otherwise this property must be used to give a description."""
+            Use it only if you define the flow in the tool definition.
+            The LLM needs a tool description to identify whether to call it.
+            If the flow has a description, the tool will use it. Otherwise, the description property must be explicitly defined."""
     )
     private Property<String> description;
 
-    @Schema(title = "The target flow namespace")
+    @Schema(title = "Namespace of the flow that should be called")
     private Property<String> namespace;
 
-    @Schema(title = "The target flow id")
+    @Schema(title = "Flow ID of the flow that should be called")
     private Property<String> flowId;
 
-    @Schema(title = "The target flow revision")
+    @Schema(title = "Revision of the flow that should be called")
     private Property<Integer> revision;
 
     @Schema(
-        title = "The inputs to pass to the flow to be called",
+        title = "Input values that should be passed to flow's execution",
         description = "Any inputs passed by the LLM will override those defined here."
     )
     @PluginProperty(dynamic = true)
     private Map<String, Object> inputs;
 
     @Schema(
-        title = "The labels to pass to the flow to be executed",
+        title = "Labels that should be added to the flow's execution",
         description = "Any labels passed by the LLM will override those defined here.",
         implementation = Object.class, oneOf = {List.class, Map.class}
     )
@@ -227,13 +232,13 @@ public class KestraFlowCalling extends ToolProvider {
     @Schema(
         title = "Whether the flow should inherit labels from this execution that triggered it",
         description = """
-            By default, labels are not passed to the flow execution. If you set this option to `true`, the flow execution will inherit all labels from the this execution.
+            By default, labels are not inherited. If you set this option to `true`, the flow execution will inherit all labels from the agent's execution.
             Any labels passed by the LLM will override those defined here."""
     )
     private final Property<Boolean> inheritLabels = Property.ofValue(false);
 
     @Schema(
-        title = "Don't trigger the flow now but schedule it on a specific date.",
+        title = "Schedule the flow execution at a later date",
         description = "If the LLM sets a scheduleDate, it will override the one defined here."
     )
     private Property<ZonedDateTime> scheduleDate;
@@ -286,7 +291,7 @@ public class KestraFlowCalling extends ToolProvider {
 
             var rDescription = runContext.render(this.description).as(String.class).orElse(flowInterface.getDescription());
             if (rDescription == null) {
-                throw new IllegalArgumentException("You must provide a description from the tool 'description' property of the flow description");
+                throw new IllegalArgumentException("You must provide a description in the tool's description property or in the flow description");
             }
 
             jsonSchema.description(rDescription);
@@ -374,7 +379,7 @@ public class KestraFlowCalling extends ToolProvider {
             var flowMetaStoreInterface = runContext.getApplicationContext().getBean(FlowMetaStoreInterface.class);
             var flowInfo = runContext.flowInfo();
             return flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), namespace, flowId, revision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
-                .orElseThrow(() -> new IllegalArgumentException("Unable to find flow at '"+ flowId + "' in namespace '" + namespace + "'"));
+                .orElseThrow(() -> new IllegalArgumentException("Unable to find flow '"+ flowId + "' in namespace '" + namespace + "'"));
         }
     }
 

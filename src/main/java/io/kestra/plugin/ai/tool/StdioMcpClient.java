@@ -33,29 +33,26 @@ import java.util.stream.Collectors;
 @Plugin(
     examples = {
         @Example(
-            title = "Chat Completion with Google Gemini and an Stdio MCP Client tool",
+            title = "Agent calling an MCP Server via Stdio",
             full = true,
             code = {
                 """
-                id: chat_completion_with_tools
-                namespace: company.team
+                id: mcp_client_stdio
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
                     type: STRING
+                    defaults: What is the current time in New York?
 
                 tasks:
-                  - id: chat_completion_with_tools
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.StdioMcpClient
                         command: ["docker", "run", "--rm", "-i", "mcp/time"]
@@ -67,7 +64,7 @@ import java.util.stream.Collectors;
 )
 @JsonDeserialize
 @Schema(
-    title = "Model Context Protocol (MCP) HTTP client tool"
+    title = "Model Context Protocol (MCP) Stdio client tool"
 )
 public class StdioMcpClient extends ToolProvider {
     @Schema(title = "The MCP client command, as a list of command parts")

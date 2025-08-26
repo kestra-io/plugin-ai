@@ -36,33 +36,29 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
 @Plugin(
     examples = {
         @Example(
-            title = "Chat Completion with Google Gemini and a Docker MCP Client tool",
+            title = "Agent calling an MCP Server in a Docker container",
             full = true,
             code = {
                 """
-                id: chat_completion_with_tools
-                namespace: company.team
+                id: docker_mcp_client
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
                     type: STRING
+                    defaults: What is the current UTC time?
 
                 tasks:
-                  - id: chat_completion_with_tools
-                    type: io.kestra.plugin.ai.ChatCompletion
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
+                    prompt "{{ inputs.prompt }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.DockerMcpClient
-                        image: mcp/time
-                """
+                        image: mcp/time"""
             }
         ),
     }
