@@ -23,7 +23,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest(startRunner = true)
-class KestraFlowCallingTest {
+class KestraFlowTest {
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -61,7 +61,7 @@ class KestraFlowCallingTest {
                 .build()
             )
             .tools(List.of(
-                KestraFlowCalling.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world")).description(Property.ofValue("A flow that say Hello World")).build())
+                KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world")).description(Property.ofValue("A flow that say Hello World")).build())
             )
             .messages(Property.ofValue(
                 List.of(
@@ -119,7 +119,7 @@ class KestraFlowCallingTest {
                 .build()
             )
             .tools(List.of(
-                KestraFlowCalling.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-description")).build())
+                KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-description")).build())
             )
             .messages(Property.ofValue(
                 List.of(
@@ -192,7 +192,7 @@ class KestraFlowCallingTest {
                 .build()
             )
             .tools(
-                List.of(KestraFlowCalling.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-input")).description(Property.ofValue("A flow that say Hello World")).build())
+                List.of(KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-input")).description(Property.ofValue("A flow that say Hello World")).build())
             )
             .messages(Property.ofValue(
                 List.of(
@@ -255,7 +255,7 @@ class KestraFlowCallingTest {
                 .build()
             )
             .tools(List.of(
-                KestraFlowCalling.builder().build())
+                KestraFlow.builder().build())
             )
             .messages(Property.ofValue(
                 List.of(

@@ -3,7 +3,6 @@ package io.kestra.plugin.ai.tool;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.docs.JsonSchemaGenerator;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -54,7 +53,7 @@ import java.util.stream.Collectors;
                           modelName: gemini-2.5-flash
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
-                          - type: io.kestra.plugin.ai.tool.KestraTaskCalling
+                          - type: io.kestra.plugin.ai.tool.KestraTask
                             tasks:
                               - id: log
                                 type: io.kestra.plugin.core.log.Log
@@ -79,7 +78,7 @@ import java.util.stream.Collectors;
         WARNING: Since some model providers don't support JSON schema with `anyOf`, when creating the JSON Schema to call the task, each `anyOf` will be replaced by one of its sub-schemas.
         You can view the generated schema in the debug logs."""
 )
-public class KestraTaskCalling extends ToolProvider {
+public class KestraTask extends ToolProvider {
     // This placeholder would be used in the flow definition to denote a property that the LLM must set.
     private static final String LLM_PLACEHOLDER = "...";
 
@@ -99,7 +98,7 @@ public class KestraTaskCalling extends ToolProvider {
         for (Task task : tasks) {
             // First, check that the task is a runnable task.
             if (!(task instanceof RunnableTask)) {
-                throw new IllegalArgumentException("KestraTaskCalling is only capable of calling runnable tasks but '" + task.getId() + "' is not a runnable task.");
+                throw new IllegalArgumentException("The KestraTask tool is only capable of calling runnable tasks but '" + task.getId() + "' is not a runnable task.");
             }
 
             var schemaAnnotation = Optional.ofNullable(task.getClass().getAnnotation(Schema.class));
