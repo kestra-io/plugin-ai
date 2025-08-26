@@ -58,7 +58,7 @@ public class CodeExecution extends ToolProvider {
     private Property<String> apiKey;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
-        return extract(new Judge0JavaScriptExecutionTool(runContext.render(this.apiKey).as(String.class).orElseThrow()));
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+        return extract(new Judge0JavaScriptExecutionTool(runContext.render(this.apiKey).as(String.class, additionalVariables).orElseThrow()));
     }
 }

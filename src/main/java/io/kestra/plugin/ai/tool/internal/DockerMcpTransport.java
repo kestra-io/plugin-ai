@@ -7,9 +7,15 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.exception.InternalServerErrorException;
+import com.github.dockerjava.api.exception.NotFoundException;
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.core.NameParser;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import dev.langchain4j.mcp.client.protocol.McpClientMessage;
@@ -17,12 +23,17 @@ import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import io.kestra.core.models.tasks.retrys.Exponential;
+import io.kestra.core.utils.RetryUtils;
+import io.kestra.plugin.scripts.runner.docker.PullPolicy;
+import org.apache.hc.core5.http.ConnectionClosedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -48,6 +59,7 @@ public class DockerMcpTransport  implements McpTransport {
     private final List<String> command;
     private final Map<String, String> environment;
     private final boolean logEvents;
+    private final List<String> binds;
 
     private volatile McpOperationHandler messageHandler;
     private volatile String containerId;
@@ -69,6 +81,7 @@ public class DockerMcpTransport  implements McpTransport {
         this.command = builder.command;
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
+        this.binds = builder.binds;
     }
 
     @Override
@@ -89,6 +102,22 @@ public class DockerMcpTransport  implements McpTransport {
                 .build();
         DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).build();
         this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
+
+        var imageNameWithoutTag = getImageNameWithoutTag(image);
+        var parsedTagFromImage = NameParser.parseRepositoryTag(image);
+        // pullImageCmd without the tag (= repository) to avoid being redundant with withTag below
+        // and prevent errors with Podman trying to pull "image:tag:tag"
+        try (var pull = dockerClient.pullImageCmd(imageNameWithoutTag)) {
+            var tag = !parsedTagFromImage.tag.isEmpty() ? parsedTagFromImage.tag : "latest";
+            var repository = pull.getRepository().contains(":") ? pull.getRepository().split(":")[0] : pull.getRepository();
+            pull.withTag(tag).exec(new PullImageResultCallback()).awaitCompletion();
+            log.trace("Image pulled [{}:{}]", repository, tag);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        HostConfig hostConfig = new HostConfig()
+            .withBinds(binds.stream().map(bind -> Bind.parse(bind)).toList());
         CreateContainerCmd container = dockerClient.createContainerCmd(image)
                 .withTty(false)
                 .withAttachStdin(true)
@@ -96,7 +125,8 @@ public class DockerMcpTransport  implements McpTransport {
                 .withAttachStderr(true)
                 .withStdinOpen(true)
                 .withCmd(command.toArray(new String[0]))
-                .withEnv(environment.entrySet().stream().map(r -> r.getKey() + "=" + r.getValue()).toList());
+                .withEnv(environment.entrySet().stream().map(r -> r.getKey() + "=" + r.getValue()).toList())
+                .withHostConfig(hostConfig);
         try {
             CreateContainerResponse exec = container.exec();
             this.containerId = exec.getId();
@@ -106,6 +136,20 @@ public class DockerMcpTransport  implements McpTransport {
             log.debug("ID of the started container: {}", exec.getId());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private String getImageNameWithoutTag(String fullImageName) {
+        if (fullImageName == null || fullImageName.isEmpty()) {
+            return fullImageName;
+        }
+
+        int lastColonIndex = fullImageName.lastIndexOf(':');
+        int firstSlashIndex = fullImageName.indexOf('/');
+        if (lastColonIndex > -1 && (firstSlashIndex == -1 || lastColonIndex > firstSlashIndex)) {
+            return fullImageName.substring(0, lastColonIndex);
+        } else {
+            return fullImageName; // No tag found or the colon is part of the registry host
         }
     }
 
@@ -221,6 +265,7 @@ public class DockerMcpTransport  implements McpTransport {
         private List<String> command;
         private Map<String, String> environment;
         private boolean logEvents;
+        private List<String> binds;
 
         public Builder dockerHost(String dockerHost) {
             this.dockerHost = dockerHost;
@@ -292,6 +337,11 @@ public class DockerMcpTransport  implements McpTransport {
             return this;
         }
 
+        public Builder binds(List<String> binds) {
+            this.binds = binds;
+            return this;
+        }
+
         public DockerMcpTransport build() {
             if (dockerHost == null || dockerHost.isEmpty()) {
                 throw new IllegalArgumentException("Missing host");
@@ -304,6 +354,9 @@ public class DockerMcpTransport  implements McpTransport {
             }
             if (environment == null) {
                 environment = Map.of();
+            }
+            if (binds == null) {
+                binds = List.of();
             }
             return new DockerMcpTransport(this);
         }

@@ -61,6 +61,37 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                         image: mcp/time"""
             }
         ),
+        @Example(
+            title = "Agent calling an MCP Server in a Docker container and generating output files",
+            full = true,
+            code = {
+                """
+                id: docker_mcp_client
+                namespace: company.ai
+
+                inputs:
+                  - id: prompt
+                    type: STRING
+                    defaults: Create a file 'hello.txt' with the content "Hello World"
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+                    prompt "{{ inputs.prompt }}"
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.DockerMcpClient
+                        image: mcp/filesystem
+                        command: ["/tmp"]
+                        # You must mount the path of the container to the task working directory to be able to access the generated file
+                        volumes:["{{workingDir}}:/tmp"]
+                    outputFiles:
+                    - hello.txt"""
+            }
+        ),
     }
 )
 @JsonDeserialize
@@ -113,28 +144,34 @@ public class DockerMcpClient extends ToolProvider {
     @Schema(title = "The API version")
     private Property<String> apiVersion;
 
+    @Schema(title = "The list of volume binds")
+    private Property<List<String>> binds;
+
     @JsonIgnore
     private transient McpClient mcpClient;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
-        String resolvedHost = runContext.render(dockerHost).as(String.class)
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+        String resolvedHost = runContext.render(dockerHost).as(String.class, additionalVariables)
             .orElseGet(throwSupplier(() -> DockerService.findHost(runContext, null)));
+        runContext.logger().debug("Connecting to Docker host: {}", resolvedHost);
+
         McpTransport transport = new DockerMcpTransport.Builder()
-            .command(runContext.render(command).asList(String.class))
-            .environment(runContext.render(env).asMap(String.class, String.class))
-            .image(runContext.render(image).as(String.class).orElseThrow())
+            .command(runContext.render(command).asList(String.class, additionalVariables))
+            .environment(runContext.render(env).asMap(String.class, String.class, additionalVariables))
+            .image(runContext.render(image).as(String.class, additionalVariables).orElseThrow())
             .dockerHost(resolvedHost)
-            .dockerConfig(runContext.render(dockerConfig).as(String.class).orElse(null))
-            .dockerContext(runContext.render(dockerContext).as(String.class).orElse(null))
-            .dockerCertPath(runContext.render(dockerCertPath).as(String.class).orElse(null))
-            .dockerTslVerify(runContext.render(dockerTlsVerify).as(Boolean.class).orElse(null))
-            .registryEmail(runContext.render(registryEmail).as(String.class).orElse(null))
-            .registryPassword(runContext.render(registryUsername).as(String.class).orElse(null))
-            .registryUsername(runContext.render(registryUsername).as(String.class).orElse(null))
-            .registryUrl(runContext.render(registryUrl).as(String.class).orElse(null))
-            .apiVersion(runContext.render(apiVersion).as(String.class).orElse(null))
-            .logEvents(runContext.render(logEvents).as(Boolean.class).orElse(false))
+            .dockerConfig(runContext.render(dockerConfig).as(String.class, additionalVariables).orElse(null))
+            .dockerContext(runContext.render(dockerContext).as(String.class, additionalVariables).orElse(null))
+            .dockerCertPath(runContext.render(dockerCertPath).as(String.class, additionalVariables).orElse(null))
+            .dockerTslVerify(runContext.render(dockerTlsVerify).as(Boolean.class, additionalVariables).orElse(null))
+            .registryEmail(runContext.render(registryEmail).as(String.class, additionalVariables).orElse(null))
+            .registryPassword(runContext.render(registryUsername).as(String.class, additionalVariables).orElse(null))
+            .registryUsername(runContext.render(registryUsername).as(String.class, additionalVariables).orElse(null))
+            .registryUrl(runContext.render(registryUrl).as(String.class, additionalVariables).orElse(null))
+            .apiVersion(runContext.render(apiVersion).as(String.class, additionalVariables).orElse(null))
+            .logEvents(runContext.render(logEvents).as(Boolean.class, additionalVariables).orElse(false))
+            .binds(runContext.render(binds).asList(String.class, additionalVariables))
             .build();
 
         this.mcpClient = new DefaultMcpClient.Builder()

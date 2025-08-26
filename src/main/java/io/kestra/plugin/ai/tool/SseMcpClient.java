@@ -90,12 +90,12 @@ public class SseMcpClient extends ToolProvider {
     private transient McpClient mcpClient;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         McpTransport transport = new HttpMcpTransport.Builder()
-            .sseUrl(runContext.render(sseUrl).as(String.class).orElseThrow())
-            .timeout(runContext.render(timeout).as(Duration.class).orElse(null))
-            .logRequests(runContext.render(logRequests).as(Boolean.class).orElseThrow())
-            .logResponses(runContext.render(logResponses).as(Boolean.class).orElseThrow())
+            .sseUrl(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
+            .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
+            .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElseThrow())
+            .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElseThrow())
             .build();
 
         this.mcpClient = new DefaultMcpClient.Builder()

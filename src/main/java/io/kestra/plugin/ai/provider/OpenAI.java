@@ -80,7 +80,7 @@ public class OpenAI extends ModelProvider {
 
         var responseFormat = configuration.computeResponseFormat(runContext);
         if (responseFormat.jsonSchema() != null) {
-            throw new IllegalArgumentException("DeepSeek models didn't support setting the JSON schema");
+            throw new IllegalArgumentException("OpenAI models didn't support setting the JSON schema");
         }
 
         return OpenAiChatModel.builder()

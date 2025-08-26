@@ -4,10 +4,13 @@ import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.OpenAI;
+import io.kestra.plugin.ai.tool.DockerMcpClient;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AIAgentTest {
     @Inject
     private TestRunContextFactory runContextFactory;
+
+    @Inject
+    private StorageInterface storage;
 
     @Test
     void prompt() throws Exception {
@@ -64,9 +70,9 @@ class AIAgentTest {
                 .baseUrl(Property.ofExpression("{{ baseUrl }}"))
                 .build()
             )
-            .tools(Property.ofValue(
+            .tools(
                 List.of(StdioMcpClient.builder().command(Property.ofValue(List.of("docker", "run", "--rm", "-i", "mcp/everything"))).build())
-            ))
+            )
             .prompt(Property.ofValue("What is 5+12? Use the provided tool to answer and always assume that the tool is correct."))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
@@ -118,5 +124,50 @@ class AIAgentTest {
             .build();
         output = agent.run(runContext);
         assertThat(output.getTextOutput()).contains("John");
+    }
+
+    @Test
+    void withOutputFiles() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", "demo",
+            "modelName", "gpt-4o-mini",
+            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+        ));
+
+        var agent = AIAgent.builder()
+            .provider(OpenAI.builder()
+                .type(OpenAI.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .tools(
+                List.of(DockerMcpClient.builder()
+                    .image(Property.ofValue("mcp/filesystem"))
+                    .command(Property.ofValue(List.of("/tmp")))
+                    .binds(Property.ofValue(List.of(runContext.workingDir().path(true).toString() + ":/tmp")))
+                    .logEvents(Property.ofValue(true))
+                    .build()
+                )
+            )
+            .prompt(Property.ofValue("Create a file 'hello.txt' with the content \"Hello World\""))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .outputFiles(Property.ofValue(List.of("hello.txt")))
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getToolExecutions()).isNotEmpty();
+        assertThat(output.getToolExecutions()).extracting("requestName").contains("write_file");
+        assertThat(output.getOutputFiles()).hasSize(1);
+        assertThat(output.getOutputFiles().get("hello.txt")).isNotNull();
+
+        var uri = output.getOutputFiles().get("hello.txt");
+        try (var is = storage.get(TenantService.MAIN_TENANT, null, uri)) {
+            var content = new String(is.readAllBytes());
+            assertThat(content).isEqualTo("Hello World");
+        }
     }
 }

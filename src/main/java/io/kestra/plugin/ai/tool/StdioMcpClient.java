@@ -83,11 +83,11 @@ public class StdioMcpClient extends ToolProvider {
     private transient McpClient mcpClient;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext) throws IllegalVariableEvaluationException {
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         McpTransport transport = new StdioMcpTransport.Builder()
-            .command(runContext.render(command).asList(String.class))
-            .environment(runContext.render(env).asMap(String.class, String.class))
-            .logEvents(runContext.render(logEvents).as(Boolean.class).orElse(false))
+            .command(runContext.render(command).asList(String.class, additionalVariables))
+            .environment(runContext.render(env).asMap(String.class, String.class, additionalVariables))
+            .logEvents(runContext.render(logEvents).as(Boolean.class, additionalVariables).orElse(false))
             .build();
 
         this.mcpClient = new DefaultMcpClient.Builder()
