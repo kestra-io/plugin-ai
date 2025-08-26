@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
 @KestraTest
-class KestraTaskCallingTest extends ContainerTest {
+class KestraTaskTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
 
     @Inject
@@ -59,7 +59,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         Log.builder().id("log").type(Log.class.getName()).message("...").build()
                     )
@@ -102,7 +102,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         SetVariables.builder().id("setVariables").type(SetVariables.class.getName()).variables(Property.ofExpression("{{agent.variables}}")).build()
                     )
@@ -116,7 +116,7 @@ class KestraTaskCallingTest extends ContainerTest {
             .build();
 
         IllegalArgumentException exception =  assertThrows(IllegalArgumentException.class, () -> chat.run(runContext));
-        assertThat(exception.getMessage()).isEqualTo("KestraTaskCalling is only capable of calling runnable tasks but 'setVariables' is not a runnable task.");
+        assertThat(exception.getMessage()).isEqualTo("The KestraTask tool is only capable of calling runnable tasks but 'setVariables' is not a runnable task.");
     }
 
     @Test
@@ -138,7 +138,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         Request.builder().id("request").type(SetVariables.class.getName()).uri(Property.ofExpression("...")).build()
                     )
@@ -184,7 +184,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         Fetch.builder().id("fetch").type(Fetch.class.getName()).build()
                     )
@@ -230,7 +230,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
                     )
@@ -281,7 +281,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
                     )
@@ -331,7 +331,7 @@ class KestraTaskCallingTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true)).build())
             .tools(List.of(
-                KestraTaskCalling.builder().tasks(
+                KestraTask.builder().tasks(
                     List.of(
                         MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName())
                             .string(Property.ofValue("..."))

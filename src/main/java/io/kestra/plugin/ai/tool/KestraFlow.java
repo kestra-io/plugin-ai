@@ -79,42 +79,42 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                           modelName: gemini-2.5-flash
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: business-automation
                             description: Business Automation
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: business-processes
                             description: Business Processes
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: data-engineering-pipeline
                             description: Data Engineering Pipeline
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: dwh-and-analytics
                             description: Data Warehouse and Analytics
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: file-processing
                             description: File Processing
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: hello-world
                             description: Hello World
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: infrastructure-automation
                             description: Infrastructure Automation
 
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: microservices-and-apis
                             description: Microservices and APIs"""
@@ -160,7 +160,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                           modelName: gemini-2.5-flash
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
-                          - type: io.kestra.plugin.ai.tool.KestraFlowCalling"""
+                          - type: io.kestra.plugin.ai.tool.KestraFlow"""
             }
         ),
     }
@@ -186,7 +186,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         The LLM can also set `inputs`, `labels`, and `scheduledDate` if required.
         If no `correlationId` is provided, the called flow will inherit `correlationId` from the agent's execution."""
 )
-public class KestraFlowCalling extends ToolProvider {
+public class KestraFlow extends ToolProvider {
     // Tool description, it could be fine-tuned if needed
     private static final String TOOL_DEFINED_DESCRIPTION = "This tool allows to execute a Kestra flow and output the execution details.";
     private static final String TOOL_LLM_DESCRIPTION = """
