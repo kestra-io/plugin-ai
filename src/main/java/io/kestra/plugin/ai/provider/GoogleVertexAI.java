@@ -7,6 +7,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.vertexai.VertexAiEmbeddingModel;
 import dev.langchain4j.model.vertexai.VertexAiImageModel;
+import dev.langchain4j.model.vertexai.gemini.SchemaHelper;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
@@ -85,9 +86,6 @@ public class GoogleVertexAI extends ModelProvider {
         }
 
         var responseFormat = configuration.computeResponseFormat(runContext);
-        if (responseFormat.jsonSchema() != null) {
-            throw new IllegalArgumentException("DeepSeek models didn't support setting the JSON schema");
-        }
 
         return VertexAiGeminiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
@@ -100,6 +98,7 @@ public class GoogleVertexAI extends ModelProvider {
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .responseMimeType(responseFormat.type() == ResponseFormatType.JSON ? "application/json" : null)
+            .responseSchema(responseFormat.jsonSchema() != null ? SchemaHelper.from(responseFormat.jsonSchema().rootElement()) : null)
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }
