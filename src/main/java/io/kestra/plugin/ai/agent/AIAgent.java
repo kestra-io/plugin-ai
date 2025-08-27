@@ -47,7 +47,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Example(
             full = true,
             title = """
-                Call a AI agent to summarize some information""",
+                Call an AI agent to summarize some information""",
             code = """
                 id: ai-agent
                 namespace: company.team
@@ -69,7 +69,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Example(
             full = true,
             title = """
-                Call a AI agent to with a MCP tool""",
+                Call an AI agent to with a MCP tool""",
             code = """
                 id: ai-agent
                 namespace: company.team
@@ -91,7 +91,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Example(
             full = true,
             title = """
-                Call a AI agent to with a memory""",
+                Call an AI agent to with a memory""",
             code = """
                 id: ai-agent
                 namespace: company.team
@@ -119,7 +119,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Example(
             full = true,
             title = """
-                Call a AI agent to with a content retriever""",
+                Call an AI agent to with a content retriever""",
             code = """
                 id: ai-agent
                 namespace: company.team
