@@ -38,11 +38,11 @@ public abstract class MemoryProvider extends AdditionalPlugin {
     private Property<String> memoryId = Property.ofExpression("{{ labels.system.correlationId }}");
 
     @Schema(
-        title = "Drop memory: never, before, or after task execution",
+        title = "Drop memory: never, before, or after task run",
         description = """
             By default, the memory ID is the value of the 'system.correlationId' label, meaning that the same memory will be used by all tasks of the flow and its subflows.
-            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_EXECUTION` inside the last task of the flow to erase the memory after its execution.
-            You can also set `drop: BEFORE_EXECUTION` to drop the memory before the task execution; this can be useful subflows in case you want a different memory."""
+            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_TASKRUN` inside the last task of the flow to erase the memory after its execution.
+            You can also set `drop: BEFORE_TASKRUN` to drop the memory before the task execution; this can be useful subflows in case you want a different memory."""
     )
     @Builder.Default
     private Property<Drop> drop = Property.ofValue(Drop.NEVER);
@@ -60,5 +60,5 @@ public abstract class MemoryProvider extends AdditionalPlugin {
         // by default: no-op
     }
 
-    public enum Drop { NEVER, BEFORE_EXECUTION, AFTER_EXECUTION }
+    public enum Drop { NEVER, BEFORE_TASKRUN, AFTER_TASKRUN}
 }

@@ -126,7 +126,7 @@ public class Redis extends MemoryProvider {
         try (var jedis = new Jedis(rHost, rPort)) {
             var json = jedis.get(key);
             if (json != null) {
-                if (rDrop == Drop.BEFORE_EXECUTION) {
+                if (rDrop == Drop.BEFORE_TASKRUN) {
                     jedis.del(key);
                 } else {
                     var messages = ChatMessageDeserializer.messagesFromJson(json);
@@ -148,7 +148,7 @@ public class Redis extends MemoryProvider {
             var key = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
 
             try (var jedis = new Jedis(rHost, rPort)) {
-                if (rDrop == Drop.AFTER_EXECUTION) {
+                if (rDrop == Drop.AFTER_TASKRUN) {
                     jedis.del(key);
                 } else {
                     var memoryJson = ChatMessageSerializer.messagesToJson(chatMemory.messages());
