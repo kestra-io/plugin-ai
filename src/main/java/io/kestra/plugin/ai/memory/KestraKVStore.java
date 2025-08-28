@@ -105,7 +105,7 @@ public class KestraKVStore extends MemoryProvider {
         Optional<KVEntry> kvEntry = runContext.namespaceKv(runContext.flowInfo().namespace()).get(key);
         if (kvEntry.isPresent() && !kvEntry.get().expirationDate().isBefore(Instant.now())) {
             try {
-                if (runContext.render(this.getDrop()).as(Drop.class).orElse(Drop.NEVER) == Drop.AFTER_EXECUTION) {
+                if (runContext.render(this.getDrop()).as(Drop.class).orElse(Drop.NEVER) == Drop.AFTER_TASKRUN) {
                     String rMemoryId = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
                     kvStore.delete(rMemoryId);
                 }
@@ -128,7 +128,7 @@ public class KestraKVStore extends MemoryProvider {
         if (chatMemory != null) {
             String rMemoryId = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
             KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
-            if (runContext.render(this.getDrop()).as(Drop.class).orElse(Drop.NEVER) == Drop.AFTER_EXECUTION) {
+            if (runContext.render(this.getDrop()).as(Drop.class).orElse(Drop.NEVER) == Drop.AFTER_TASKRUN) {
                 kvStore.delete(rMemoryId);
             } else {
                 String memoryJson = ChatMessageSerializer.messagesToJson(chatMemory.messages());
