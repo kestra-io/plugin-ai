@@ -70,9 +70,6 @@ public class GoogleGemini extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        var logRequestAndResponses = runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false) ||
-            runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false);
-
         return GoogleAiGeminiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -80,7 +77,9 @@ public class GoogleGemini extends ModelProvider {
             .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
-            .logRequestsAndResponses(logRequestAndResponses)
+            .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
+            .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
+            .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
             .build();

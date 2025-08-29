@@ -78,6 +78,7 @@ public class Ollama extends ModelProvider {
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
+            .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
             .build();

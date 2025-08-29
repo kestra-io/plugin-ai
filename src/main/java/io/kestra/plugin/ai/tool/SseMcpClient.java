@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.tool;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -76,6 +77,12 @@ public class SseMcpClient extends ToolProvider {
     @Schema(title = "Connection timeout duration")
     private Property<Duration> timeout;
 
+    @Schema(
+        title = "Custom headers",
+        description = "Could be useful for eg. to add authentication tokens via the `Authorization` header."
+    )
+    private Property<Map<String, String>> customHeaders;
+
     @Schema(title = "Log requests")
     @NotNull
     @Builder.Default
@@ -96,6 +103,7 @@ public class SseMcpClient extends ToolProvider {
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
             .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElseThrow())
             .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElseThrow())
+            .customHeaders(runContext.render(customHeaders).asMap(String.class, String.class))
             .build();
 
         this.mcpClient = new DefaultMcpClient.Builder()
