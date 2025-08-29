@@ -60,7 +60,7 @@ public class ChatConfiguration {
             Some providers allow requesting JSON or schema-constrained outputs, but support varies and may be incompatible with tool use.
             When using a JSON schema, the output will be returned under the key `output`, which can be referenced in prompts."""
     )
-    private Property<String> responseFormat;
+    private ResponseFormat responseFormat;
 
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
