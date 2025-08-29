@@ -1,20 +1,13 @@
 package io.kestra.plugin.ai.tool;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.McpToolExecutor;
-import dev.langchain4j.mcp.client.DefaultMcpClient;
-import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
-import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.ToolProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -25,7 +18,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Getter
 @SuperBuilder
@@ -69,7 +61,7 @@ import java.util.stream.Collectors;
 @Schema(
     title = "Model Context Protocol (MCP) SSE client tool"
 )
-public class SseMcpClient extends ToolProvider {
+public class SseMcpClient extends AbstractMcpClient {
     @Schema(title = "SSE URL of the MCP server")
     @NotNull
     private Property<String> sseUrl;
@@ -93,37 +85,15 @@ public class SseMcpClient extends ToolProvider {
     @Builder.Default
     private Property<Boolean> logResponses = Property.ofValue(false);
 
-    @JsonIgnore
-    private transient McpClient mcpClient;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
-        McpTransport transport = new HttpMcpTransport.Builder()
+    protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+        return new HttpMcpTransport.Builder()
             .sseUrl(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
             .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElseThrow())
             .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElseThrow())
             .customHeaders(runContext.render(customHeaders).asMap(String.class, String.class))
             .build();
-
-        this.mcpClient = new DefaultMcpClient.Builder()
-            .transport(transport)
-            .build();
-
-        return mcpClient.listTools().stream().collect(Collectors.toMap(
-            tool -> tool,
-            tool -> new McpToolExecutor(mcpClient)
-        ));
-    }
-
-    @Override
-    public void close(RunContext runContext) {
-        if (mcpClient != null) {
-            try {
-                mcpClient.close();
-            } catch (Exception e) {
-                runContext.logger().warn("Unable to close the MCP client", e);
-            }
-        }
     }
 }
