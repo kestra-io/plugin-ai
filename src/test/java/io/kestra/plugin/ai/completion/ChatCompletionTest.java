@@ -148,7 +148,7 @@ class ChatCompletionTest extends ContainerTest {
             .configuration(ChatConfiguration.builder()
                 .temperature(Property.ofValue(0.1))
                 .seed(Property.ofValue(123456789))
-                .responseFormat(ChatConfiguration.ResponseFormat.builder()
+                .responseFormat(Property.ofValue(ChatConfiguration.ResponseFormat.builder()
                     .type(Property.ofValue(ResponseFormatType.JSON))
                     .jsonSchema(Property.ofValue(
                         Map.of(
@@ -160,7 +160,7 @@ class ChatCompletionTest extends ContainerTest {
                         )
                     ))
                     .build()
-                )
+                ))
                 .build()
             )
             .provider(Ollama.builder()
