@@ -233,7 +233,6 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
     @Schema(title = "System message", description = "Instruction that sets the assistant's role, tone, and constraints for this task.")
-    @NotNull
     protected Property<String> systemMessage;
 
     @Schema(title = "User prompt", description = "The user input for this run. May be templated from flow inputs.")
