@@ -60,15 +60,14 @@ public class ChatConfiguration {
             Some providers allow requesting JSON or schema-constrained outputs, but support varies and may be incompatible with tool use.
             When using a JSON schema, the output will be returned under the key `output`, which can be referenced in prompts."""
     )
-    private Property<ResponseFormat> responseFormat;
+    private Property<String> responseFormat;
 
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
             return dev.langchain4j.model.chat.request.ResponseFormat.TEXT;
         }
 
-        // Use the nested ResponseFormat class which has the proper to() method
-        return runContext.render(responseFormat).as(ResponseFormat.class).orElse(ResponseFormat.builder().build()).to(runContext);
+        return responseFormat.to(runContext);
     }
 
     public static ChatConfiguration empty() {

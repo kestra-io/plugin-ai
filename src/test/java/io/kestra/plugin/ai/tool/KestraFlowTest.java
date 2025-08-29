@@ -130,7 +130,7 @@ class KestraFlowTest {
             .configuration(ChatConfiguration.builder()
                 .temperature(Property.ofValue(0.1))
                 .seed(Property.ofValue(123456789))
-                .responseFormat(Property.ofValue(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build()))
+                .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
                 .build()
             )
             .build();
