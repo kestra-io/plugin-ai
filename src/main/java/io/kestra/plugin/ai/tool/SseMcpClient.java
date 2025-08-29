@@ -73,7 +73,7 @@ public class SseMcpClient extends AbstractMcpClient {
         title = "Custom headers",
         description = "Could be useful for eg. to add authentication tokens via the `Authorization` header."
     )
-    private Property<Map<String, String>> customHeaders;
+    private Property<Map<String, String>> headers;
 
     @Schema(title = "Log requests")
     @NotNull
@@ -93,7 +93,7 @@ public class SseMcpClient extends AbstractMcpClient {
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
             .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElseThrow())
             .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElseThrow())
-            .customHeaders(runContext.render(customHeaders).asMap(String.class, String.class))
+            .customHeaders(runContext.render(headers).asMap(String.class, String.class))
             .build();
     }
 }
