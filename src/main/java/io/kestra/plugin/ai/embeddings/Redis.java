@@ -33,10 +33,10 @@ import java.io.IOException;
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into a Redis embedding store.",
+            title = "Ingest documents into a Redis embedding store",
             code = """
-                id: document-ingestion
-                namespace: company.team
+                id: document_ingestion
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -51,7 +51,7 @@ import java.io.IOException;
                       port: 6379
                       indexName: embeddings
                     fromExternalURLs:
-                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-22.md
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         )
     }

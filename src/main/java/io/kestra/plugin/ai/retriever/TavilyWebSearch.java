@@ -34,7 +34,7 @@ import lombok.experimental.SuperBuilder;
             title = "Chat with your data using Retrieval Augmented Generation (RAG) and a WebSearch content retriever. The Chat with RAG retrieves contents from a WebSearch client and provides a response grounded in data rather than hallucinating.",
             code = """
                 id: rag
-                namespace: company.team
+                namespace: company.ai
 
                 tasks:
                   - id: chat_with_rag_and_websearch_content_retriever
@@ -42,10 +42,10 @@ import lombok.experimental.SuperBuilder;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
                     prompt: What is the latest release of Kestra?
                 """
         )

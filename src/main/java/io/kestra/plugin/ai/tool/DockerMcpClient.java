@@ -36,7 +36,7 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
 @Plugin(
     examples = {
         @Example(
-            title = "Agent calling an MCP Server in a Docker container",
+            title = "Agent calling an MCP server in a Docker container",
             full = true,
             code = {
                 """
@@ -53,16 +53,16 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    prompt "{{ inputs.prompt }}"
+                    prompt: "{{ inputs.prompt }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.DockerMcpClient
                         image: mcp/time"""
             }
         ),
         @Example(
-            title = "Agent calling an MCP Server in a Docker container and generating output files",
+            title = "Agent calling an MCP server in a Docker container and generating output files",
             full = true,
             code = {
                 """
@@ -72,24 +72,24 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                 inputs:
                   - id: prompt
                     type: STRING
-                    defaults: Create a file 'hello.txt' with the content "Hello World"
+                    defaults: Create a file 'hello.txt' with the content "Hello World" in the /tmp directory.
 
                 tasks:
                   - id: agent
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                    prompt "{{ inputs.prompt }}"
+                    prompt: "{{ inputs.prompt }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.DockerMcpClient
                         image: mcp/filesystem
                         command: ["/tmp"]
-                        # You must mount the path of the container to the task working directory to be able to access the generated file
-                        volumes:["{{workingDir}}:/tmp"]
+                        # Mount the container path to the task working directory to access the generated file
+                        binds: ["{{workingDir}}:/tmp"]
                     outputFiles:
-                    - hello.txt"""
+                      - hello.txt"""
             }
         ),
     }
@@ -99,13 +99,13 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
     title = "Model Context Protocol (MCP) Docker client tool"
 )
 public class DockerMcpClient extends ToolProvider {
-    @Schema(title = "The MCP client command, as a list of command parts")
+    @Schema(title = "MCP client command, as a list of command parts")
     private Property<List<String>> command;
 
     @Schema(title = "Environment variables")
     private Property<Map<String, String>> env;
 
-    @Schema(title = "The container image")
+    @Schema(title = "Container image")
     @NotNull
     private Property<String> image;
 
@@ -114,37 +114,37 @@ public class DockerMcpClient extends ToolProvider {
     @Builder.Default
     private Property<Boolean> logEvents = Property.ofValue(false);
 
-    @Schema(title = "The Docker host")
+    @Schema(title = "Docker host")
     private Property<String> dockerHost;
 
-    @Schema(title = "The Docker configuration")
+    @Schema(title = "Docker configuration")
     private Property<String> dockerConfig;
 
-    @Schema(title = "The Docker context")
+    @Schema(title = "Docker context")
     private Property<String> dockerContext;
 
-    @Schema(title = "The Docker certification path")
+    @Schema(title = "Docker certificate path")
     private Property<String> dockerCertPath;
 
-    @Schema(title = "Whether Docker to verify TLS certificates")
+    @Schema(title = "Whether Docker should verify TLS certificates")
     private Property<Boolean> dockerTlsVerify;
 
-    @Schema(title = "The container registry email")
+    @Schema(title = "Container registry email")
     private Property<String> registryEmail;
 
-    @Schema(title = "The container registry password")
+    @Schema(title = "Container registry password")
     private Property<String> registryPassword;
 
-    @Schema(title = "The container registry username")
+    @Schema(title = "Container registry username")
     private Property<String> registryUsername;
 
-    @Schema(title = "The container registry URL")
+    @Schema(title = "Container registry URL")
     private Property<String> registryUrl;
 
-    @Schema(title = "The API version")
+    @Schema(title = "API version")
     private Property<String> apiVersion;
 
-    @Schema(title = "The list of volume binds")
+    @Schema(title = "Volume binds")
     private Property<List<String>> binds;
 
     @JsonIgnore
@@ -166,7 +166,7 @@ public class DockerMcpClient extends ToolProvider {
             .dockerCertPath(runContext.render(dockerCertPath).as(String.class, additionalVariables).orElse(null))
             .dockerTslVerify(runContext.render(dockerTlsVerify).as(Boolean.class, additionalVariables).orElse(null))
             .registryEmail(runContext.render(registryEmail).as(String.class, additionalVariables).orElse(null))
-            .registryPassword(runContext.render(registryUsername).as(String.class, additionalVariables).orElse(null))
+            .registryPassword(runContext.render(registryPassword).as(String.class, additionalVariables).orElse(null))
             .registryUsername(runContext.render(registryUsername).as(String.class, additionalVariables).orElse(null))
             .registryUrl(runContext.render(registryUrl).as(String.class, additionalVariables).orElse(null))
             .apiVersion(runContext.render(apiVersion).as(String.class, additionalVariables).orElse(null))

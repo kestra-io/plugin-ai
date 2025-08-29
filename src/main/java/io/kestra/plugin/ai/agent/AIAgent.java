@@ -37,176 +37,263 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Call an AI agent.",
+    title = "Run an AI Agent",
     description = """
-        AI agents are autonomous systems that use a Large Language Model (LLM) to act on a user inputs.
-        They can use tools, content retrievers, and be configured with a memory for enhanced context."""
+        An AI agent is an autonomous system that uses a Large Language Model (LLM). Each run combines a **system message** and a **prompt**. The system message defines the agent's role and behavior, while the prompt carries the actual user input for that execution. Together, they guide the agent's response. The agent can also use **tools**, **content retrievers**, and **memory** to provide richer context during execution."""
 )
 @Plugin(
     examples = {
         @Example(
             full = true,
             title = """
-                Call an AI agent to summarize some information""",
+                Summarize arbitrary text with controllable length and language.""",
             code = """
-                id: ai-agent
-                namespace: company.team
+                id: simple_summarizer_agent
+                namespace: company.ai
 
                 inputs:
+                  - id: summary_length
+                    displayName: Summary Length
+                    type: SELECT
+                    defaults: medium
+                    values:
+                      - short
+                      - medium
+                      - long
+
+                  - id: language
+                    displayName: Language ISO code
+                    type: SELECT
+                    defaults: en
+                    values:
+                      - en
+                      - fr
+                      - de
+                      - es
+                      - it
+                      - ru
+                      - ja
+
                   - id: text
                     type: STRING
+                    displayName: Text to summarize
+                    defaults: |
+                      Kestra is an open-source orchestration platform that:
+                      - Allows you to define workflows declaratively in YAML
+                      - Allows non-developers to automate tasks with a no-code interface
+                      - Keeps everything versioned and governed, so it stays secure and auditable
+                      - Extends easily for custom use cases through plugins and custom scripts.
+
+                      Kestra follows a "start simple and grow as needed" philosophy. You can schedule a basic workflow in a few minutes, then later add Python scripts, Docker containers, or complicated branching logic if the situation calls for it. 
 
                 tasks:
-                  - id: ai-agent
+                  - id: multilingual_agent
                     type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                    systemMessage: You are an assistant, can you summarize the text from the user message.
-                    prompt: "{{inputs.text}}\""""
+                    systemMessage: |
+                      You are a precise technical assistant.
+                      Produce a {{ inputs.summary_length }} summary in {{ inputs.language }}.
+                      Keep it factual, remove fluff, and avoid marketing language.
+                      If the input is empty or non-text, return a one-sentence explanation.
+                      Output format:
+                      - 1-2 sentences for 'short'
+                      - 2-5 sentences for 'medium'
+                      - Up to 5 paragraphs for 'long'
+                    prompt: |
+                      Summarize the following content: {{ inputs.text }}
+
+                  - id: english_brevity
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: Generate exactly 1 sentence English summary of "{{ outputs.multilingual_agent.textOutput }}"
+
+                pluginDefaults:
+                  - type: io.kestra.plugin.ai.agent.AIAgent
+                    values:
+                      provider:
+                        type: io.kestra.plugin.ai.provider.GoogleGemini
+                        modelName: gemini-2.5-flash
+                        apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      """
         ),
         @Example(
             full = true,
             title = """
-                Call an AI agent to with a MCP tool""",
+                Interact with an MCP Server subprocess running in a Docker container""",
             code = """
-                id: ai-agent
-                namespace: company.team
-
-                inputs:
-                  - id: text
-                    type: STRING
-
-                tasks:
-                  - id: ai-agent
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                    systemMessage: You are an assistant, can you summarize the text from the user message.
-                    prompt: "{{inputs.text}}\""""
-        ),
-        @Example(
-            full = true,
-            title = """
-                Call an AI agent to with a memory""",
-            code = """
-                id: ai-agent
-                namespace: company.team
-
-                tasks:
-                  - id: ai-agent-first
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                    memory:
-                      type: io.kestra.plugin.ai.memory.KestraKVStore
-                    prompt: "Hello, my name is John"
-                  - id: ai-agent-second
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                    memory:
-                      type: io.kestra.plugin.ai.memory.KestraKVStore
-                    prompt: "What's my name?\""""
-        ),
-        @Example(
-            full = true,
-            title = """
-                Call an AI agent to with a content retriever""",
-            code = """
-                id: ai-agent
-                namespace: company.team
-
-                inputs:
-                  - id: text
-                    type: STRING
-
-                tasks:
-                  - id: ai-agent
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                    contentRetrievers:
-                      - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
-                        maxResults: 5
-                    prompt: "{{inputs.text}}\""""
-        ),
-        @Example(
-            full = true,
-            title = """
-                Extract structured outputs with a JSON schema.
-                Note that not all model providers support JSON schema, if not, you have to specify the schema inside the prompt.""",
-            code = """
-                id: structured-output
-                namespace: company.team
+                id: agent_with_docker_mcp_server_tool
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
                     type: STRING
-                    defaults: |
-                      Hello, my name is John. I was born on January 1, 2000.
+                    defaults: What is the current UTC time?
 
                 tasks:
-                  - id: ai-agent
+                  - id: agent
                     type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: "{{ inputs.prompt }}"
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-nano
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.DockerMcpClient
+                        image: mcp/time
+                    """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Run an AI agent with a memory""",
+            code = """
+                id: agent_with_memory
+                namespace: company.ai
+
+                tasks:
+                  - id: first_agent
+                    type: io.kestra.plugin.ai.agent.AIAgent        
+                    prompt: Hi, my name is John and I live in New York!
+
+                  - id: second_agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: What's my name and where do I live?
+
+                pluginDefaults:
+                  - type: io.kestra.plugin.ai.agent.AIAgent
+                    values:
+                      provider:
+                        type: io.kestra.plugin.ai.provider.OpenAI
+                        apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                        modelName: gpt-5-mini
+                      memory:
+                        type: io.kestra.plugin.ai.memory.KestraKVStore
+                        memoryId: JOHN
+                        ttl: PT1M
+                        messages: 5"""
+        ),
+        @Example(
+            full = true,
+            title = """
+                Run an AI agent leveraging Tavily Web Search as a content retriever. Note that in contrast to tools, content retrievers are always called to provide context to the prompt, and it's up to the LLM to decide whether to use that retrieved context or not.""",
+            code = """
+                id: agent_with_content_retriever
+                namespace: company.ai
+
+                inputs:
+                  - id: prompt
+                    type: STRING
+                    defaults: What is the latest Kestra release and what new features does it include? Name at least 3 new features added exactly in this release.
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                    contentRetrievers:
+                      - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                    """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Run an AI Agent returning a structured output specified in a JSON schema. 
+                Note that some providers and models don't support JSON Schema; in those cases, instruct the model to return strict JSON using an inline schema description in the prompt and validate the result downstream.""",
+            code = """
+                id: agent_with_structured_output
+                namespace: company.ai
+
+                inputs:
+                  - id: customer_ticket
+                    type: STRING
+                    defaults: >-
+                      I can't log into my account. It says my password is wrong, and the reset link never arrives.
+
+                tasks:
+                  - id: support_agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.MistralAI
+                      apiKey: "{{ kv('MISTRAL_API_KEY') }}"
+                      modelName: open-mistral-7b
+
+                    systemMessage: |
+                      You are a classifier that returns ONLY valid JSON matching the schema.
+                      Do not add explanations or extra keys.
+
                     configuration:
                       responseFormat:
                         type: JSON
                         jsonSchema:
                           type: object
+                          required: ["category", "priority"]
                           properties:
-                            name:
+                            category:
                               type: string
-                            birth:
+                              enum: ["ACCOUNT", "BILLING", "TECHNICAL", "GENERAL"]
+                            priority:
                               type: string
-                    prompt: "{{inputs.prompt}}"
+                              enum: ["LOW", "MEDIUM", "HIGH"]
+
+                    prompt: |
+                      Classify the following customer message: 
+                        {{ inputs.customer_ticket }}
                 """
         ),
+
         @Example(
             full = true,
             title = """
-                Extract output files generated by a tool.
-                The tool must generate the file inside the task working directory and the file must be declared inside the task `outputFiles` property.
-                You can use the `{{workingDir}}` expression to access the task working directory from within your flow definition.""",
+                Perform market research with an AI Agent using a web search retriever and save the findings as a Markdown report.
+                The retriever gathers up-to-date information, the agent summarizes it, and the filesystem tool writes the result to the task working directory.
+                Mount {{workingDir}} to a container path (e.g., /tmp) so the generated report file is accessible and can be collected with `outputFiles`.""",
             code = """
-                id: output-files
-                namespace: company.team
+                id: market_research_agent
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
                     type: STRING
                     defaults: |
-                      Create a file 'hello.txt' with the content "Hello World"
+                      Research the latest trends in workflow and data orchestration. 
+                      Use web search to gather current, reliable information from multiple sources. 
+                      Then create a well-structured Markdown report that includes an introduction, 
+                      key trends with short explanations, and a conclusion. 
+                      Save the final report as `report.md` in the `/tmp` directory.
 
                 tasks:
-                  - id: ai-agent
+                  - id: agent
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                    prompt: "{{ inputs.prompt }}"
+                    systemMessage: |
+                      You are a research assistant that must always follow this process:
+                      1. Use the TavilyWebSearch content retriever to gather the most relevant and up-to-date information for the user prompt. Do not invent information.
+                      2. Summarize and structure the findings clearly in Markdown format. Use headings, bullet points, and links when appropriate.
+                      3. Save the final Markdown report as `report.md` in the `/tmp` directory by using the provided filesystem tool.
+                      
+                      Important rules:
+                      - Never output raw text in your response. The final result must always be written to `report.md`.
+                      - If no useful results are retrieved, write a short note in `report.md` explaining that no information was found.
+                      - Do not attempt to bypass or ignore the retriever or the filesystem tool.
+                    
+                    contentRetrievers:
+                      - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"    
+                        maxResults: 10
+
                     tools:
-                    # As the Stdio MCP client uses a docker container,
-                    # you must mount the path of the container to the task working directory to be able to access the generated file
-                    - type: io.kestra.plugin.ai.tool.StdioMcpClient
-                      command: ["docker", "run", "--rm", "-i", "-v", "{{workingDir}}:/tmp", "mcp/filesystem", "/tmp"]
+                      - type: io.kestra.plugin.ai.tool.DockerMcpClient
+                        image: mcp/filesystem
+                        command: ["/tmp"]
+                        binds: ["{{workingDir}}:/tmp"] # mount host_path:container_path to access the generated report
                     outputFiles:
-                    - hello.txt
-                    prompt: "{{inputs.prompt}}"
+                      - report.md
                 """
         )
     }
@@ -233,7 +320,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     @Schema(title = "Tools that the LLM may use to augment its response")
     private List<ToolProvider> tools;
 
-    @Schema(title = "Max sequential tools invocations")
+    @Schema(title = "Maximum sequential tools invocations")
     private Property<Integer> maxSequentialToolsInvocations;
 
     @Schema(
@@ -243,8 +330,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     private Property<List<ContentRetrieverProvider>> contentRetrievers;
 
     @Schema(
-        title = "Agent Memory",
-        description = "Agent memory will store messages and add them as history inside the LLM context."
+        title = "Agent memory",
+        description = "Agent memory will store messages and add them as history to the LLM context."
     )
     private MemoryProvider memory;
 
@@ -280,7 +367,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
             String renderedPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
             Result<AiMessage> completion = agent.build().invoke(renderedPrompt);
-            runContext.logger().debug("Generated Completion: {}", completion.content());
+            runContext.logger().debug("Generated completion: {}", completion.content());
 
             // send metrics for token usage
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());

@@ -28,7 +28,7 @@ import java.util.Map;
 @Plugin(
     examples =  {
         @Example(
-            title = "Agent searching the web with Google Custom Search",
+            title = "Agent using Google Custom Search for web queries",
             full = true,
             code = {
                 """
@@ -45,13 +45,13 @@ import java.util.Map;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     prompt: "{{ inputs.prompt }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
-                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
+                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
                 """
             }
         ),
@@ -60,14 +60,14 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "WebSearch tool for Google Custom Search"
+    title = "Google Custom Search web tool"
 )
 public class GoogleCustomWebSearch extends ToolProvider {
-    @Schema(title = "API Key")
+    @Schema(title = "Custom search engine ID (cx)")
     @NotNull
     private Property<String> csi;
 
-    @Schema(title = "API Key")
+    @Schema(title = "API key")
     @NotNull
     private Property<String> apiKey;
 
@@ -75,7 +75,7 @@ public class GoogleCustomWebSearch extends ToolProvider {
     public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         final WebSearchEngine searchEngine = GoogleCustomWebSearchEngine.builder()
             .apiKey(runContext.render(this.apiKey).as(String.class, additionalVariables).orElseThrow())
-            .csi((runContext.render(this.csi).as(String.class, additionalVariables).orElseThrow()))
+            .csi(runContext.render(this.csi).as(String.class, additionalVariables).orElseThrow())
             .build();
 
         return extract(new WebSearchTool(searchEngine));

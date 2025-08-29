@@ -25,16 +25,16 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "WebSearch content retriever for Google Custom Search"
+    title = "Web search content retriever for Google Custom Search"
 )
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Chat with your data using Retrieval Augmented Generation (RAG) and a WebSearch content retriever. The Chat with RAG retrieves contents from a WebSearch client and provides a response grounded in data rather than hallucinating.",
+            title = "RAG chat with a web search content retriever (answers grounded in search results)",
             code = """
                 id: rag
-                namespace: company.team
+                namespace: company.ai
 
                 tasks:
                   - id: chat_with_rag_and_websearch_content_retriever
@@ -42,11 +42,11 @@ import lombok.experimental.SuperBuilder;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.GoogleCustomWebSearch
-                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
+                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
                     prompt: What is the latest release of Kestra?
                 """
         )
@@ -54,15 +54,15 @@ import lombok.experimental.SuperBuilder;
     aliases = "io.kestra.plugin.langchain4j.retriever.GoogleCustomWebSearch"
 )
 public class GoogleCustomWebSearch extends ContentRetrieverProvider {
-    @Schema(title = "API Key")
+    @Schema(title = "Custom search engine ID (cx)")
     @NotNull
     private Property<String> csi;
 
-    @Schema(title = "API Key")
+    @Schema(title = "API key")
     @NotNull
     private Property<String> apiKey;
 
-    @Schema(title = "Maximum number of results to return")
+    @Schema(title = "Maximum number of results")
     @NotNull
     @Builder.Default
     private Property<Integer> maxResults = Property.ofValue(3);

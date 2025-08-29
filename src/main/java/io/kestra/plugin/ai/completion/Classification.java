@@ -29,33 +29,34 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Classify text with AI models.",
-    description = "The task is currently compatible with OpenAI, Ollama, and Gemini models."
+    title = "Text categorization with LLMs",
+    description = "Categorize text into one of the provided classes using an LLM."
 )
 @Plugin(
     examples = {
         @Example(
-            title = "Text Classification using Gemini",
+            title = "Perform sentiment analysis of product reviews",
             full = true,
             code = {
                 """
-                id: text_classification
-                namespace: company.team
-                task:
-                  id: text_classification
-                  type: io.kestra.plugin.ai.completion.Classification
-                  prompt: "Classify the sentiment of this sentence: 'I love this product!'"
-                  classes:
-                    - positive
-                    - negative
-                    - neutral
-                  provider:
-                    type: io.kestra.plugin.ai.provider.GoogleGemini
-                    apiKey: "{{ secret('GOOGLE_API_KEY') }}"
-                    modelName: gemini-2.5-flash
+                id: text_categorization
+                namespace: company.ai
+
+                tasks:
+                  - id: categorize
+                    type: io.kestra.plugin.ai.completion.Classification
+                    prompt: "Categorize the sentiment of: I love this product!"
+                    classes:
+                      - positive
+                      - negative
+                      - neutral
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
                 """
             }
-        ),
+        )
     },
     aliases = {"io.kestra.plugin.langchain4j.Classification", "io.kestra.plugin.langchain4j.completion.Classification"}
 )

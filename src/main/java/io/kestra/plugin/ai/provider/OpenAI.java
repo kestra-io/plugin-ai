@@ -40,7 +40,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -51,8 +51,8 @@ import java.util.List;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
-                      modelName: gpt-4o-mini
+                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.

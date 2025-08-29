@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
@@ -34,33 +35,72 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Generate JSON-Structured Extraction with AI models.",
-    description = "The task is currently compatible with OpenAI, Ollama, and Gemini models."
+    title = "Extract structured JSON with LLMs",
+    description = "Convert unstructured text into a JSON object with predefined fields. Provide a schema name and the list of fields to extract. Compatible with OpenAI, Gemini, and Ollama."
 )
 @Plugin(
     examples = {
-        @io.kestra.core.models.annotations.Example(
-            title = "JSON Structured Extraction using Gemini",
+        @Example(
+            title = "Extract person fields (Gemini)",
             full = true,
             code = {
                 """
                 id: json_structured_extraction
-                namespace: company.team
-                task:
-                    id: json_structured_extraction
+                namespace: company.ai
+
+                tasks:
+                  - id: extract_person
                     type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
+                    schemaName: Person
                     jsonFields:
                       - name
-                      - City
-                    schemaName: Person
-                    prompt: Hello, my name is John, I live in Paris
+                      - city
+                      - country
+                      - email
+                    prompt: |
+                      From the text below, extract the person's name, city, and email.
+                      If a field is missing, leave it blank.
+                      
+                      Text:
+                      "Hi! I'm John Smith from Paris, France. You can reach me at john.smith@example.com."
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                 """
             }
         ),
+        @Example(
+            title = "Extract order details (OpenAI)",
+            full = true,
+            code = {
+                """
+                id: json_structured_extraction_order
+                namespace: company.ai
+
+                tasks:
+                  - id: extract_order
+                    type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
+                    schemaName: Order
+                    jsonFields:
+                      - order_id
+                      - customer_name
+                      - city
+                      - total_amount
+                    prompt: |
+                      Extract the order_id, customer_name, city, and total_amount from the message. 
+                      For the total amount, keep only the number without the currency symbol. 
+                      Return only JSON with the requested keys. 
+                      
+                      Message:
+                      "Order #A-1043 for Jane Doe, shipped to Berlin. Total: 249.99 EUR."
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
+                """
+            }
+        )
     },
     aliases = {"io.kestra.plugin.langchain4j.JSONStructuredExtraction", "io.kestra.plugin.langchain4j.completion.JSONStructuredExtraction"}
 )

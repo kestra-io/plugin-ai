@@ -38,7 +38,7 @@ import java.util.Map;
                 inputs:
                   - id: prompt
                     type: STRING
-                    defaults: What is the latest Kestra release and what new features does it include?
+                    defaults: What is the latest Kestra release and what new features does it include? (name 10 new features)
 
                 tasks:
                   - id: agent
@@ -47,10 +47,10 @@ import java.util.Map;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     tools:
-                      - type: io.kestra.plugin.ai.tool.TavilyWebSearchTool
-                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
+                      - type: io.kestra.plugin.ai.tool.TavilyWebSearch
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
                 """
             }
         ),

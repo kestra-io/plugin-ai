@@ -57,10 +57,10 @@ import java.util.Map;
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into an Elasticsearch embedding store.\\nWARNING: it needs Elasticsearch version 8.15 minimum.",
+            title = "Ingest documents into an Elasticsearch embedding store (requires Elasticsearch 8.15+)",
             code = """
-                id: document-ingestion
-                namespace: company.team
+                id: document_ingestion
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -68,14 +68,14 @@ import java.util.Map;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Elasticsearch
                       connection:
                         hosts:
                           - http://localhost:9200
                     fromExternalURLs:
-                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-22.md
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         ),
     },
@@ -122,44 +122,38 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
 
         @Schema(
-            title = "List of HTTP ElasticSearch servers",
-            description = "Must be an URI like `https://elasticsearch.com:9200` with scheme and port"
+            title = "List of HTTP Elasticsearch servers",
+            description = "Must be a URI like `https://example.com:9200` with scheme and port"
         )
         @PluginProperty(dynamic = true)
         @NotNull
         @NotEmpty
         private List<String> hosts;
 
-        @Schema(
-            title = "Basic authorization configuration"
-        )
+        @Schema(title = "Basic authorization configuration")
         @PluginProperty
         private BasicAuth basicAuth;
 
         @Schema(
-            title = "List of HTTP headers to be send on every request",
-            description = "Must be a string with key value separated with `:`, e.g., `Authorization: Token XYZ`"
+            title = "List of HTTP headers to be sent with every request",
+            description = "Each item is a `key: value` string, e.g., `Authorization: Token XYZ`"
         )
         private Property<List<String>> headers;
 
         @Schema(
-            title = "Sets the path's prefix for every request used by the HTTP client",
-            description = "For example, if this is set to `/my/path`, then any client request will become `/my/path/` + endpoint.\n" +
-                "In essence, every request's endpoint is prefixed by this `pathPrefix`.\n" +
-                "The path prefix is useful for when ElasticSearch is behind a proxy that provides a base path " +
-                "or a proxy that requires all paths to start with '/'; it is not intended for other purposes and " +
-                "it should not be supplied in other scenarios."
+            title = "Path prefix for all HTTP requests",
+            description = "If set to `/my/path`, each client request becomes `/my/path/` + endpoint. Useful when Elasticsearch is behind a proxy providing a base path; do not use otherwise."
         )
         private Property<String> pathPrefix;
 
         @Schema(
-            title = "Whether the REST client should return any response containing at least one warning header as a failure"
+            title = "Treat responses with deprecation warnings as failures"
         )
         private Property<Boolean> strictDeprecationMode;
 
         @Schema(
             title = "Trust all SSL CA certificates",
-            description = "Use this if the server is using a self signed SSL certificate"
+            description = "Use this if the server uses a self-signed SSL certificate"
         )
         private Property<Boolean> trustAllSsl;
 
@@ -167,14 +161,10 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         @NoArgsConstructor
         @Getter
         public static class BasicAuth {
-            @Schema(
-                title = "Basic authorization username"
-            )
+            @Schema(title = "Basic authorization username")
             private Property<String> username;
 
-            @Schema(
-                title = "Basic authorization password"
-            )
+            @Schema(title = "Basic authorization password")
             private Property<String> password;
         }
 

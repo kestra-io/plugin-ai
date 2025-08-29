@@ -41,10 +41,10 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
     examples = {
         @Example(
             full = true,
-            title = "Make a search query against an embedding store.",
+            title = "Search an embedding store",
             code = """
                 id: search_embeddings_flow
-                namespace: company.team
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -52,7 +52,7 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     drop: true
@@ -64,7 +64,7 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     query: "Feature Highlights"
@@ -77,16 +77,16 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
     aliases = "io.kestra.plugin.langchain4j.rag.Search"
 )
 @Schema(
-    title = "Search from an embedding store",
-    description = "Performs a semantic search using a query string"
+    title = "Search an embedding store",
+    description = "Perform a semantic search using a query string."
 )
 public class Search extends Task implements RunnableTask<Search.Output> {
 
-    @Schema(title = "Query string to search for")
+    @Schema(title = "Query string")
     @NotNull
     private Property<String> query;
 
-    @Schema(title = "Maximum number of results to return")
+    @Schema(title = "Maximum number of results")
     @NotNull
     private Property<Integer> maxResults;
 
@@ -94,12 +94,12 @@ public class Search extends Task implements RunnableTask<Search.Output> {
     @NotNull
     private Property<Double> minScore;
 
-    @Schema(title = "The embedding model provider")
+    @Schema(title = "Embedding model provider")
     @NotNull
     @PluginProperty
     private ModelProvider provider;
 
-    @Schema(title = "The embedding store provider")
+    @Schema(title = "Embedding store provider")
     @NotNull
     @PluginProperty
     private EmbeddingStoreProvider embeddings;
@@ -202,14 +202,12 @@ public class Search extends Task implements RunnableTask<Search.Output> {
         private final List<String> results;
 
         @Schema(
-            title = "The output files URI in Kestra's internal storage",
+            title = "Output file URI in Kestra’s internal storage",
             description = "Only available when `fetchType` is set to `STORE`"
         )
         private final URI uri;
 
-        @Schema(
-            title = "The count of the fetched or stored resources"
-        )
+        @Schema(title = "Count of fetched or stored items")
         private Integer size;
     }
 }

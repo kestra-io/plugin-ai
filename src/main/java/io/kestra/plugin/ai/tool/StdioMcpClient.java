@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @Plugin(
     examples = {
         @Example(
-            title = "Agent calling an MCP Server via Stdio",
+            title = "Agent calling an MCP server via Stdio",
             full = true,
             code = {
                 """
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
                     prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     tools:
                       - type: io.kestra.plugin.ai.tool.StdioMcpClient
@@ -67,14 +67,14 @@ import java.util.stream.Collectors;
     title = "Model Context Protocol (MCP) Stdio client tool"
 )
 public class StdioMcpClient extends ToolProvider {
-    @Schema(title = "The MCP client command, as a list of command parts")
+    @Schema(title = "MCP client command, as a list of command parts")
     @NotNull
     private Property<List<String>> command;
 
     @Schema(title = "Environment variables")
     private Property<Map<String, String>> env;
 
-    @Schema(title = "Whether to log events")
+    @Schema(title = "Log events")
     @NotNull
     @Builder.Default
     private Property<Boolean> logEvents = Property.ofValue(false);
