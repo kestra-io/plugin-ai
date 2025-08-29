@@ -61,7 +61,6 @@ public class ChatConfiguration {
             When using a JSON schema, the output will be returned under the key `output`, which can be referenced in prompts."""
     )
     private Property<String> responseFormat;
-}
 
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
@@ -97,6 +96,7 @@ public class ChatConfiguration {
                 Provide a JSON Schema describing the expected structure of the response.
                 In Kestra flows, define the schema in YAML (it is still a JSON Schema object).
                 Example (YAML):
+                ```yaml
                 responseFormat:
                     type: JSON
                     jsonSchema:
@@ -109,9 +109,9 @@ public class ChatConfiguration {
                         priority:
                         type: string
                         enum: ["LOW", "MEDIUM", "HIGH"]
-
+                ```
                 Note: Provider support for strict schema enforcement varies. If unsupported,
-                guide the model via the prompt and validate downstream.
+                guide the model about the expected output structure via the prompt and validate downstream.
                 """
         )
         private Property<Map<String, Object>> jsonSchema;

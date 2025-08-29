@@ -41,7 +41,7 @@ public abstract class MemoryProvider extends AdditionalPlugin {
         title = "Drop memory: never, before, or after the agent's task run",
         description = """
             By default, the memory ID is the value of the `system.correlationId` label, meaning that the same memory will be used by all tasks of the flow and its subflows.
-            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_TASKRUN` to erase the memory after the agent's taskrun.
+            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_TASKRUN` to erase the memory after the taskrun.
             You can also set `drop: BEFORE_TASKRUN` to drop the memory before the taskrun."""
     )
     @Builder.Default
