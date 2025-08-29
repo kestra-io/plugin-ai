@@ -92,7 +92,7 @@ public class AzureOpenAI extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
-            throw new IllegalArgumentException("Azure OpenAI models didn't support setting the topK");
+            throw new IllegalArgumentException("Azure OpenAI models do not support setting the topK");
         }
 
         var seed = runContext.render(configuration.getSeed()).as(Integer.class).orElse(null);

@@ -75,7 +75,7 @@ public class OpenAI extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
-            throw new IllegalArgumentException("OpenAI models didn't support topK");
+            throw new IllegalArgumentException("OpenAI models do not support setting the topK parameter.");
         }
 
         return OpenAiChatModel.builder()

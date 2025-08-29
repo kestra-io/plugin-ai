@@ -69,11 +69,11 @@ public class Anthropic extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
-            throw new IllegalArgumentException("Anthropic models didn't support setting the seed");
+            throw new IllegalArgumentException("Anthropic models do not support setting the seed.");
         }
 
         if (configuration.getResponseFormat() != null) {
-            throw new IllegalVariableEvaluationException("Anthropic models didn't support configuring the response format");
+            throw new IllegalVariableEvaluationException("Anthropic models do not support configuring the response format.");
         }
 
         return AnthropicChatModel.builder()
@@ -91,12 +91,12 @@ public class Anthropic extends ModelProvider {
 
     @Override
     public ImageModel imageModel(RunContext runContext) {
-        throw new UnsupportedOperationException("Anthropic didn't support image model");
+        throw new UnsupportedOperationException("Anthropic is currently not supported for image generation.");
     }
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        throw new UnsupportedOperationException("Anthropic doesn’t support embeddings");
+        throw new UnsupportedOperationException("Anthropic is currently not supported for embedding models.");
     }
 
 }
