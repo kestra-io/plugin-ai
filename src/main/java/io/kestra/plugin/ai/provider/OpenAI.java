@@ -78,11 +78,6 @@ public class OpenAI extends ModelProvider {
             throw new IllegalArgumentException("OpenAI models didn't support topK");
         }
 
-        var responseFormat = configuration.computeResponseFormat(runContext);
-        if (responseFormat.jsonSchema() != null) {
-            throw new IllegalArgumentException("OpenAI models didn't support setting the JSON schema");
-        }
-
         return OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -92,7 +87,8 @@ public class OpenAI extends ModelProvider {
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
-            .responseFormat(responseFormat.type() == ResponseFormatType.JSON ? "json_object" : null)
+            .logger(runContext.logger())
+            .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }

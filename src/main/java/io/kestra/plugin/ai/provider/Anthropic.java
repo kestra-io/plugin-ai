@@ -84,6 +84,7 @@ public class Anthropic extends ModelProvider {
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
+            .logger(runContext.logger())
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }

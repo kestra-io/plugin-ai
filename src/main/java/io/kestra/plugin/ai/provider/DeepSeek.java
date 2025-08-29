@@ -84,11 +84,6 @@ public class DeepSeek extends ModelProvider {
             throw new IllegalArgumentException("OpenAI models didn't support topK");
         }
 
-        var responseFormat = configuration.computeResponseFormat(runContext);
-        if (responseFormat.jsonSchema() != null) {
-            throw new IllegalArgumentException("DeepSeek models didn't support setting the JSON schema");
-        }
-
         return OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL))
@@ -97,7 +92,8 @@ public class DeepSeek extends ModelProvider {
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
-            .responseFormat(responseFormat.type() == ResponseFormatType.JSON ? "json_object" : null)
+            .logger(runContext.logger())
+            .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }

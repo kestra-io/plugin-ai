@@ -114,6 +114,7 @@ public class AmazonBedrock extends ModelProvider {
             )
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
+            .logger(runContext.logger())
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }
