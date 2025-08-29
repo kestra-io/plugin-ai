@@ -25,24 +25,24 @@ import java.time.Duration;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class MemoryProvider extends AdditionalPlugin {
-    @Schema(title = "The maximum number of messages to keep inside the memory")
+    @Schema(title = "Maximum number of messages to keep in memory. If memory is full, the oldest messages will be removed in a FIFO manner. The last system message is always kept.")
     @Builder.Default
     private Property<Integer> messages = Property.ofValue(10);
 
-    @Schema(title = "The memory duration - defaults to 1h")
+    @Schema(title = "Memory duration - defaults to 1h")
     @Builder.Default
     private Property<Duration> ttl = Property.ofValue(Duration.ofHours(1));
 
-    @Schema(title = "The memory id - defaults to the value of the 'system.correlationId' label. This means that a memory is valid for the whole flow execution including its subflows.")
+    @Schema(title = "Memory ID - defaults to the value of the `system.correlationId` label. This means that a memory is valid for the entire flow execution including its subflows.")
     @Builder.Default
     private Property<String> memoryId = Property.ofExpression("{{ labels.system.correlationId }}");
 
     @Schema(
-        title = "Drop memory: never, before, or after task run",
+        title = "Drop memory: never, before, or after the agent's task run",
         description = """
-            By default, the memory ID is the value of the 'system.correlationId' label, meaning that the same memory will be used by all tasks of the flow and its subflows.
-            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_TASKRUN` inside the last task of the flow to erase the memory after its execution.
-            You can also set `drop: BEFORE_TASKRUN` to drop the memory before the task execution; this can be useful subflows in case you want a different memory."""
+            By default, the memory ID is the value of the `system.correlationId` label, meaning that the same memory will be used by all tasks of the flow and its subflows.
+            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_TASKRUN` to erase the memory after the agent's taskrun.
+            You can also set `drop: BEFORE_TASKRUN` to drop the memory before the taskrun."""
     )
     @Builder.Default
     private Property<Drop> drop = Property.ofValue(Drop.NEVER);

@@ -26,7 +26,7 @@ import java.util.Map;
 @Plugin(
     examples = {
         @Example(
-            title = "Agent performing mathematical calculations using Judge0 Code Execution API",
+            title = "Agent performing mathematical calculations using the Judge0 Code Execution API",
             full = true,
             code = """
                 id: calculator_agent
@@ -37,23 +37,26 @@ import java.util.Map;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     prompt: What is the square root of 49506838032859?
                     tools:
                       - type: io.kestra.plugin.ai.tool.CodeExecution
-                        apiKey: "{{ secret('RAPID_API_KEY') }}"
+                        apiKey: "{{ kv('RAPID_API_KEY') }}"
                 """
         ),
     }
 )
 @JsonDeserialize
 @Schema(
-    title = "Code Execution tool with Judge0"
+    title = "Code execution tool using Judge0"
 )
 public class CodeExecution extends ToolProvider {
 
-    @Schema(title = "Rapid API Key for Judge0 - you can obtain it from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing)")
+    @Schema(
+        title = "RapidAPI key for Judge0",
+        description = "You can obtain it from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing)."
+    )
     @NotNull
     private Property<String> apiKey;
 

@@ -25,29 +25,36 @@ import org.slf4j.Logger;
 @EqualsAndHashCode
 @Getter
 @Schema(
-    title = "Generate an image with AI models.",
-    description = "Generate images with a prompt using OpenAI's DALL-E 3 or Google Vertex AI."
+    title = "Generate an image with LLMs",
+    description = "Generate images with LLMs using a natural language prompt."
 )
 @NoArgsConstructor
 @Plugin(
     examples = {
         @Example(
-            title = "Generate an image using OpenAI (DALL-E 3).",
+            title = "Generate an image using OpenAI (DALL-E 3)",
             full = true,
             code = {
                 """
                 id: image_generation
-                namespace: company.team
-                task:
-                  id: image_generation
-                  type: io.kestra.plugin.ai.completion.ImageGeneration
-                  prompt: "A futuristic cityscape at sunset"
-                  provider:
-                    type: io.kestra.plugin.ai.provider.OpenAI
-                    apiKey: "{{ secret('OPENAI_API_KEY') }}"
-                    modelName: dall-e-3
-                    size: LARGE
-                    download: false
+                namespace: company.ai
+
+                tasks:
+                  - id: image_generation
+                    type: io.kestra.plugin.ai.completion.ImageGeneration
+                    prompt: >
+                      Four-panel comic page about a data engineer shipping a workflow.
+                      Clean modern line art with soft colors and ample white space.
+                      Panel 1: Early morning desk setup with dual monitors, coffee, and a workflow DAG on screen; calm focused mood.
+                      Panel 2: Debugging a failing task; close-up of terminal and error icon; speech bubble: "hmm…"
+                      Panel 3: Fix applied; green checks ripple through the pipeline; small celebratory detail (cat paw, fist pump).
+                      Panel 4: Deployed dashboard showing metrics trending up; sticky note says "ship it".
+                      Include subtle tech props (cloud icons, database cylinder) but no logos.
+                      Minimal readable text only in tiny bubbles/notes; no large paragraphs of text.
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      modelName: dall-e-3
                 """
             }
         ),

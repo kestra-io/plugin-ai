@@ -30,27 +30,27 @@ import java.util.Optional;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "In-memory Chat Memory that stores its serialization form as a Kestra K/V pair",
+    title = "In-memory Chat Memory that stores its data as Kestra KV pairs",
     description = """
-        It will store the memory inside a K/V pair, the name of the entry will be the memory id, and it will expires after the memory TTL.
-        If your internal storage implementation doesn't support expiration, the K/V pair may exist forever even if you set a TTL inside the Memory."""
+        Memory stored as a KV pair with key named after the memory id and expiration date defined by the TTL property.
+        If your internal storage implementation doesn't support expiration, the KV pair may persist despite the TTL."""
 )
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Store chat memory inside a K/V pair.",
+            title = "Store chat memory inside a KV pair",
             code = """
-                id: chat-with-memory
-                namespace: company.team
+                id: chat_with_memory
+                namespace: company.ai
 
                 inputs:
                   - id: first
                     type: STRING
-                    defaults: Hello, my name is John
+                    defaults: Hello, my name is John and I'm from Paris
                   - id: second
                     type: STRING
-                    defaults: What's my name?
+                    defaults: What's my name and where am I from?
 
                 tasks:
                   - id: first
@@ -58,33 +58,34 @@ import java.util.Optional;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
                       type: io.kestra.plugin.ai.memory.KestraKVStore
-                    systemMessage: You are an helpful assistant, answer concisely
+                    systemMessage: You are a helpful assistant, answer concisely
                     prompt: "{{inputs.first}}"
+
                   - id: second
                     type: io.kestra.plugin.ai.rag.ChatCompletion
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
                       type: io.kestra.plugin.ai.memory.KestraKVStore
-                      drop: AFTER_EXECUTION
-                    systemMessage: You are an helpful assistant, answer concisely
+                      drop: AFTER_TASKRUN
+                    systemMessage: You are a helpful assistant, answer concisely
                     prompt: "{{inputs.second}}"
                 """
         ),

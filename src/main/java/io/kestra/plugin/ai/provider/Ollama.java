@@ -38,7 +38,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt

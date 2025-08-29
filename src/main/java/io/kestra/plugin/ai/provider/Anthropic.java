@@ -37,7 +37,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -48,7 +48,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.Anthropic
-                      apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
+                      apiKey: "{{ kv('ANTHROPIC_API_KEY') }}"
                       modelName: claude-3-haiku-20240307
                     messages:
                       - type: SYSTEM

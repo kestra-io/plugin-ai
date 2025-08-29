@@ -38,7 +38,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -49,7 +49,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.MistralAI
-                      apiKey: "{{ secret('MISTRAL_API_KEY') }}"
+                      apiKey: "{{ kv('MISTRAL_API_KEY') }}"
                       modelName: mistral:7b
                     messages:
                       - type: SYSTEM

@@ -23,17 +23,15 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @JsonDeserialize
-@Schema(
-    title = "Weaviate Embedding Store"
-)
+@Schema(title = "Weaviate Embedding Store")
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into a Weaviate embedding store.",
+            title = "Ingest documents into a Weaviate embedding store",
             code = """
-                id: document-ingestion
-                namespace: company.team
+                id: document_ingestion
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -41,88 +39,95 @@ import java.util.List;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Weaviate
-                      apiKey: "{{ secret('WEAVIATE_API_KEY') }}"
-                      host: your-weaviate-host
+                      apiKey: "{{ kv('WEAVIATE_API_KEY') }}"   # omit for local/no-auth
+                      scheme: https                                 # http | https
+                      host: your-cluster-id.weaviate.network        # no protocol
+                      # port: 443                                   # optional; usually omit
                     drop: true
                     fromExternalURLs:
-                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-22.md
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
-        ),
+        )
     },
     aliases = "io.kestra.plugin.langchain4j.embeddings.Weaviate"
 )
 public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
-        title = "Weaviate API key",
-        description = "Your Weaviate API key - not required for local deployment"
+        title = "API key",
+        description = "Weaviate API key. Omit for local deployments without auth."
     )
     @NotNull
     private Property<String> apiKey;
 
     @Schema(
-        title = "Weaviate scheme",
-        description = "The scheme, e.g., \"https\" of cluster URL - find under Details of your Weaviate cluster."
+        title = "Scheme",
+        description = "Cluster scheme: \"https\" (recommended) or \"http\"."
     )
     private Property<String> scheme;
 
     @Schema(
-        title = "Weaviate host",
-        description = "The host, e.g., \"ai-4jw7ufd9.weaviate.network\" of cluster URL - find under Details of your Weaviate cluster."
+        title = "Host",
+        description = "Cluster host name without protocol, e.g., \"abc123.weaviate.network\"."
     )
     @NotNull
     private Property<String> host;
 
     @Schema(
-        title = "Weaviate port",
-        description = "The port, e.g., 8080 - this parameter is optional."
+        title = "Port",
+        description = "Optional port (e.g., 443 for https, 80 for http). Leave unset to use provider defaults."
     )
     private Property<Integer> port;
 
     @Schema(
-        title = "Weaviate object class",
-        description = "The object class you want to store, e.g., \"MyGreatClass\" - must start from an uppercase letter. If not provided, will default to \"Default\"."
+        title = "Object class",
+        description = "Weaviate class to store objects in (must start with an uppercase letter). Defaults to \"Default\" if not set."
     )
     private Property<String> objectClass;
 
     @Schema(
-        title = "Weaviate consistency level",
-        description = "Consistency level: ONE, QUORUM (default), or ALL"
+        title = "Consistency level",
+        description = "Write consistency: ONE, QUORUM (default), or ALL."
     )
     private Property<ConsistencyLevel> consistencyLevel;
 
     @Schema(
-        title = "Weaviate avoid dups",
-        description = "If true (default), then WeaviateEmbeddingStore will generate a hashed ID based on provided text segment, " +
-            "which avoids duplicated entries in DB. If false, then a random ID will be generated."
+        title = "Avoid duplicates",
+        description = "If true (default), a hash-based ID is derived from each text segment to prevent duplicates. If false, a random ID is used."
     )
     private Property<Boolean> avoidDups;
 
     @Schema(
-        title = "Weaviate metadata field name",
-        description = "The name of the metadata field to store - if not provided, it will default to \"_metadata\"."
+        title = "Metadata field name",
+        description = "Field used to store metadata. Defaults to \"_metadata\" if not set."
     )
     private Property<String> metadataFieldName;
 
     @Schema(
-        title = "Weaviate metadata keys",
+        title = "Metadata keys",
         description = "The list of metadata keys to store - if not provided, it will default to an empty list."
     )
     private Property<List<String>> metadataKeys;
 
     @Schema(
-        title = "Use gRPC for inserts",
-        description = "Use GRPC instead of HTTP for batch inserts only. You still need HTTP configured for search."
+        title = "Use gRPC for batch inserts",
+        description = "If true, use gRPC for batch inserts. HTTP remains required for search operations."
     )
     private Property<Boolean> useGrpcForInserts;
 
-    @Schema(title = "The gRPC connection is secured")
+    @Schema(
+        title = "Secure gRPC",
+        description = "Whether the gRPC connection is secured (TLS)."
+    )
     private Property<Boolean> securedGrpc;
 
-    @Schema(title = "gRPC port if used")
+    @Schema(
+        title = "gRPC port",
+        description = "Port for gRPC if enabled (e.g., 50051)."
+    )
     private Property<Integer> grpcPort;
 
     @Override

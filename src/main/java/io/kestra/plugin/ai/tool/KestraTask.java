@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @Plugin(
     examples =  {
         @Example(
-                title = "Call a Kestra runnable task as a tool, letting the agent set the `message` property for you.",
+                title = "Call a Kestra runnable task as a tool, letting the agent set the `message` property for you",
             full = true,
             code = {
                 """
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraTask
                             tasks:

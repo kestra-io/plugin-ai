@@ -55,7 +55,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Schema(title = "Request duration in milliseconds")
     private Long requestDuration;
 
-    @Schema(title = "The output files' URIs in Kestra's internal storage.")
+    @Schema(title = "URIs of the generated files in Kestra's internal storage")
     @PluginProperty(additionalProperties = URI.class)
     private final Map<String, URI> outputFiles;
 
@@ -88,7 +88,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
             StopWatch timer = TimingChatModelListener.getTimer(id);
             return timer.getTime(TimeUnit.MILLISECONDS);
         } else {
-            runContext.logger().info("The model provider didn't include any identifier in its response, timing the response is not possible");
+            runContext.logger().info("The model provider doesn't include any identifier in its responses, thus timing the response is currently not possible");
             return null;
         }
     }

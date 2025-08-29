@@ -42,7 +42,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -53,7 +53,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.DeepSeek
-                      apiKey: "{{ secret('DEEPSEEK_API_KEY') }}"
+                      apiKey: "{{ kv('DEEPSEEK_API_KEY') }}"
                       modelName: deepseek-chat
                     messages:
                       - type: SYSTEM

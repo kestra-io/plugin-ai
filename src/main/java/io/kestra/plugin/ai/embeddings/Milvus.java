@@ -25,17 +25,15 @@ import java.io.IOException;
 @SuperBuilder
 @NoArgsConstructor
 @JsonDeserialize
-@Schema(
-    title = "Milvus Embedding Store"
-)
+@Schema(title = "Milvus Embedding Store")
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into a Milvus embedding store.",
+            title = "Ingest documents into a Milvus embedding store",
             code = """
-                id: document-ingestion
-                namespace: company.team
+                id: document_ingestion
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -43,14 +41,17 @@ import java.io.IOException;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Milvus
-                      token: "{{ secret('MILVUS_TOKEN') }}"
+                      # Use either `uri` or `host`/`port`:
+                      # For gRPC (typical): milvus://localhost:19530
+                      # For HTTP: http://localhost:9091
                       uri: "http://localhost:19200"
+                      token: "{{ kv('MILVUS_TOKEN') }}"  # omit if auth is disabled
                       collectionName: embeddings
                     fromExternalURLs:
-                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-22.md
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         )
     },
@@ -58,68 +59,118 @@ import java.io.IOException;
 )
 public class Milvus extends EmbeddingStoreProvider {
 
-    @Schema(title = "The token")
+    @Schema(
+        title = "Token",
+        description = "Milvus auth token. Required if authentication is enabled; omit for local deployments without auth."
+    )
     @NotNull
     private Property<String> token;
 
-    @Schema(title = "The uri")
+    @Schema(
+        title = "URI",
+        description = """
+            Connection URI. Use either `uri` OR `host`/`port` (not both).
+            Examples:
+            - gRPC (typical): "milvus://host:19530"
+            - HTTP: "http://host:9091"
+            """
+    )
     private Property<String> uri;
 
-    @Schema(title = "The host", description = "Default value: \"localhost\"")
+    @Schema(
+        title = "Host",
+        description = "Milvus host name (used when `uri` is not set). Default: \"localhost\"."
+    )
     private Property<String> host;
 
-    @Schema(title = "The port", description = "Default value: \"19530\"")
+    @Schema(
+        title = "Port",
+        description = "Milvus port (used when `uri` is not set). Typical: 19530 (gRPC) or 9091 (HTTP). Default: 19530."
+    )
     private Property<Integer> port;
 
     @Schema(
-        title = "The username",
-        description = "If user authentication and TLS is enabled, this parameter is required. See: https://milvus.io/docs/authenticate.md"
+        title = "Username",
+        description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
     )
     private Property<String> username;
 
     @Schema(
-        title = "The password",
-        description = "If user authentication and TLS is enabled, this parameter is required. See: https://milvus.io/docs/authenticate.md"
+        title = "Password",
+        description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
     )
     private Property<String> password;
 
     @Schema(
-        title = "The collection name",
-        description = "If there is no such collection yet, it will be created automatically. Default value: \"default\"."
+        title = "Collection name",
+        description = "Target collection. Created automatically if it does not exist. Default: \"default\"."
     )
     private Property<String> collectionName;
 
-    @Schema(title = "The consistency level")
+    @Schema(
+        title = "Consistency level",
+        description = "Read/write consistency level. Common values include STRONG, BOUNDED, or EVENTUALLY (depends on client/version)."
+    )
     private Property<String> consistencyLevel;
 
-    @Schema(title = "The index type")
+    @Schema(
+        title = "Index type",
+        description = "Vector index type (e.g., IVF_FLAT, IVF_SQ8, HNSW). Depends on Milvus deployment and dataset."
+    )
     private Property<String> indexType;
 
-    @Schema(title = "The metric type")
+    @Schema(
+        title = "Metric type",
+        description = "Similarity metric (e.g., L2, IP, COSINE). Should match the embedding provider’s expected metric."
+    )
     private Property<String> metricType;
 
-    @Schema(title = "Whether to retrieve embeddings on search")
+    @Schema(
+        title = "Retrieve embeddings on search",
+        description = "If true, return stored embeddings along with matches. Default: false."
+    )
     private Property<Boolean> retrieveEmbeddingsOnSearch;
 
-    @Schema(title = "The database name", description = "If not provided, the default database will be used.")
+    @Schema(
+        title = "Database name",
+        description = "Logical database to use. If not provided, the default database is used."
+    )
     private Property<String> databaseName;
 
-    @Schema(title = "Whether to auto flush on insert")
+    @Schema(
+        title = "Auto flush on insert",
+        description = "If true, flush after insert operations. Setting it to false can improve throughput."
+    )
     private Property<Boolean> autoFlushOnInsert;
 
-    @Schema(title = "Whether to auto flush on delete")
+    @Schema(
+        title = "Auto flush on delete",
+        description = "If true, flush after delete operations."
+    )
     private Property<Boolean> autoFlushOnDelete;
 
-    @Schema(title = "The id field name")
+    @Schema(
+        title = "ID field name",
+        description = "Field name for document IDs. Default depends on collection schema."
+    )
     private Property<String> idFieldName;
 
-    @Schema(title = "The text field name")
+    @Schema(
+        title = "Text field name",
+        description = "Field name for original text. Default depends on collection schema."
+    )
     private Property<String> textFieldName;
 
-    @Schema(title = "The metadata field name")
+    @Schema(
+        title = "Metadata field name",
+        description = "Field name for metadata. Default depends on collection schema."
+    )
     private Property<String> metadataFieldName;
 
-    @Schema(title = "The vector field name")
+    @Schema(
+        title = "Vector field name",
+        description = "Field name for the embedding vector. Must match the index definition and embedding dimensionality."
+    )
     private Property<String> vectorFieldName;
 
     @Override

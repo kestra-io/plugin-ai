@@ -39,17 +39,20 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Ingest documents into an embedding store.",
-    description = "Only text documents (TXT, HTML, Markdown) are supported for now."
+    title = "Ingest documents into an embedding store",
+    description = "Currently supports text documents (TXT, HTML, Markdown)."
 )
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into a KV embedding store.\\nWARNING: the KV embedding store is for quick prototyping only, as it stores the embedding vectors in a K/V Store and load them all in memory.",
+            title = """
+                Ingest documents into a KV embedding store.
+                WARNING: the KV embedding store is for quick prototyping only; it stores embedding vectors in a KV store and loads them all into memory.
+                """,
             code = """
-                id: document-ingestion
-                namespace: company.team
+                id: document_ingestion
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -57,12 +60,12 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     drop: true
                     fromExternalURLs:
-                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-22.md
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         ),
     },
@@ -70,55 +73,43 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 public class IngestDocument extends Task implements RunnableTask<IngestDocument.Output> {
     @Schema(
-        title = "Language Model Provider",
-        description = "This provider must be configured with an embedding model."
+        title = "Language model provider",
+        description = "Must be configured with an embedding model."
     )
     @NotNull
     @PluginProperty
     private ModelProvider provider;
 
-    @Schema(title = "Embedding Store Provider")
+    @Schema(title = "Embedding store provider")
     @NotNull
     @PluginProperty
     private EmbeddingStoreProvider embeddings;
 
     @Schema(
-        title = "A path inside the task working directory that contains documents to ingest",
-        description = "Each document inside the directory will be ingested into the embedding store. This is recursive and protected from being path traversal (CWE-22)."
+        title = "Path in the task working directory containing documents to ingest",
+        description = "Each document in the directory will be ingested into the embedding store. Ingestion is recursive and protected against path traversal (CWE-22)."
     )
     private Property<String> fromPath;
 
-    @Schema(
-        title = "A list of internal storage URIs representing documents"
-    )
+    @Schema(title = "List of internal storage URIs for documents")
     @PluginProperty(internalStorageURI = true)
     private Property<List<String>> fromInternalURIs;
 
-    @Schema(
-        title = "A list of document URLs from external sources"
-    )
+    @Schema(title = "List of document URLs from external sources")
     private Property<List<String>> fromExternalURLs;
 
-    @Schema(
-        title = "A list of inline documents"
-    )
+    @Schema(title = "List of inline documents")
     @PluginProperty
     private List<InlineDocument> fromDocuments;
 
-    @Schema(
-        title = "Additional metadata that will be added to all ingested documents"
-    )
+    @Schema(title = "Additional metadata to add to all ingested documents")
     private Property<Map<String, String>> metadata;
 
-    @Schema(
-        title = "The document splitter"
-    )
+    @Schema(title = "Document splitter")
     @PluginProperty
     private DocumentSplitter documentSplitter;
 
-    @Schema(
-        title = "Whether to drop the store before ingestion - useful for testing purposes."
-    )
+    @Schema(title = "Drop the store before ingestion (useful for testing)")
     @Builder.Default
     private Property<Boolean> drop = Property.ofValue(Boolean.FALSE);
 
@@ -208,10 +199,10 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     @AllArgsConstructor
     public static class InlineDocument {
         @NotNull
-        @Schema(title = "The content of the document")
+        @Schema(title = "Document content")
         private Property<String> content;
 
-        @Schema(title = "The metadata of the document")
+        @Schema(title = "Document metadata")
         private Property<Map<String, Object>> metadata;
     }
 
@@ -223,46 +214,46 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         @NotNull
         @Builder.Default
         @Schema(
-            title = "Title the type of the DocumentSplitter",
+            title = "DocumentSplitter type",
             description = """
-                We recommend using a RECURSIVE DocumentSplitter for generic text.
-                It tries to split the document into paragraphs first and fits as many paragraphs into a single TextSegment as possible.
-                If some paragraphs are too long, they are recursively split into lines, then sentences, then words, and then characters until they fit into a segment."""
+                Recommended: RECURSIVE for generic text.
+                It splits into paragraphs first and fits as many as possible into a single TextSegment.
+                If paragraphs are too long, they are recursively split into lines, then sentences, then words, then characters until they fit into a segment."""
         )
         private Type splitter = Type.RECURSIVE;
 
-        @NotNull
-        @Schema(title = "The maximum size of the segment, it is defined in characters.")
+    @NotNull
+        @Schema(title = "Maximum segment size (characters)")
         private Integer maxSegmentSizeInChars;
 
         @NotNull
-        @Schema(title = "The maximum size of the overlap, it is defined in characters. Only full sentences are considered for the overlap.")
+        @Schema(title = "Maximum overlap size (characters). Only full sentences are considered for overlap.")
         private Integer maxOverlapSizeInChars;
 
         enum Type {
             @Schema(title = """
-                Splits the document into paragraphs first and fits as many paragraphs into a single TextSegment as possible.
-                If some paragraphs are too long, they are recursively split into lines, then sentences, then words, and then characters until they fit into a segment.""")
+                Split into paragraphs first and fit as many as possible into one TextSegment.
+                If paragraphs are too long, recursively split into lines, then sentences, then words, then characters until they fit.""")
             RECURSIVE,
 
             @Schema(title = """
-                Splits the provided Document into paragraphs and attempts to fit as many paragraphs as possible into a single TextSegment.
-                Paragraph boundaries are detected by a minimum of two newline characters ("\\n\\n").""")
+                Split into paragraphs and fit as many as possible into one TextSegment.
+                Paragraph boundaries are detected by at least two newline characters ("\\n\\n").""")
             PARAGRAPH,
 
             @Schema(title = """
-                Splits the provided Document into lines and attempts to fit as many lines as possible into a single TextSegment.
-                Line boundaries are detected by a minimum of one newline character ("\\n").""")
+                Split into lines and fit as many as possible into one TextSegment.
+                Line boundaries are detected by at least one newline character ("\\n").""")
             LINE,
 
             @Schema(title = """
-                Splits the provided Document into sentences and attempts to fit as many sentences as possible into a single TextSegment.
-                Sentence boundaries are detected using the Apache OpenNLP library with the English sentence model.""")
+                Split into sentences and fit as many as possible into one TextSegment.
+                Sentence boundaries are detected using Apache OpenNLP (English sentence model).""")
             SENTENCE,
 
             @Schema(title = """
-                Splits the provided Document into words and attempts to fit as many words as possible into a single TextSegment.
-                Word boundaries are detected by a minimum of one space (" ").""")
+                Split into words and fit as many as possible into one TextSegment.
+                Word boundaries are detected by at least one space (" ").""")
             WORD
         }
     }
@@ -270,19 +261,19 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     @Getter
     @Builder
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "The number of ingested documents")
+        @Schema(title = "Number of ingested documents")
         private Integer ingestedDocuments;
 
-        @Schema(title = "The input token count")
+        @Schema(title = "Input token count")
         private Integer inputTokenCount;
 
-        @Schema(title = "The output token count")
+        @Schema(title = "Output token count")
         private Integer outputTokenCount;
 
-        @Schema(title = "The total token count")
+        @Schema(title = "Total token count")
         private Integer totalTokenCount;
 
-        @Schema(title = "Additional outputs from the embedding store.")
+        @Schema(title = "Additional outputs from the embedding store")
         private Map<String, Object> embeddingStoreOutputs;
     }
 

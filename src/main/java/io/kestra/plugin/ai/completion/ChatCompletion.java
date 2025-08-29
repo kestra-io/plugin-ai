@@ -33,7 +33,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Chat completion with AI models.",
+    title = "Chat completion with AI models",
     description = "Handles chat interactions using AI models (OpenAI, Ollama, Gemini, Anthropic, MistralAI, Deepseek).")
 @Plugin(
     examples = {
@@ -43,7 +43,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -54,7 +54,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     messages:
                       - type: SYSTEM
@@ -70,7 +70,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion_with_tools
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -81,7 +81,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     messages:
                       - type: SYSTEM
@@ -90,8 +90,8 @@ import java.util.List;
                         content: "{{inputs.prompt}}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
-                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
+                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
                 """
             }
         ),
@@ -99,10 +99,10 @@ import java.util.List;
             full = true,
             title = """
                 Extract structured outputs with a JSON schema.
-                Note that not all model providers support JSON schema, if not, you have to specify the schema inside the prompt.""",
+                Not all model providers support JSON schema; in those cases, you have to specify the schema in the prompt.""",
             code = """
                 id: structured-output
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -116,7 +116,7 @@ import java.util.List;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     configuration:
                       responseFormat:
                         type: JSON

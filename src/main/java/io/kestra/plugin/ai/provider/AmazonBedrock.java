@@ -46,7 +46,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -57,8 +57,8 @@ import java.util.List;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.AmazonBedrock
-                      accessKeyId: "{{ secret('AWS_ACCESS_KEY') }}"
-                      secretAccessKey: "{{ secret('AWS_SECRET_KEY') }}"
+                      accessKeyId: "{{ kv('AWS_ACCESS_KEY') }}"
+                      secretAccessKey: "{{ kv('AWS_SECRET_KEY') }}"
                       modelName: anthropic.claude-3-sonnet-20240229-v1:0
                     messages:
                       - type: SYSTEM

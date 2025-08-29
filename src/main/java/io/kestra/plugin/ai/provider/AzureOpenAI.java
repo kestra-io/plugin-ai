@@ -43,7 +43,7 @@ import java.util.List;
             code = {
                 """
                 id: chat_completion
-                namespace: company.team
+                namespace: company.ai
 
                 inputs:
                   - id: prompt
@@ -54,7 +54,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.AzureOpenAI
-                      apiKey: "{{ secret('AZURE_API_KEY') }}"
+                      apiKey: "{{ kv('AZURE_API_KEY') }}"
                       endpoint: https://your-resource.openai.azure.com/
                       modelName: anthropic.claude-3-sonnet-20240229-v1:0
                     messages:

@@ -28,10 +28,10 @@ import lombok.experimental.SuperBuilder;
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into a PGVector embedding store.",
+            title = "Ingest documents into a PGVector embedding store",
             code = """
-                id: document-ingestion
-                namespace: company.team
+                id: document_ingestion
+                namespace: company.ai
 
                 tasks:
                   - id: ingest
@@ -39,17 +39,17 @@ import lombok.experimental.SuperBuilder;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.PGVector
                       host: localhost
                       port: 5432
-                      user: "{{ secret('POSTGRES_USER') }}"
-                      password: "{{ secret('POSTGRES_PASSWORD') }}"
+                      user: "{{ kv('POSTGRES_USER') }}"
+                      password: "{{ kv('POSTGRES_PASSWORD') }}"
                       database: postgres
                       table: embeddings
                     fromExternalURLs:
-                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-22.md
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         )
     },

@@ -77,7 +77,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
@@ -158,7 +158,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlow"""
             }
@@ -167,7 +167,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 @JsonDeserialize
 @Schema(
-    title = "Call a Kestra flow as a tool.",
+    title = "Call a Kestra flow as a tool",
     description = """
         This tool allows an LLM to call a Kestra flow.
 

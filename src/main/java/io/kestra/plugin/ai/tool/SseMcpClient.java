@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @Plugin(
     examples = {
         @Example(
-            title = "Agent calling an MCP Server via SSE",
+            title = "Agent calling an MCP server via SSE",
             full = true,
             code = {
                 """
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
                 inputs:
                   - id: prompt
                     type: STRING
-                    defaults: Find 2 restaurants in Lille France with best reviews
+                    defaults: Find 2 restaurants in Lille, France with the best reviews
 
                 tasks:
                   - id: agent
@@ -52,13 +52,13 @@ import java.util.stream.Collectors;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     tools:
-                      - type: io.kestra.plugin.ai.tool.SseMcpClient # in the future: StreamableMcpClient
+                      - type: io.kestra.plugin.ai.tool.SseMcpClient
                         sseUrl: https://mcp.apify.com/?actors=compass/crawler-google-places
                         timeout: PT5M
                         # headers: # blocked by https://github.com/langchain4j/langchain4j/pull/3570
-                        #  Authorization: Bearer {{ secret('APIFY_API_TOKEN') }}"""
+                        #  Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}"""
             }
         ),
     },
@@ -69,19 +69,19 @@ import java.util.stream.Collectors;
     title = "Model Context Protocol (MCP) SSE client tool"
 )
 public class SseMcpClient extends ToolProvider {
-    @Schema(title = "SSE URL to the MCP server")
+    @Schema(title = "SSE URL of the MCP server")
     @NotNull
     private Property<String> sseUrl;
 
-    @Schema(title = "Connection timeout")
+    @Schema(title = "Connection timeout duration")
     private Property<Duration> timeout;
 
-    @Schema(title = "Whether to log requests")
+    @Schema(title = "Log requests")
     @NotNull
     @Builder.Default
     private Property<Boolean> logRequests = Property.ofValue(false);
 
-    @Schema(title = "Whether to log responses")
+    @Schema(title = "Log responses")
     @NotNull
     @Builder.Default
     private Property<Boolean> logResponses = Property.ofValue(false);

@@ -38,18 +38,18 @@ import java.time.Duration;
 @Plugin(
     examples = {
         @Example(
-            title = "Use Redis-based chat memory for a conversation.",
+            title = "Use Redis-based chat memory for a conversation",
             code = """
-                id: chat-with-memory
-                namespace: company.team
+                id: chat_with_memory
+                namespace: company.ai
 
                 inputs:
                   - id: first
                     type: STRING
-                    defaults: Hello, my name is John
+                    defaults: Hello, my name is John and I'm from Paris
                   - id: second
                     type: STRING
-                    defaults: What's my name?
+                    defaults: What's my name and where am I from?
 
                 tasks:
                   - id: first
@@ -57,18 +57,18 @@ import java.time.Duration;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
                       type: io.kestra.plugin.ai.memory.Redis
                       host: localhost
                       port: 6379
-                    systemMessage: You are an helpful assistant, answer concisely
+                    systemMessage: You are a helpful assistant, answer concisely
                     prompt: "{{inputs.first}}"
 
                   - id: second
@@ -76,19 +76,19 @@ import java.time.Duration;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
                       type: io.kestra.plugin.ai.memory.Redis
                       host: localhost
                       port: 6379
-                      drop: AFTER_EXECUTION
-                    systemMessage: You are an helpful assistant, answer concisely
+                      drop: AFTER_TASKRUN
+                    systemMessage: You are a helpful assistant, answer concisely
                     prompt: "{{inputs.second}}"
                 """
         )
