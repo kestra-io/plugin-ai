@@ -1,19 +1,12 @@
 package io.kestra.plugin.ai.tool;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.McpToolExecutor;
-import dev.langchain4j.mcp.client.DefaultMcpClient;
-import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.tool.internal.DockerMcpTransport;
 import io.kestra.plugin.scripts.runner.docker.DockerService;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,7 +19,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
 
@@ -99,7 +91,7 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
 @Schema(
     title = "Model Context Protocol (MCP) Docker client tool"
 )
-public class DockerMcpClient extends ToolProvider {
+public class DockerMcpClient extends AbstractMcpClient {
     @Schema(title = "MCP client command, as a list of command parts")
     private Property<List<String>> command;
 
@@ -148,16 +140,13 @@ public class DockerMcpClient extends ToolProvider {
     @Schema(title = "Volume binds")
     private Property<List<String>> binds;
 
-    @JsonIgnore
-    private transient McpClient mcpClient;
-
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+    protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         String resolvedHost = runContext.render(dockerHost).as(String.class, additionalVariables)
             .orElseGet(throwSupplier(() -> DockerService.findHost(runContext, null)));
         runContext.logger().debug("Connecting to Docker host: {}", resolvedHost);
 
-        McpTransport transport = new DockerMcpTransport.Builder()
+        return new DockerMcpTransport.Builder()
             .command(runContext.render(command).asList(String.class, additionalVariables))
             .environment(runContext.render(env).asMap(String.class, String.class, additionalVariables))
             .image(runContext.render(image).as(String.class, additionalVariables).orElseThrow())
@@ -174,25 +163,5 @@ public class DockerMcpClient extends ToolProvider {
             .logEvents(runContext.render(logEvents).as(Boolean.class, additionalVariables).orElse(false))
             .binds(runContext.render(binds).asList(String.class, additionalVariables))
             .build();
-
-        this.mcpClient = new DefaultMcpClient.Builder()
-            .transport(transport)
-            .build();
-
-        return mcpClient.listTools().stream().collect(Collectors.toMap(
-            tool -> tool,
-            tool -> new McpToolExecutor(mcpClient)
-        ));
-    }
-
-    @Override
-    public void close(RunContext runContext) {
-        if (mcpClient != null) {
-            try {
-                mcpClient.close();
-            } catch (Exception e) {
-                runContext.logger().warn("Unable to close the MCP client", e);
-            }
-        }
     }
 }

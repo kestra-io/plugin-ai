@@ -1,20 +1,13 @@
 package io.kestra.plugin.ai.tool;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.McpToolExecutor;
-import dev.langchain4j.mcp.client.DefaultMcpClient;
-import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
-import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.ToolProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -25,7 +18,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Getter
 @SuperBuilder
@@ -67,7 +59,7 @@ import java.util.stream.Collectors;
 @Schema(
     title = "Model Context Protocol (MCP) Stdio client tool"
 )
-public class StdioMcpClient extends ToolProvider {
+public class StdioMcpClient extends AbstractMcpClient {
     @Schema(title = "MCP client command, as a list of command parts")
     @NotNull
     private Property<List<String>> command;
@@ -80,35 +72,14 @@ public class StdioMcpClient extends ToolProvider {
     @Builder.Default
     private Property<Boolean> logEvents = Property.ofValue(false);
 
-    @JsonIgnore
-    private transient McpClient mcpClient;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
-        McpTransport transport = new StdioMcpTransport.Builder()
+    protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+        return new StdioMcpTransport.Builder()
             .command(runContext.render(command).asList(String.class, additionalVariables))
             .environment(runContext.render(env).asMap(String.class, String.class, additionalVariables))
             .logEvents(runContext.render(logEvents).as(Boolean.class, additionalVariables).orElse(false))
             .build();
-
-        this.mcpClient = new DefaultMcpClient.Builder()
-            .transport(transport)
-            .build();
-
-        return mcpClient.listTools().stream().collect(Collectors.toMap(
-            tool -> tool,
-            tool -> new McpToolExecutor(mcpClient)
-        ));
     }
 
-    @Override
-    public void close(RunContext runContext) {
-        if (mcpClient != null) {
-            try {
-                mcpClient.close();
-            } catch (Exception e) {
-                runContext.logger().warn("Unable to close the MCP client", e);
-            }
-        }
-    }
 }
