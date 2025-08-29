@@ -43,13 +43,13 @@ public class ChatConfiguration {
 
     @Schema(
         title = "Log LLM requests",
-        description = "If true, prompts and configuration sent to the LLM will be logged at DEBUG level."
+        description = "If true, prompts and configuration sent to the LLM will be logged at INFO level."
     )
     private Property<Boolean> logRequests;
 
     @Schema(
         title = "Log LLM responses",
-        description = "If true, raw responses from the LLM will be logged at DEBUG level."
+        description = "If true, raw responses from the LLM will be logged at INFO level."
     )
     private Property<Boolean> logResponses;
 
@@ -58,7 +58,7 @@ public class ChatConfiguration {
         description = """
             Defines the expected output format. Default is plain text.
             Some providers allow requesting JSON or schema-constrained outputs, but support varies and may be incompatible with tool use.
-            When using a JSON schema, the output will be returned under the key `output`, which can be referenced in prompts."""
+            When using a JSON schema, the output will be returned under the key `jsonOutput`."""
     )
     private ResponseFormat responseFormat;
 
