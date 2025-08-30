@@ -87,7 +87,7 @@ public class GoogleGemini extends ModelProvider {
 
     @Override
     public ImageModel imageModel(RunContext runContext) {
-        throw new UnsupportedOperationException("Gemini didn't support image model");
+        throw new UnsupportedOperationException("Gemini is currently not supported for image generation.");
     }
 
     @Override

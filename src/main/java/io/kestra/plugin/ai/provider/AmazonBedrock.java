@@ -89,7 +89,7 @@ public class AmazonBedrock extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
-            throw new IllegalArgumentException("Amazon Bedrock models didn't support setting the seed");
+            throw new IllegalArgumentException("Amazon Bedrock models do not support setting the seed.");
         }
 
         var awsAccessKeyId = runContext.render(this.accessKeyId).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Access Key ID cannot be null"));
@@ -121,7 +121,7 @@ public class AmazonBedrock extends ModelProvider {
 
     @Override
     public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        throw new UnsupportedOperationException("Amazon Bedrock didn't support image model");
+        throw new UnsupportedOperationException("Amazon Bedrock is currently not supported for image generation.");
     }
 
     @Override
@@ -150,7 +150,7 @@ public class AmazonBedrock extends ModelProvider {
                 .model(modelName)
                 .build();
         } else {
-            throw new UnsupportedOperationException("Amazon Bedrock didn't support embedding model");
+            throw new UnsupportedOperationException("Amazon Bedrock is currently not supported for embedding models.");
         }
     }
 

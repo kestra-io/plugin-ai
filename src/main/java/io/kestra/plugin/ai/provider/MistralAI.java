@@ -73,7 +73,7 @@ public class MistralAI extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
-            throw new IllegalArgumentException("Mistral models didn't support topK");
+            throw new IllegalArgumentException("Mistral models do not support setting the topK parameter.");
         }
 
         return MistralAiChatModel.builder()
@@ -93,7 +93,7 @@ public class MistralAI extends ModelProvider {
 
     @Override
     public ImageModel imageModel(RunContext runContext) {
-        throw new UnsupportedOperationException("MistralAI didn't support image model");
+        throw new UnsupportedOperationException("MistralAI is currently not supported for image generation.");
     }
 
     @Override

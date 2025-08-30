@@ -86,7 +86,7 @@ public class Ollama extends ModelProvider {
 
     @Override
     public ImageModel imageModel(RunContext runContext) {
-        throw new UnsupportedOperationException("Ollama didn't support image generation");
+        throw new UnsupportedOperationException("Ollama is currently not supported for image generation.");
     }
 
     @Override
