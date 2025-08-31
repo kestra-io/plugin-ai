@@ -37,8 +37,14 @@ public class TimingChatModelListener implements ChatModelListener {
     @Override
     public void onResponse(ChatModelResponseContext responseContext) {
         Integer timerId = (Integer) responseContext.attributes().get("kestra.timer.id");
+        if (timerId == null) {
+            return;
+        }
         StopWatch stopWatch = TIMERS.get(timerId);
+        if (stopWatch == null || !stopWatch.isStarted()) {
+            return;
+        }
         stopWatch.stop();
-        TIMER_ID_BY_RESPONSE_ID.put(responseContext.chatResponse().id(), timerId );
+        TIMER_ID_BY_RESPONSE_ID.put(responseContext.chatResponse().id(), timerId);
     }
 }

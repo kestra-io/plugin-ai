@@ -71,9 +71,9 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                 .map(throwFunction(toolExecution -> ToolExecution.from(toolExecution)))
                 .toList()
             )
-            .intermediateResponses(ListUtils.emptyOnNull(result.intermediateResponses().stream()
+            .intermediateResponses(ListUtils.emptyOnNull(result.intermediateResponses()).stream()
                 .map(throwFunction(resp -> AIResponse.from(runContext, resp)))
-                .toList())
+                .toList()
             )
             .requestDuration(extractTiming(runContext, result.finalResponse().id()));
     }
@@ -84,13 +84,16 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     }
 
     private static Long extractTiming(RunContext runContext, String id) {
-        if (id != null) {
-            StopWatch timer = TimingChatModelListener.getTimer(id);
-            return timer.getTime(TimeUnit.MILLISECONDS);
-        } else {
+        if (id == null) {
             runContext.logger().info("The model provider doesn't include any identifier in its responses, thus timing the response is currently not possible");
             return null;
         }
+        StopWatch timer = TimingChatModelListener.getTimer(id);
+        if (timer == null) {
+            runContext.logger().warn("No timer found for response id '{}'; request duration unavailable", id);
+            return null;
+        }
+        return timer.getTime(TimeUnit.MILLISECONDS);
     }
 
     @Builder
