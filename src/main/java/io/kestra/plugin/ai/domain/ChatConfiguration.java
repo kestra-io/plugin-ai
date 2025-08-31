@@ -97,18 +97,18 @@ public class ChatConfiguration {
                 In Kestra flows, define the schema in YAML (it is still a JSON Schema object).
                 Example (YAML):
                 ```yaml
-                responseFormat:
+                  responseFormat:
                     type: JSON
                     jsonSchema:
-                    type: object
-                    required: ["category", "priority"]
-                    properties:
+                      type: object
+                      required: ["category", "priority"]
+                      properties:
                         category:
-                        type: string
-                        enum: ["ACCOUNT", "BILLING", "TECHNICAL", "GENERAL"]
+                          type: string
+                          enum: ["ACCOUNT", "BILLING", "TECHNICAL", "GENERAL"]
                         priority:
-                        type: string
-                        enum: ["LOW", "MEDIUM", "HIGH"]
+                          type: string
+                          enum: ["LOW", "MEDIUM", "HIGH"]
                 ```
                 Note: Provider support for strict schema enforcement varies. If unsupported,
                 guide the model about the expected output structure via the prompt and validate downstream.
