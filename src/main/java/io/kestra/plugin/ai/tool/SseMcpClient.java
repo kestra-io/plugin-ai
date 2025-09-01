@@ -91,8 +91,8 @@ public class SseMcpClient extends AbstractMcpClient {
         return new HttpMcpTransport.Builder()
             .sseUrl(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
-            .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElseThrow())
-            .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElseThrow())
+            .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElse(false))
+            .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElse(false))
             .customHeaders(runContext.render(headers).asMap(String.class, String.class))
             .build();
     }
