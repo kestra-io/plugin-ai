@@ -1,6 +1,8 @@
 package io.kestra.plugin.ai.agent;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -84,7 +86,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       - Keeps everything versioned and governed, so it stays secure and auditable
                       - Extends easily for custom use cases through plugins and custom scripts.
 
-                      Kestra follows a "start simple and grow as needed" philosophy. You can schedule a basic workflow in a few minutes, then later add Python scripts, Docker containers, or complicated branching logic if the situation calls for it. 
+                      Kestra follows a "start simple and grow as needed" philosophy. You can schedule a basic workflow in a few minutes, then later add Python scripts, Docker containers, or complicated branching logic if the situation calls for it.
 
                 tasks:
                   - id: multilingual_agent
@@ -150,7 +152,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                 tasks:
                   - id: first_agent
-                    type: io.kestra.plugin.ai.agent.AIAgent        
+                    type: io.kestra.plugin.ai.agent.AIAgent
                     prompt: Hi, my name is John and I live in New York!
 
                   - id: second_agent
@@ -199,7 +201,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Example(
             full = true,
             title = """
-                Run an AI Agent returning a structured output specified in a JSON schema. 
+                Run an AI Agent returning a structured output specified in a JSON schema.
                 Note that some providers and models don't support JSON Schema; in those cases, instruct the model to return strict JSON using an inline schema description in the prompt and validate the result downstream.""",
             code = """
                 id: agent_with_structured_output
@@ -238,7 +240,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                               enum: ["LOW", "MEDIUM", "HIGH"]
 
                     prompt: |
-                      Classify the following customer message: 
+                      Classify the following customer message:
                         {{ inputs.customer_ticket }}
                 """
         ),
@@ -257,10 +259,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: prompt
                     type: STRING
                     defaults: |
-                      Research the latest trends in workflow and data orchestration. 
-                      Use web search to gather current, reliable information from multiple sources. 
-                      Then create a well-structured Markdown report that includes an introduction, 
-                      key trends with short explanations, and a conclusion. 
+                      Research the latest trends in workflow and data orchestration.
+                      Use web search to gather current, reliable information from multiple sources.
+                      Then create a well-structured Markdown report that includes an introduction,
+                      key trends with short explanations, and a conclusion.
                       Save the final report as `report.md` in the `/tmp` directory.
 
                 tasks:
@@ -276,15 +278,15 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       1. Use the TavilyWebSearch content retriever to gather the most relevant and up-to-date information for the user prompt. Do not invent information.
                       2. Summarize and structure the findings clearly in Markdown format. Use headings, bullet points, and links when appropriate.
                       3. Save the final Markdown report as `report.md` in the `/tmp` directory by using the provided filesystem tool.
-                      
+
                       Important rules:
                       - Never output raw text in your response. The final result must always be written to `report.md`.
                       - If no useful results are retrieved, write a short note in `report.md` explaining that no information was found.
                       - Do not attempt to bypass or ignore the retriever or the filesystem tool.
-                    
+
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"    
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
                         maxResults: 10
 
                     tools:
@@ -347,7 +349,15 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 .chatModel(provider.chatModel(runContext, configuration))
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
                 .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
-                .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)));
+                .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
+                .toolArgumentsErrorHandler((error, context) -> {
+                    runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolArgumentsException(error);
+                })
+                .toolExecutionErrorHandler((error, context) -> {
+                    runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolExecutionException(error);
+                });
 
             if (memory != null) {
                 agent.chatMemory(memory.chatMemory(runContext));

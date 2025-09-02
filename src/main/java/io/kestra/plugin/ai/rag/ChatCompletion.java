@@ -1,6 +1,8 @@
 package io.kestra.plugin.ai.rag;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -169,9 +171,9 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Example(
             full = true,
             title = """
-                Classify recent Kestra releases into MINOR or PATCH using a JSON schema. 
-                Note: not all LLMs support structured outputs, or they may not support them when combined with tools like web search. 
-                This example uses Mistral, which supports structured output with content retrievers.""",     
+                Classify recent Kestra releases into MINOR or PATCH using a JSON schema.
+                Note: not all LLMs support structured outputs, or they may not support them when combined with tools like web search.
+                This example uses Mistral, which supports structured output with content retrievers.""",
             code = """
                 id: chat_with_structured_output
                 namespace: company.ai
@@ -294,7 +296,15 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .chatModel(chatProvider.chatModel(runContext, chatConfiguration))
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
-                .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)));
+                .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
+                .toolArgumentsErrorHandler((error, context) -> {
+                    runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolArgumentsException(error);
+                })
+                .toolExecutionErrorHandler((error, context) -> {
+                    runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolExecutionException(error);
+                });
 
             if (memory != null) {
                 assistant.chatMemory(memory.chatMemory(runContext));

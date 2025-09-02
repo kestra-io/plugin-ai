@@ -45,7 +45,14 @@ public abstract class ToolProvider extends AdditionalPlugin {
         for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {
                 ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                tools.put(toolSpecification, new DefaultToolExecutor(objectWithTool, method));
+                tools.put(toolSpecification, DefaultToolExecutor.builder()
+                    .object(objectWithTool)
+                    .originalMethod(method)
+                    .methodToInvoke(method)
+                    .propagateToolExecutionExceptions(true)
+                    .wrapToolArgumentsExceptions(true)
+                    .build()
+                );
             }
         }
         return tools;
