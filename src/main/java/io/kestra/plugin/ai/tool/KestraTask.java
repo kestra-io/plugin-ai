@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.tool;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.docs.JsonSchemaGenerator;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -173,7 +174,7 @@ public class KestraTask extends ToolProvider {
                 return "Success";
             } catch (Exception e) {
                 // TODO we may instead send the error to the LLM so it can decide to retry it or not
-                throw new RuntimeException(e);
+                throw new ToolExecutionException(e);
             }
         }
     }

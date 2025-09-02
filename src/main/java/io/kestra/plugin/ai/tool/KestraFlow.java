@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -291,7 +293,11 @@ public class KestraFlow extends ToolProvider {
 
             var rDescription = runContext.render(this.description).as(String.class, additionalVariables).orElse(flowInterface.getDescription());
             if (rDescription == null) {
-                throw new IllegalArgumentException("You must provide a description in the tool's description property or in the flow description");
+                throw new IllegalArgumentException(
+    "A description is required either in the tool's description property or in the flow description. "
+        + "Flow " + flowInterface.getNamespace() + "." + flowInterface.getId()
+        + " does not have a description, and the tool's description is empty."
+);
             }
 
             jsonSchema.description(rDescription);
@@ -379,7 +385,7 @@ public class KestraFlow extends ToolProvider {
             var flowMetaStoreInterface = runContext.getApplicationContext().getBean(FlowMetaStoreInterface.class);
             var flowInfo = runContext.flowInfo();
             return flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), namespace, flowId, revision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
-                .orElseThrow(() -> new IllegalArgumentException("Unable to find flow '"+ flowId + "' in namespace '" + namespace + "'"));
+                .orElseThrow(() -> new ToolExecutionException("Flow not found: " + namespace + "." + flowId));
         }
     }
 
@@ -432,7 +438,7 @@ public class KestraFlow extends ToolProvider {
                 // check mandatory inputs to fail the tool execution instead of triggering a flow that would fail anyway
                 ListUtils.emptyOnNull(flowInterface.getInputs()).forEach(input -> {
                     if (input.getRequired() && input.getDefaults() == null && !finalInputs.containsKey(input.getId())) {
-                        throw new IllegalArgumentException("You need to provide an input with the id '" + input.getId() + "'.");
+                        throw new ToolArgumentsException("You need to provide an input with the id '" + input.getId() + "'.");
                     }
                 });
 
@@ -443,7 +449,7 @@ public class KestraFlow extends ToolProvider {
 
                 return JacksonMapper.ofJson().writeValueAsString(execution);
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new ToolExecutionException(e);
             }
         }
 

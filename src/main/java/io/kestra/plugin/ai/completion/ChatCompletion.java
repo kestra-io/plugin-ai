@@ -1,6 +1,8 @@
 package io.kestra.plugin.ai.completion;
 
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -203,6 +205,14 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 )
                 .chatMemory(chatMemory)
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
+                .toolArgumentsErrorHandler((error, context) -> {
+                    runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolArgumentsException(error);
+                })
+                .toolExecutionErrorHandler((error, context) -> {
+                    runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolExecutionException(error);
+                })
                 .build();
             Result<AiMessage> aiResponse = assistant.chat(((UserMessage)chatMessages.getLast()).singleText());
             logger.debug("AI Response: {}", aiResponse.content());
