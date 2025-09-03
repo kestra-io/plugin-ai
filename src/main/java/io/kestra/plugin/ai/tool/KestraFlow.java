@@ -51,7 +51,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin(
     examples =  {
         @Example(
-            title = "Call a Kestra flow as a tool, explicitly defining the flow id and namespace in the tool definition",
+            title = "Call a Kestra flow as a tool, explicitly defining the flow ID and namespace in the tool definition",
             full = true,
             code = {
                 """
@@ -123,7 +123,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             }
         ),
         @Example(
-            title = "Call a Kestra flow as a tool, implicitly passing the flow id and namespace in the prompt",
+            title = "Call a Kestra flow as a tool, implicitly passing the flow ID and namespace in the prompt",
             full = true,
             code = {
                 """
@@ -148,7 +148,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       - id: agent
                         type: io.kestra.plugin.ai.agent.AIAgent
                         prompt: |
-                          Execute a flow that best matches the {{ inputs.use_case }} use case selected by the user. Use the following mapping of use cases to flow ids:
+                          Execute a flow that best matches the {{ inputs.use_case }} use case selected by the user. Use the following mapping of use cases to flow IDs:
                           - Business Automation: business-automation
                           - Business Processes: business-processes
                           - Data Engineering Pipeline: data-engineering-pipeline
@@ -190,10 +190,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 public class KestraFlow extends ToolProvider {
     // Tool description, it could be fine-tuned if needed
-    private static final String TOOL_DEFINED_DESCRIPTION = "This tool allows to execute a Kestra flow and output the execution details.";
+    private static final String TOOL_DEFINED_DESCRIPTION = "This tool executes a Kestra flow and outputs the execution details.";
     private static final String TOOL_LLM_DESCRIPTION = """
-        This tool allows to execute a Kestra workflow also called a flow. This tool will respond with the flow execution information.
-        The namespace and the id of the flow must be passed as tool parameters""";
+        This tool executes a Kestra workflow, also called a flow. This tool will respond with the flow execution information.
+        The namespace and the ID of the flow must be passed as tool parameters.""";
 
     @Schema(
         title = "Description of the flow if not already provided inside the flow itself",

@@ -71,7 +71,7 @@ public class SseMcpClient extends AbstractMcpClient {
 
     @Schema(
         title = "Custom headers",
-        description = "Could be useful for eg. to add authentication tokens via the `Authorization` header."
+        description = "Could be useful, for example, to add authentication tokens via the `Authorization` header."
     )
     private Property<Map<String, String>> headers;
 
