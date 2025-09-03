@@ -175,21 +175,19 @@ public class AzureOpenAI extends ModelProvider {
                     .endpoint(runContext.render(this.getEndpoint()).as(String.class).orElseThrow())
                     .serviceVersion(runContext.render(this.getServiceVersion()).as(String.class).orElse(null))
                     .build();
-        } else if (tenantId != null && clientId != null && clientSecret != null) {
+        } else {
             return AzureOpenAiEmbeddingModel.builder()
                     .tokenCredential(credentials(runContext, tenantId, clientId, clientSecret))
                     .deploymentName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
                     .endpoint(runContext.render(this.getEndpoint()).as(String.class).orElseThrow())
                     .serviceVersion(runContext.render(this.getServiceVersion()).as(String.class).orElse(null))
                     .build();
-        } else {
-            throw new IllegalArgumentException("You need to set an API Key or a tenantId, clientId and clientSecret");
         }
     }
 
     private TokenCredential credentials(RunContext runContext, String tenantId, String clientId, String clientSecret) {
 
-        if (StringUtils.isNotBlank(clientSecret)) {
+        if (StringUtils.isNotBlank(tenantId) && StringUtils.isNotBlank(clientId) && StringUtils.isNotBlank(clientSecret)) {
             runContext.logger().info("Authentication is using Client Secret Credentials");
             return new ClientSecretCredentialBuilder()
                     .clientId(clientId)
