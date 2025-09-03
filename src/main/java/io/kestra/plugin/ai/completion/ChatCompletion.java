@@ -233,6 +233,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .toolExecutions(output.getToolExecutions())
                 .intermediateResponses(output.getIntermediateResponses())
                 .requestDuration(output.getRequestDuration())
+                .thinking(output.getThinking())
                 .build();
         } finally {
             toolProviders.forEach(tool -> tool.close(runContext));

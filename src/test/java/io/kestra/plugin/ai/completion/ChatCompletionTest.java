@@ -102,6 +102,100 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getRequestDuration(), notNullValue());
     }
 
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    void testChatCompletionGemini_givenThinkingConfiguration() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", GEMINI_API_KEY,
+            "modelName", "gemini-2.5-flash",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024))
+                .returnThinking(Property.ofValue(true)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getThinking(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    void testGeminiChatCompletion_givenThinkingEnabled_butReturnThinkingDisabled() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", GEMINI_API_KEY,
+            "modelName", "gemini-2.5-flash",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getThinking(), isEmptyOrNullString());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    void testChatCompletionGemini_givenInvalidModel_whenThinkingNotAllowed_thenThrowException() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", GEMINI_API_KEY,
+            "modelName", "gemini-1.5-flash",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 400");
+
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("Unable to submit request because thinking is not supported by this model."));
+    }
+
+
     /**
      * Test Chat Completion using Ollama.
      */
@@ -129,6 +223,33 @@ class ChatCompletionTest extends ContainerTest {
 
         ChatCompletion.Output output = task.run(runContext);
 
+        assertThat(output.getTextOutput(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionOllama_givenThinkingConfigurationEnabled() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "tinydolphin",
+            "ollamaEndpoint", ollamaEndpoint,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).build())
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
         assertThat(output.getTextOutput(), notNullValue());
     }
 
@@ -320,8 +441,101 @@ class ChatCompletionTest extends ContainerTest {
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("authentication_error"));
     }
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
+    @Test
+    void testChatCompletionAnthropicAI_givenThinkingConfiguration() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", ANTHROPIC_API_KEY,
+            "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(1.0))
+                .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024))
+                .returnThinking(Property.ofValue(true)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(Anthropic.builder()
+                .type(Anthropic.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .maxTokens(Property.ofValue(2024))
+                .build()
+            )
+            .build();
 
+        ChatCompletion.Output output = task.run(runContext);
 
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getThinking(), notNullValue());
+    }
+
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
+    @Test
+    void testChatCompletionAnthropicAI_givenThinkingEnabled_butReturnThinkingDisabled() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", ANTHROPIC_API_KEY,
+            "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(1.0))
+                .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(Anthropic.builder()
+                .type(Anthropic.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .maxTokens(Property.ofValue(2024))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getThinking(), isEmptyOrNullString());
+    }
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
+    @Test
+    void testChatCompletionAnthropicAI_givenThinkingEnabled_whenMaxTokensLessThanMaxToken_thenThrowException() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", ANTHROPIC_API_KEY,
+            "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(1.0))
+                .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1025)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(Anthropic.builder()
+                .type(Anthropic.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 400");
+
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."));
+    }
     @EnabledIfEnvironmentVariable(named = "MISTRAL_API_KEY", matches = ".*")
     @Test
     void testChatCompletionMistralAI() throws Exception {
@@ -437,6 +651,39 @@ class ChatCompletionTest extends ContainerTest {
             .messages(Property.ofExpression("{{ messages }}"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(DeepSeek.builder()
+                .type(DeepSeek.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".*")
+    void testChatCompletionDeepseek_givenThinkingConfiguration() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", "sk-d7204degb5f46f3cab6730c1108e2defa",
+            "modelName", "deepseek-chat",
+            "baseUrl", "https://api.deepseek.com/v1",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).build())
             .provider(DeepSeek.builder()
                 .type(DeepSeek.class.getName())
                 .apiKey(Property.ofExpression("{{ apiKey }}"))

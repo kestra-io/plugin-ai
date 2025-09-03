@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @SuperBuilder
@@ -50,6 +51,9 @@ import java.util.List;
                       type: io.kestra.plugin.ai.provider.Anthropic
                       apiKey: "{{ kv('ANTHROPIC_API_KEY') }}"
                       modelName: claude-3-haiku-20240307
+                      thinkingEnabled: true
+                      thinkingBudgetTokens: 1024
+                      returnThinking: false
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -62,10 +66,16 @@ import java.util.List;
     aliases = "io.kestra.plugin.langchain4j.provider.Anthropic"
 )
 public class Anthropic extends ModelProvider {
+    private static final String ENABLED = "enabled";
     @Schema(title = "API Key")
     @NotNull
     private Property<String> apiKey;
-
+    @Schema(
+        title = "Maximum Tokens",
+        description = """
+            Specifies the maximum number of tokens that the model is allowed to generate in its response."""
+    )
+    private Property<Integer> maxTokens;
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
@@ -75,7 +85,14 @@ public class Anthropic extends ModelProvider {
         if (configuration.getResponseFormat() != null) {
             throw new IllegalVariableEvaluationException("Anthropic models do not support configuring the response format.");
         }
-
+        var thinkingEnabled = runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false);
+        var thinkingBudgetTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
+        var maxTokens = runContext.render(this.getMaxTokens()).as(Integer.class).orElse(null);
+        if (isInvalidThinkingConfig(thinkingEnabled, thinkingBudgetTokens, maxTokens)) {
+            throw new IllegalArgumentException(
+                "`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."
+            );
+        }
         return AnthropicChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -86,6 +103,10 @@ public class Anthropic extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .listeners(List.of(new TimingChatModelListener()))
+            .maxTokens(maxTokens) // Anthropic max tokens
+            .thinkingType(thinkingEnabled ? ENABLED : null)
+            .thinkingBudgetTokens(thinkingBudgetTokens)
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .build();
     }
 
@@ -99,4 +120,11 @@ public class Anthropic extends ModelProvider {
         throw new UnsupportedOperationException("Anthropic is currently not supported for embedding models.");
     }
 
+    private boolean isInvalidThinkingConfig(final boolean thinkingEnabled, final Integer thinkingBudgetTokens,
+                                            final Integer maxTokens) {
+        return thinkingEnabled
+            && Objects.nonNull(thinkingBudgetTokens)
+            && Objects.nonNull(maxTokens)
+            && thinkingBudgetTokens > maxTokens;
+    }
 }

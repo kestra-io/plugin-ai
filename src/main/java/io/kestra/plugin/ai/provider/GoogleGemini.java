@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.provider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -52,6 +53,9 @@ import java.util.List;
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ kv('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
+                      thinkingEnabled: true
+                      thinkingBudgetTokens: 1024
+                      returnThinking: true
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -82,6 +86,8 @@ public class GoogleGemini extends ModelProvider {
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
+            .thinkingConfig(getThinkingConfig(configuration, runContext))
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .build();
     }
 
@@ -98,4 +104,12 @@ public class GoogleGemini extends ModelProvider {
             .build();
     }
 
+    private static GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
+        var enabled = runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false);
+        var maxTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
+        return GeminiThinkingConfig.builder()
+            .includeThoughts(enabled)
+            .thinkingBudget(maxTokens)
+            .build();
+    }
 }

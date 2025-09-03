@@ -51,6 +51,8 @@ import java.util.List;
                       type: io.kestra.plugin.ai.provider.Ollama
                       modelName: llama3
                       endpoint: http://localhost:11434
+                      thinkingEnabled: true
+                      returnThinking: true
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -80,6 +82,8 @@ public class Ollama extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
+            .think(runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false) ? true : null)
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }

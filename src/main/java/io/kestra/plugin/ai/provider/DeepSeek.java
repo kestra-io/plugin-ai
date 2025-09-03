@@ -55,6 +55,7 @@ import java.util.List;
                       type: io.kestra.plugin.ai.provider.DeepSeek
                       apiKey: "{{ kv('DEEPSEEK_API_KEY') }}"
                       modelName: deepseek-chat
+                      returnThinking: false
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -94,6 +95,7 @@ public class DeepSeek extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }
