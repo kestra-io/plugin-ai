@@ -36,7 +36,7 @@ import java.util.Map;
                 inputs:
                   - id: prompt
                     type: STRING
-                    defaults: Find 2 restaurants in Lille, France with the best reviews
+                    defaults: Find the 2 restaurants in Lille, France with the best reviews.
 
                 tasks:
                   - id: agent
@@ -70,7 +70,7 @@ public class StreamableHttpMcpClient extends AbstractMcpClient {
 
     @Schema(
         title = "Custom headers",
-        description = "Could be useful for eg. to add authentication tokens via the `Authorization` header."
+        description = "Useful, for example, for adding authentication tokens via the `Authorization` header."
     )
     private Property<Map<String, String>> headers;
 
