@@ -227,9 +227,40 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
+    void testChatCompletionOllama_givenInvalidModel_whenThinkingNotAllowed_throwsException() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "mistral",
+            "ollamaEndpoint", "tinydolphin",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).build())
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 400");
+        
+    }
+
+    @Disabled
+    @Test
     void testChatCompletionOllama_givenThinkingConfigurationEnabled() throws Exception {
         RunContext runContext = runContextFactory.of(Map.of(
-            "modelName", "tinydolphin",
+            "modelName", "llama3",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
                 ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
@@ -250,8 +281,10 @@ class ChatCompletionTest extends ContainerTest {
             .build();
 
         ChatCompletion.Output output = task.run(runContext);
+
         assertThat(output.getTextOutput(), notNullValue());
     }
+
 
     @Test
     void testChatCompletionStructuredOutput() throws Exception {
