@@ -38,9 +38,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 dependencies {
-    // Platform
-    implementation enforcedPlatform("dev.langchain4j:langchain4j-bom:$langchain4jVersion")
-    implementation enforcedPlatform("dev.langchain4j:langchain4j-community-bom:$langchain4jCommunityVersion")
+    // Platform: Langchain4J libraries are defines inside it
     annotationProcessor enforcedPlatform("io.kestra:platform:$kestraVersion")
     implementation enforcedPlatform("io.kestra:platform:$kestraVersion")
 
