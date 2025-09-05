@@ -170,4 +170,9 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
             }
         }
     }
+
+    // This is a hack to make JavaDoc working as annotation processor didn't run before JavaDoc.
+    // See https://stackoverflow.com/questions/51947791/javadoc-cannot-find-symbol-error-when-using-lomboks-builder-annotation
+    public static abstract class AIOutputBuilder<C extends AIOutput, B extends AIOutput.AIOutputBuilder<C, B>> {
+    }
 }
