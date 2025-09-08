@@ -2,7 +2,7 @@ package io.kestra.plugin.ai.tool;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
+import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -36,7 +36,7 @@ import java.util.Map;
                 inputs:
                   - id: prompt
                     type: STRING
-                    defaults: Find 2 restaurants in Lille, France with the best reviews
+                    defaults: Find the 2 restaurants in Lille, France with the best reviews.
 
                 tasks:
                   - id: agent
@@ -47,31 +47,30 @@ import java.util.Map;
                       modelName: gemini-2.5-flash
                       apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     tools:
-                      - type: io.kestra.plugin.ai.tool.SseMcpClient
-                        sseUrl: https://mcp.apify.com/?actors=compass/crawler-google-places
+                      - type: io.kestra.plugin.ai.tool.StreamableHttpMcpClient
+                        url: https://mcp.apify.com/?actors=compass/crawler-google-places
                         timeout: PT5M
                         headers:
                           Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}"""
             }
         ),
-    },
-    aliases = { "io.kestra.plugin.langchain4j.tool.HttpMcpClient", "io.kestra.plugin.ai.tool.HttpMcpClient" }
+    }
 )
 @JsonDeserialize
 @Schema(
     title = "Model Context Protocol (MCP) SSE client tool"
 )
-public class SseMcpClient extends AbstractMcpClient {
-    @Schema(title = "SSE URL of the MCP server")
+public class StreamableHttpMcpClient extends AbstractMcpClient {
+    @Schema(title = "URL of the MCP server")
     @NotNull
-    private Property<String> sseUrl;
+    private Property<String> url;
 
     @Schema(title = "Connection timeout duration")
     private Property<Duration> timeout;
 
     @Schema(
         title = "Custom headers",
-        description = "Could be useful, for example, to add authentication tokens via the `Authorization` header."
+        description = "Useful, for example, for adding authentication tokens via the `Authorization` header."
     )
     private Property<Map<String, String>> headers;
 
@@ -88,8 +87,8 @@ public class SseMcpClient extends AbstractMcpClient {
 
     @Override
     protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
-        return new HttpMcpTransport.Builder()
-            .sseUrl(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
+        return new StreamableHttpMcpTransport.Builder()
+            .url(runContext.render(url).as(String.class, additionalVariables).orElseThrow())
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
             .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElse(false))
             .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElse(false))

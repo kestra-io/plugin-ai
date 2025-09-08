@@ -151,7 +151,7 @@ class AIAgentTest {
                     .build()
                 )
             )
-            .prompt(Property.ofValue("Create a file 'hello.txt' with the content \"Hello World\""))
+            .prompt(Property.ofValue("Create a file '/tmp/hello.txt' with the content \"Hello World\""))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .outputFiles(Property.ofValue(List.of("hello.txt")))
