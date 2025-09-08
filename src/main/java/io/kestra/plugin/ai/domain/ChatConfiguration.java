@@ -61,7 +61,30 @@ public class ChatConfiguration {
             When using a JSON schema, the output will be returned under the key `jsonOutput`."""
     )
     private ResponseFormat responseFormat;
+    @Schema(
+        title = "Enable Thinking",
+        description = """
+            Enables internal reasoning ('thinking') in supported language models, allowing the model to perform intermediate reasoning steps
+            before producing a final output; this is useful for complex tasks like multi-step problem solving or decision making, but may
+            increase token usage and response time, and is only applicable to compatible models."""
+    )
+    private Property<Boolean> thinkingEnabled;
 
+    @Schema(
+        title = "Thinking Token Budget",
+        description = """
+            Specifies the maximum number of tokens allocated as a budget for internal reasoning processes, such as generating intermediate
+            thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output."""
+    )
+    private Property<Integer> thinkingBudgetTokens;
+    @Schema(
+        title = "Return Thinking",
+        description = """
+            Controls whether to return the model's internal reasoning or 'thinking' text, if available. When enabled,
+            the reasoning content is extracted from the response and made available in the AiMessage object.
+            It Does not trigger the thinking process itself—only affects whether the output is parsed and returned."""
+    )
+    private Property<Boolean> returnThinking;
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
             return dev.langchain4j.model.chat.request.ResponseFormat.TEXT;

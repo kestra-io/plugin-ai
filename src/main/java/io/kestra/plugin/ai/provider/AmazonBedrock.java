@@ -6,8 +6,6 @@ import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
 import dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel;
 import dev.langchain4j.model.bedrock.BedrockTitanEmbeddingModel;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -60,6 +58,7 @@ import java.util.List;
                       accessKeyId: "{{ kv('AWS_ACCESS_KEY') }}"
                       secretAccessKey: "{{ kv('AWS_SECRET_KEY') }}"
                       modelName: anthropic.claude-3-sonnet-20240229-v1:0
+                      thinkingBudgetTokens: 1024
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -94,6 +93,7 @@ public class AmazonBedrock extends ModelProvider {
 
         var awsAccessKeyId = runContext.render(this.accessKeyId).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Access Key ID cannot be null"));
         var awsSecretAccessKey = runContext.render(this.secretAccessKey).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Secret Access Key cannot be null"));
+        var thinkingBudgetTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
 
         var credentials = AwsBasicCredentials.create(awsAccessKeyId, awsSecretAccessKey);
         var credentialsProvider = StaticCredentialsProvider.create(credentials);
@@ -110,11 +110,13 @@ public class AmazonBedrock extends ModelProvider {
                 .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
                 .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
                 .responseFormat(configuration.computeResponseFormat(runContext))
+                .enableReasoning(thinkingBudgetTokens)
                 .build()
             )
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
             .build();
     }

@@ -59,6 +59,13 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @PluginProperty(additionalProperties = URI.class)
     private final Map<String, URI> outputFiles;
 
+    @Schema(
+        title = "Model's Thinking Output",
+        description = """
+             Contains the model's internal reasoning or 'thinking' text, if the model supports it and 'returnThinking' is enabled.
+             This may include intermediate reasoning steps, such as chain-of-thought explanations. Null if thinking is not supported, not enabled, or not returned by the model."""
+    )
+    private final String thinking;
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
     public static AIOutputBuilder<?,?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
@@ -75,6 +82,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                 .map(throwFunction(resp -> AIResponse.from(runContext, resp)))
                 .toList()
             )
+            .thinking(result.content().thinking())
             .requestDuration(extractTiming(runContext, result.finalResponse().id()));
     }
 
