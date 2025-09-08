@@ -55,7 +55,6 @@ import java.util.List;
                       type: io.kestra.plugin.ai.provider.DeepSeek
                       apiKey: "{{ kv('DEEPSEEK_API_KEY') }}"
                       modelName: deepseek-chat
-                      returnThinking: false
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
