@@ -20,6 +20,7 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @KestraTest
 class ChatCompletionTest extends ContainerTest {
@@ -101,6 +102,8 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getTextOutput(), notNullValue());
         assertThat(output.getTextOutput(), containsString("John"));
         assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getSources(), notNullValue());
+        assertTrue(output.getSources().isEmpty());
     }
 
     @Test
