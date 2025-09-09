@@ -7,6 +7,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
+import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
@@ -197,5 +198,69 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getTextOutput()).isNotNull();
         assertThat(output.getTextOutput().trim()).contains("42");
         assertThat(output.getToolExecutions()).isNotEmpty();
+    }
+
+
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void testGeminiChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "modelName", "gemini-1.5-flash",
+            "apiKey", GOOGLE_API_KEY
+        ));
+
+        // First ingest some documents
+        var ingest = IngestDocument.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .embeddings(KestraKVStore.builder().build())
+            .fromDocuments(List.of(
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("Paris is the capital of France with a population of over 2.1 million people"))
+                    .build(),
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("The Eiffel Tower is the most famous landmark in Paris at 330 meters tall"))
+                    .build()
+            ))
+            .build();
+
+        IngestDocument.Output ingestOutput = ingest.run(runContext);
+        assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
+        var rag = ChatCompletion.builder()
+            .chatProvider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .embeddings(KestraKVStore.builder().build())
+            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var ragOutput = rag.run(runContext);
+
+        assertThat(ragOutput.getTextOutput()).isNotNull();
+        assertThat(ragOutput.getTextOutput()).containsIgnoringCase("Paris");
+        assertThat(ragOutput.getSources()).isNotNull();
+        assertThat(ragOutput.getSources()).isNotEmpty();
+
+        boolean foundParisSource = ragOutput.getSources().stream()
+            .anyMatch(source -> source.getContent().contains("Paris") && source.getContent().contains("capital"));
+        assertThat(foundParisSource).isTrue();
+        assertThat(ragOutput.getSources().get(0).getMetadata()).isNotNull();
     }
 }

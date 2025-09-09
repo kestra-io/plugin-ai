@@ -1,10 +1,13 @@
 package io.kestra.plugin.ai.domain;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.Result;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.runners.RunContext;
@@ -21,6 +24,8 @@ import org.apache.commons.lang3.time.StopWatch;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
@@ -66,6 +71,9 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
              This may include intermediate reasoning steps, such as chain-of-thought explanations. Null if thinking is not supported, not enabled, or not returned by the model."""
     )
     private final String thinking;
+
+    @Schema(title = "Content sources used during RAG retrieval")
+    private final List<ContentSource> sources;
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
     public static AIOutputBuilder<?,?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
@@ -83,6 +91,10 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                 .toList()
             )
             .thinking(result.content().thinking())
+            .sources(ListUtils.emptyOnNull(result.sources()).stream()
+                .map(throwFunction(ContentSource::from))
+                .toList()
+            )
             .requestDuration(extractTiming(runContext, result.finalResponse().id()));
     }
 
@@ -119,6 +131,34 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                 .requestArguments(AIUtils.parseJson(toolExecution.request().arguments()))
                 .result(toolExecution.result())
                 .build();
+        }
+    }
+
+    @Builder
+    @Getter
+    public static class ContentSource {
+        @Schema(
+            title = "Extracted text segment",
+            description = "A snippet of text relevant to the user's query, typically a sentence, paragraph, or other discrete unit of text."
+        )
+        private String content;
+
+        @Schema(
+            title = "Source metadata",
+            description = "Key-value pairs providing context about the origin of the content, such as URLs, document titles, or other relevant attributes."
+        )
+        private Map<String, Object> metadata;
+
+        public static ContentSource from(Content content) {
+            final TextSegment textSegment = content.textSegment();
+
+            final ContentSourceBuilder builder = ContentSource.builder()
+                .content(textSegment.text());
+            if (Objects.nonNull(textSegment.metadata())) {
+                builder.metadata(textSegment.metadata().toMap());
+            }
+
+            return builder.build();
         }
     }
 
