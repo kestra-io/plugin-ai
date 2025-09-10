@@ -27,6 +27,7 @@ class ChatCompletionTest extends ContainerTest {
     private final String ANTHROPIC_API_KEY = System.getenv("ANTHROPIC_API_KEY");
     private final String MISTRAL_API_KEY = System.getenv("MISTRAL_API_KEY");
     private final String DEEPSEEK_API_KEY = System.getenv("DEEPSEEK_API_KEY");
+    private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
     private final String AMAZON_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
     private final String AMAZON_SECRET_ACCESS_KEY = System.getenv("AWS_SECRET_ACCESS_KEY");
     private final String AZURE_OPENAI_API_KEY = System.getenv("AZURE_OPENAI_API_KEY");
@@ -899,4 +900,102 @@ class ChatCompletionTest extends ContainerTest {
         // Verify error message
         assertThat(exception.getMessage(), containsString("UnknownHostException"));
     }
+
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletionOpenRouter() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "mistralai/mistral-7b-instruct:free",
+                 "baseUrl", "https://openrouter.ai/api/v1",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionOpenRouter_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", "OPENROUTER_API_KEY",
+            "modelName", "deepseek/deepseek-r1:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 401");
+
+        // Verify error message contains authentication error details
+        assertThat(exception.getMessage(), containsString("401"));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletionOpenRouter_withDefaultBaseUrl() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "mistralai/mistral-7b-instruct:free",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                // Note: baseUrl not specified, should use default
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
 }
