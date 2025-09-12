@@ -88,6 +88,7 @@ public class GoogleGemini extends ModelProvider {
             .listeners(List.of(new TimingChatModelListener()))
             .thinkingConfig(getThinkingConfig(configuration, runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
+            .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 

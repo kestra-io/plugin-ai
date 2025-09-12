@@ -107,6 +107,7 @@ public class Anthropic extends ModelProvider {
             .thinkingType(thinkingEnabled ? ENABLED : null)
             .thinkingBudgetTokens(thinkingBudgetTokens)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
+            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 
