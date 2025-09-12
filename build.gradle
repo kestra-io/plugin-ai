@@ -70,6 +70,8 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-vertex-ai"
     implementation "dev.langchain4j:langchain4j-vertex-ai-gemini"
 
+    implementation "dev.langchain4j:langchain4j-community-dashscope"
+
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
 
     // Langchain4j embeddings stores

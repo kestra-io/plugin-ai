@@ -17,6 +17,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -72,6 +73,7 @@ public class OpenRouter extends ModelProvider {
 
     @Schema(title = "API base URL", description = "The base URL for OpenRouter API (defaults to https://openrouter.ai/api/v1)")
     @NotNull
+    @Builder.Default
     private Property<String> baseUrl  = Property.ofValue(BASE_URL);
 
     @Override
