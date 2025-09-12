@@ -108,6 +108,40 @@ class ChatCompletionTest extends ContainerTest {
 
     @Test
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    void testChatCompletionGemini_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", GEMINI_API_KEY,
+            "modelName", "gemini-1.5-flash",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .maxToken(Property.ofValue(10)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getSources(), notNullValue());
+        assertTrue(output.getSources().isEmpty());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
     void testChatCompletionGemini_givenThinkingConfiguration() throws Exception {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", GEMINI_API_KEY,
@@ -257,7 +291,7 @@ class ChatCompletionTest extends ContainerTest {
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             ChatCompletion.Output output = task.run(runContext);
         }, "status code: 400");
-        
+
     }
 
     @Disabled
@@ -447,6 +481,38 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getTextOutput(), containsString("John"));
         assertThat(output.getRequestDuration(), notNullValue());
     }
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
+    @Test
+    void testChatCompletionAnthropicAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
+            "apiKey", ANTHROPIC_API_KEY,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1))
+                .maxToken(Property.ofValue(10)).build())
+            .provider(Anthropic.builder()
+                .type(Anthropic.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+    }
+
 
     @Test
     void testChatCompletionAnthropicAI_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
@@ -1001,4 +1067,36 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getRequestDuration(), notNullValue());
     }
 
+    @Test
+   @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletionOpenRouter_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "mistralai/mistral-7b-instruct:free",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .maxToken(Property.ofValue(10)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                // Note: baseUrl not specified, should use default
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+    }
 }

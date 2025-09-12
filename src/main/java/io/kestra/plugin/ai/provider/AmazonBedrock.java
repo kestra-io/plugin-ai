@@ -111,6 +111,7 @@ public class AmazonBedrock extends ModelProvider {
                 .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
                 .responseFormat(configuration.computeResponseFormat(runContext))
                 .enableReasoning(thinkingBudgetTokens)
+                .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
                 .build()
             )
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
