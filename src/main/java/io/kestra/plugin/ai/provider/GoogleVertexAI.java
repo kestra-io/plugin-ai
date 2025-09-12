@@ -100,6 +100,7 @@ public class GoogleVertexAI extends ModelProvider {
             .responseMimeType(responseFormat.type() == ResponseFormatType.JSON ? "application/json" : null)
             .responseSchema(responseFormat.jsonSchema() != null ? SchemaHelper.from(responseFormat.jsonSchema().rootElement()) : null)
             .listeners(List.of(new TimingChatModelListener()))
+            .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 

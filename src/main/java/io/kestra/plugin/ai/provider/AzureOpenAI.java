@@ -116,6 +116,7 @@ public class AzureOpenAI extends ModelProvider {
                 .logRequestsAndResponses(logRequestAndResponses)
                 .responseFormat(configuration.computeResponseFormat(runContext))
                 .listeners(List.of(new TimingChatModelListener()))
+                .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
                 .build();
         } else if (tenantId != null && clientId != null && clientSecret != null) {
             return AzureOpenAiChatModel.builder()
@@ -129,6 +130,7 @@ public class AzureOpenAI extends ModelProvider {
                 .logRequestsAndResponses(logRequestAndResponses)
                 .responseFormat(configuration.computeResponseFormat(runContext))
                 .listeners(List.of(new TimingChatModelListener()))
+                .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
                 .build();
         } else {
             throw new IllegalArgumentException("You need to set an API Key or a tenantId, clientId and clientSecret");

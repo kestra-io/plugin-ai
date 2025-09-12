@@ -96,6 +96,7 @@ public class DeepSeek extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
+            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 
