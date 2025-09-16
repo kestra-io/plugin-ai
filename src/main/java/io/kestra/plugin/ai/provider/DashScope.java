@@ -28,7 +28,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonDeserialize
-@Schema(title = "DashScope (Qwen) Model Provider")
+@Schema(title = "DashScope (Qwen) Model Provider from Alibaba Cloud")
 @Plugin(
     examples = {
         @Example(
@@ -57,8 +57,7 @@ import lombok.experimental.SuperBuilder;
                             content: "{{ inputs.prompt }}"
                     """
             })
-    },
-    aliases = "io.kestra.plugin.langchain4j.provider.DashScope")
+    })
 public class DashScope extends ModelProvider {
     private static final String DASHSCOPE_CN_URL = "https://dashscope.aliyuncs.com/api/v1";
     private static final String DASHSCOPE_INTL_URL = "https://dashscope-intl.aliyuncs.com/api/v1";
@@ -75,7 +74,8 @@ public class DashScope extends ModelProvider {
         description =
             """
                   If you use a model in the China (Beijing) region, you need to replace the URL with: https://dashscope.aliyuncs.com/api/v1,
-                  Otherwise use the Singapore region of: "https://dashscope-intl.aliyuncs.com/api/v1
+                  Otherwise use the Singapore region of: "https://dashscope-intl.aliyuncs.com/api/v1.
+                  The default value is computed based on the system timezone.
               """)
     @NotNull
     @Builder.Default
@@ -97,9 +97,6 @@ public class DashScope extends ModelProvider {
 
     @Schema(title = "The maximum number of tokens returned by this request.")
     private Property<Integer> maxTokens;
-
-    @Schema(title = "Is Multimodal Model")
-    private Property<Boolean> isMultimodalModel;
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration)
@@ -128,8 +125,6 @@ public class DashScope extends ModelProvider {
             .temperature(fTemperature)
             .maxTokens(runContext.render(this.maxTokens).as(Integer.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
-            .isMultimodalModel(
-                runContext.render(this.isMultimodalModel).as(Boolean.class).orElse(false))
             .build();
     }
 
