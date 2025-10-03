@@ -1,9 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.nimbusds.oauth2.sdk.util.MapUtils;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -96,7 +94,7 @@ public class DeepSeek extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 

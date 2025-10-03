@@ -90,7 +90,7 @@ public class OpenRouter extends ModelProvider {
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 
