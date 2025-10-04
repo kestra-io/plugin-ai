@@ -2,6 +2,8 @@ package io.kestra.plugin.ai.completion;
 
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.workersai.WorkersAiChatModel;
+import dev.langchain4j.model.workersai.WorkersAiChatModelName;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -33,6 +35,8 @@ class ChatCompletionTest extends ContainerTest {
     private final String AMAZON_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
     private final String AMAZON_SECRET_ACCESS_KEY = System.getenv("AWS_SECRET_ACCESS_KEY");
     private final String AZURE_OPENAI_API_KEY = System.getenv("AZURE_OPENAI_API_KEY");
+    private final String WORKERS_AI_ACCOUNT_ID = System.getenv("WORKERS_AI_ACCOUNT_ID");
+    private final String WORKERS_AI_API_KEY = System.getenv("WORKERS_AI_API_KEY");
     private final String DASHSCOPE_API_KEY = System.getenv("DASHSCOPE_API_KEY");
     private final String DASHSCOPE_CN_URL = "https://dashscope.aliyuncs.com/api/v1";
     private final String DASHSCOPE_INTL_URL = "https://dashscope-intl.aliyuncs.com/api/v1";
@@ -1232,4 +1236,65 @@ class ChatCompletionTest extends ContainerTest {
     // Verify error message contains 404 details
     assertThat(exception.getMessage(), containsString("Invalid API-key provided."));
   }
+
+    @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
+    @Test
+    void testChatCompletionWorkersAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", WorkersAiChatModelName.LLAMA2_7B_FULL,
+            "apiKey", WORKERS_AI_API_KEY,
+            "accountId", WORKERS_AI_ACCOUNT_ID,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(WorkersAI.builder()
+                .type(WorkersAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .accountId(Property.ofExpression("{{ accountId }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+    }
+
+
+    @Test
+    void testChatCompletionWorkersAI_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", WorkersAiChatModelName.LLAMA2_7B_FULL,
+            "apiKey", "WORKERS_AI_API_KEY",
+            "accountId", "WORKERS_AI_ACCOUNT_ID",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(WorkersAI.builder()
+                .type(WorkersAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .accountId(Property.ofExpression("{{ accountId }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 401");
+
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("WORKERS_AI_ACCOUNT_ID"));
+    }
 }

@@ -69,6 +69,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-open-ai"
     implementation "dev.langchain4j:langchain4j-vertex-ai"
     implementation "dev.langchain4j:langchain4j-vertex-ai-gemini"
+    implementation 'dev.langchain4j:langchain4j-workers-ai'
 
     implementation "dev.langchain4j:langchain4j-community-dashscope"
 
