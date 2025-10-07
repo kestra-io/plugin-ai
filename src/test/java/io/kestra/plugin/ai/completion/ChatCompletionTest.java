@@ -38,6 +38,8 @@ class ChatCompletionTest extends ContainerTest {
     private final String AZURE_OPENAI_API_KEY = System.getenv("AZURE_OPENAI_API_KEY");
     private final String WORKERS_AI_ACCOUNT_ID = System.getenv("WORKERS_AI_ACCOUNT_ID");
     private final String WORKERS_AI_API_KEY = System.getenv("WORKERS_AI_API_KEY");
+    private final String OCI_GENAI_MODEL_REGION_PROPERTY = System.getenv("OCI_GENAI_MODEL_REGION_PROPERTY");
+    private final String OCI_GENAI_COMPARTMENT_ID_PROPERTY = System.getenv("OCI_GENAI_COMPARTMENT_ID_PROPERTY");
     private final String DASHSCOPE_API_KEY = System.getenv("DASHSCOPE_API_KEY");
     private final String DASHSCOPE_CN_URL = "https://dashscope.aliyuncs.com/api/v1";
     private final String DASHSCOPE_INTL_URL = "https://dashscope-intl.aliyuncs.com/api/v1";
@@ -1359,5 +1361,108 @@ class ChatCompletionTest extends ContainerTest {
 
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("java.net.ConnectException"));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OCI_GENAI_COMPARTMENT_ID_PROPERTY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "OCI_GENAI_MODEL_REGION_PROPERTY", matches = ".*")
+    void testChatCompletionOciGenAi() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "oci-gen-ai-cohere-chat",
+            "compartmentId", OCI_GENAI_COMPARTMENT_ID_PROPERTY,
+            "region", OCI_GENAI_MODEL_REGION_PROPERTY,
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
+            .provider(OciGenAI.builder()
+                .type(OciGenAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .compartmentId(Property.ofExpression("{{ compartmentId }}"))
+                .region(Property.ofExpression("{{ region }}"))
+                .build())
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+    }
+
+    @Test
+    void testChatCompletionOciGenAi_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "oci-gen-ai-cohere-chat",
+            "compartmentId", "dummy_compartment",
+            "region", "OCI_GENAI_MODEL_REGION_PROPERTY",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+
+            )
+        ));
+
+        // Test for CohereGenAI
+        ChatCompletion cohereTask = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
+            .provider(OciGenAI.builder()
+                .type(OciGenAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .compartmentId(Property.ofExpression("{{ compartmentId }}"))
+                .region(Property.ofExpression("{{ region }}"))
+                .build())
+            .build();
+
+        RuntimeException cohereException = assertThrows(RuntimeException.class, () -> {
+            cohereTask.run(runContext);
+        });
+
+        assertThat(cohereException.getMessage(), containsString("Unknown regionCodeOrId: OCI_GENAI_MODEL_REGION_PROPERTY"));
+
+        // Test for OciGenAi (non-cohere model)
+        RunContext runContextNonCohere = runContextFactory.of(Map.of(
+            "apiKey", "DUMMY_OCI_API_KEY",
+            "modelName", "oci-gen-ai-chat",
+            "compartmentId", "dummy_compartment",
+            "region", "us-ashburn-1",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder()
+                    .type(ChatCompletion.ChatMessageType.USER)
+                    .content("Hello, my name is John")
+                    .build()
+            )
+        ));
+
+        ChatCompletion ociTask = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
+            .provider(OciGenAI.builder()
+                .type(OciGenAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .compartmentId(Property.ofExpression("{{ compartmentId }}"))
+                .region(Property.ofExpression("{{ region }}"))
+                .build())
+            .build();
+
+        RuntimeException ociException = assertThrows(RuntimeException.class, () -> {
+            ociTask.run(runContextNonCohere);
+        });
+
+        assertThat(ociException.getMessage(), containsString("Error when setting up auth provider."));
     }
 }
