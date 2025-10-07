@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.completion;
 
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.localai.LocalAiChatModel;
 import dev.langchain4j.model.workersai.WorkersAiChatModel;
 import dev.langchain4j.model.workersai.WorkersAiChatModelName;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -1296,5 +1297,67 @@ class ChatCompletionTest extends ContainerTest {
 
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("WORKERS_AI_ACCOUNT_ID"));
+    }
+
+    @Disabled
+    @Test
+    void testChatCompletionLocalAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "gemma-3-1b-it",
+            "baseUrl", "http://localhost:8080/v1",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1))
+                .maxToken(Property.ofValue(10)).build())
+            .provider(LocalAI.builder()
+                .type(LocalAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+    }
+
+
+    @Test
+    void testChatCompletionLocalAI_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "gemma-3-1b-it",
+            "baseUrl", "http://localhost/v1",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1))
+                .maxToken(Property.ofValue(10)).build())
+              .provider(LocalAI.builder()
+                .type(LocalAI.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                  .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 401");
+
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("java.net.ConnectException"));
     }
 }
