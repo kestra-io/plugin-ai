@@ -2,8 +2,6 @@ package io.kestra.plugin.ai.completion;
 
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.localai.LocalAiChatModel;
-import dev.langchain4j.model.workersai.WorkersAiChatModel;
 import dev.langchain4j.model.workersai.WorkersAiChatModelName;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
@@ -11,6 +9,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.*;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Disabled;
@@ -60,7 +60,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "gpt-4o-mini",
             "baseUrl", "http://langchain4j.dev/demo/openai/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -92,9 +92,9 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionGemini() throws Exception {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-1.5-flash",
+            "modelName", "gemini-2.0-flash",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -124,9 +124,9 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionGemini_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-1.5-flash",
+            "modelName", "gemini-2.0-flash",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -160,7 +160,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", GEMINI_API_KEY,
             "modelName", "gemini-2.5-flash",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
         ChatCompletion task = ChatCompletion.builder()
@@ -191,7 +191,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", GEMINI_API_KEY,
             "modelName", "gemini-2.5-flash",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
         ChatCompletion task = ChatCompletion.builder()
@@ -219,9 +219,9 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionGemini_givenInvalidModel_whenThinkingNotAllowed_thenThrowException() throws Exception {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-1.5-flash",
+            "modelName", "gemini-2.0-flash",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
         ChatCompletion task = ChatCompletion.builder()
@@ -256,7 +256,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "tinydolphin",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -283,7 +283,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "mistral",
             "ollamaEndpoint", "tinydolphin",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -314,7 +314,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "llama3",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -343,7 +343,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "tinydolphin",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
             )
         ));
 
@@ -389,7 +389,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "tinydolphin",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is {{John}}").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is {{John}}").build()
             )
         ));
 
@@ -416,9 +416,9 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "tinydolphin",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are a bot").build(),
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an alien").build(),
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are a bot").build(),
+                ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an alien").build(),
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -443,9 +443,9 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "tinydolphin",
             "ollamaEndpoint", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are a bot").build(),
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build(),
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.AI).content("You are an alien").build()
+                ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are a bot").build(),
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build(),
+                ChatMessage.builder().type(ChatMessageType.AI).content("You are an alien").build()
                 )
         ));
 
@@ -472,7 +472,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
             "apiKey", ANTHROPIC_API_KEY,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -501,7 +501,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
             "apiKey", ANTHROPIC_API_KEY,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -533,7 +533,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
             "apiKey", "DUMMY_ANTHROPIC_API_KEY",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -564,7 +564,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", ANTHROPIC_API_KEY,
             "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
         ChatCompletion task = ChatCompletion.builder()
@@ -597,7 +597,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", ANTHROPIC_API_KEY,
             "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
         ChatCompletion task = ChatCompletion.builder()
@@ -628,7 +628,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", ANTHROPIC_API_KEY,
             "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
         ChatCompletion task = ChatCompletion.builder()
@@ -660,7 +660,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", MISTRAL_API_KEY,
             "baseUrl", "https://api.mistral.ai/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -691,7 +691,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", "DUMMY_MISTRAL_API_KEY",
             "baseUrl", "https://api.mistral.ai/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -725,7 +725,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", MISTRAL_API_KEY,
             "baseUrl", ollamaEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -759,7 +759,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "deepseek-chat",
             "baseUrl", "https://api.deepseek.com/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -791,7 +791,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "deepseek-chat",
             "baseUrl", "https://api.deepseek.com/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -823,7 +823,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "deepseek-chat",
             "baseUrl", "https://api.deepseek.com/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -860,7 +860,7 @@ class ChatCompletionTest extends ContainerTest {
             "accessKeyId", AMAZON_ACCESS_KEY_ID,
             "secretAccessKey", AMAZON_SECRET_ACCESS_KEY,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -891,7 +891,7 @@ class ChatCompletionTest extends ContainerTest {
             "accessKeyId", "DUMMY_ACCESS_KEY_ID",
             "secretAccessKey", "DUMMY_SECRET_ACCESS_KEY",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -926,7 +926,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", AZURE_OPENAI_API_KEY,
             "endpoint", azureEndpoint,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -957,7 +957,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", "DUMMY_API_KEY",
             "endpoint", "https://kestra.openai.azure.com/",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -992,7 +992,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "mistralai/mistral-7b-instruct:free",
                  "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1023,7 +1023,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "deepseek/deepseek-r1:free",
             "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1056,7 +1056,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", OPENROUTER_API_KEY,
             "modelName", "mistralai/mistral-7b-instruct:free",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1087,7 +1087,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", OPENROUTER_API_KEY,
             "modelName", "mistralai/mistral-7b-instruct:free",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1122,8 +1122,8 @@ class ChatCompletionTest extends ContainerTest {
                 "modelName", "qwen-plus",
                 "baseUrl", DASHSCOPE_BASE_URL,
                 "messages", List.of(
-                        ChatCompletion.ChatMessage.builder()
-                            .type(ChatCompletion.ChatMessageType.USER)
+                        ChatMessage.builder()
+                            .type(ChatMessageType.USER)
                             .content("Hello, my name is John")
                             .build())));
 
@@ -1162,8 +1162,8 @@ class ChatCompletionTest extends ContainerTest {
                 "modelName", "qwen-plus",
                 "baseUrl", DASHSCOPE_BASE_URL,
                 "messages", List.of(
-                        ChatCompletion.ChatMessage.builder()
-                            .type(ChatCompletion.ChatMessageType.USER)
+                        ChatMessage.builder()
+                            .type(ChatMessageType.USER)
                             .content("Hello, my name is John")
                             .build())));
 
@@ -1202,8 +1202,8 @@ class ChatCompletionTest extends ContainerTest {
                 "modelName", "qwen-plus",
                 "baseUrl", DASHSCOPE_BASE_URL,
                 "messages", List.of(
-                        ChatCompletion.ChatMessage.builder()
-                            .type(ChatCompletion.ChatMessageType.USER)
+                        ChatMessage.builder()
+                            .type(ChatMessageType.USER)
                             .content("Hello, my name is John")
                             .build())));
 
@@ -1247,7 +1247,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", WORKERS_AI_API_KEY,
             "accountId", WORKERS_AI_ACCOUNT_ID,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1275,7 +1275,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", "WORKERS_AI_API_KEY",
             "accountId", "WORKERS_AI_ACCOUNT_ID",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1306,7 +1306,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "gemma-3-1b-it",
             "baseUrl", "http://localhost:8080/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -1335,7 +1335,7 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "gemma-3-1b-it",
             "baseUrl", "http://localhost/v1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
 
             )
         ));

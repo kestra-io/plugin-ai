@@ -7,6 +7,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,7 @@ class DockerMcpClientTest {
                 DockerMcpClient.builder().image(Property.ofValue("mcp/everything")).build())
             )
             .messages(Property.ofValue(
-                List.of(ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("What is 5+12? Use the provided tool to answer and always assume that the tool is correct.").build()
+                List.of(ChatMessage.builder().type(ChatMessageType.USER).content("What is 5+12? Use the provided tool to answer and always assume that the tool is correct.").build()
                 )))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())

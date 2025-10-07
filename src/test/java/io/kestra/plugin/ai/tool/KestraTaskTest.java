@@ -13,6 +13,8 @@ import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.core.execution.Fail;
@@ -69,8 +71,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to log the following message: \"Hello World!\"").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to log the following message: \"Hello World!\"").build()
                 )))
             .build();
 
@@ -112,8 +114,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to set a variable of name 'some' and value 'variable'").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to set a variable of name 'some' and value 'variable'").build()
                 )))
             .build();
 
@@ -148,7 +150,7 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("""
+                    ChatMessage.builder().type(ChatMessageType.USER).content("""
                             Call the HTTP URL https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/docs/07.architecture/01.main-components.md, retrieve its outputs and extract the body.
                             Add a HTTP Header X-Kestra-API: anything when calling the URL.""")
                         .build()
@@ -194,8 +196,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to fetch logs from the following task ids: task1, task2 and task3").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to fetch logs from the following task ids: task1, task2 and task3").build()
                 )))
             .build();
 
@@ -240,8 +242,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("""
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("""
                         I want to call my awesome tasks with the following properties:
                         - A number of value 7
                         - A string of value 'Hello World'
@@ -291,8 +293,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("""
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("""
                         I want to call my awesome tasks with the following properties:
                         - A number of value 7
                         - A string of value 'Hello World'
@@ -344,8 +346,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("""
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("""
                         I want to call my awesome tasks with the following properties:
                         - A string of value 'Hello World'
                         - A message with key 'mykey' and value 'myvalue'"""
@@ -393,8 +395,8 @@ class KestraTaskTest extends ContainerTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to fail").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to fail").build()
                 )))
             .build();
 

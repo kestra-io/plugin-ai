@@ -37,7 +37,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
             "prompt", "Hello, my name is John. I was born on January 1, 2000.",
             "jsonFields", List.of("name", "date"),
             "schemaName", "Person",
-            "modelName", "gemini-1.5-flash",
+            "modelName", "gemini-2.0-flash",
             "apiKey", GEMINI_API_KEY
         ));
 

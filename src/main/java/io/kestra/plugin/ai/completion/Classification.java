@@ -15,6 +15,7 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -74,7 +75,7 @@ public class Classification extends Task implements RunnableTask<Classification.
         description = "The list of chat messages for the current conversation. There can be only one system message, and the last message must be a user message."
     )
     @NotNull
-    private Property<List<io.kestra.plugin.ai.domain.ChatMessage>> messages;
+    private Property<List<ChatMessage>> messages;
 
     @Schema(title = "Classification Options", description = "The list of possible classification categories")
     @NotNull
@@ -129,7 +130,7 @@ public class Classification extends Task implements RunnableTask<Classification.
         long nbSystem = chatMessages.stream()
             .filter(msg -> msg.type() == dev.langchain4j.data.message.ChatMessageType.SYSTEM)
             .count();
-        if (nbSystem > 1) {
+        if (nbSystem > 2) { // counting the one for classes
             throw new IllegalArgumentException("Only one system message is allowed");
         }
         if (chatMessages.getLast().type() != dev.langchain4j.data.message.ChatMessageType.USER) {
