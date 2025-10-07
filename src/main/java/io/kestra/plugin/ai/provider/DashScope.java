@@ -74,7 +74,7 @@ public class DashScope extends ModelProvider {
         description =
             """
                   If you use a model in the China (Beijing) region, you need to replace the URL with: https://dashscope.aliyuncs.com/api/v1,
-                  Otherwise use the Singapore region of: "https://dashscope-intl.aliyuncs.com/api/v1.
+                  otherwise use the Singapore region of: "https://dashscope-intl.aliyuncs.com/api/v1.
                   The default value is computed based on the system timezone.
               """)
     @NotNull
@@ -82,7 +82,7 @@ public class DashScope extends ModelProvider {
     private Property<String> baseUrl = Property.ofValue(DASHSCOPE_BASE_URL);
 
     @Schema(
-        title = "Repetition in a continuous sequence during model generation.",
+        title = "Repetition in a continuous sequence during model generation",
         description =
             """
                   Increasing repetition_penalty reduces the repetition in model generation,
@@ -92,10 +92,10 @@ public class DashScope extends ModelProvider {
 
     @Schema(
         title =
-            "Whether the model uses Internet search results for reference when generating text or not.")
+            "Whether the model uses Internet search results for reference when generating text or not")
     private Property<Boolean> enableSearch;
 
-    @Schema(title = "The maximum number of tokens returned by this request.")
+    @Schema(title = "The maximum number of tokens returned by this request")
     private Property<Integer> maxTokens;
 
     @Override
