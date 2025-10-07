@@ -18,6 +18,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
+import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
@@ -28,6 +29,8 @@ import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.List;
+
+import static io.kestra.plugin.ai.domain.ChatMessageType.*;
 
 @SuperBuilder
 @ToString
@@ -177,7 +180,6 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             throw new IllegalArgumentException("The last message must be a user message");
         }
 
-
         // Get the appropriate model from the factory
         ChatModel model = this.provider.chatModel(runContext, configuration);
 
@@ -247,7 +249,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         Result<AiMessage> chat(@dev.langchain4j.service.UserMessage String chatMessage);
     }
 
-    private List<dev.langchain4j.data.message.ChatMessage> convertMessages(List<ChatCompletion.ChatMessage> messages) {
+    private List<dev.langchain4j.data.message.ChatMessage> convertMessages(List<ChatMessage> messages) {
         return messages.stream()
             .map(dto -> switch (dto.type()) {
                 case SYSTEM -> SystemMessage.systemMessage(dto.content());
@@ -267,9 +269,4 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         @Deprecated(forRemoval = true, since = "1.0.0")
         private String aiResponse;
     }
-
-    @Builder
-    public record ChatMessage(ChatMessageType type, String content) {}
-
-    public enum ChatMessageType { SYSTEM, AI, USER }
 }
