@@ -8,6 +8,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.tool.internal.JsonObjectSchemaTranslator;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,6 +62,13 @@ public class ChatConfiguration {
             When using a JSON schema, the output will be returned under the key `jsonOutput`."""
     )
     private ResponseFormat responseFormat;
+
+    @Schema(
+        description = "Maximum number of tokens the model can generate in the completion (response). This limits the length of the output.",
+        example = "1024"
+    )
+    @Nullable
+    private Property<Integer> maxToken;
 
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
