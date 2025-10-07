@@ -7,6 +7,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
@@ -21,6 +23,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,7 +59,17 @@ class PostgreSQLTest extends ContainerTest {
             "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
         ));
 
-        // First prompt : store chat memory in default table (chat_memory)
+        var firstMessages = List.of(
+            ChatMessage.builder()
+                .type(ChatMessageType.SYSTEM)
+                .content("You are a helpful assistant that remembers what the user says.")
+                .build(),
+            ChatMessage.builder()
+                .type(ChatMessageType.USER)
+                .content("Hello, my name is Alice")
+                .build()
+        );
+
         var rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -75,7 +88,7 @@ class PostgreSQLTest extends ContainerTest {
                 .ttl(Property.ofValue(Duration.ofMinutes(5)))
                 .memoryId(Property.ofValue("test-memory"))
                 .build())
-            .prompt(Property.ofValue("Hello, my name is Alice"))
+            .messages(Property.ofValue(firstMessages))
             .chatConfiguration(ChatConfiguration.builder()
                 .temperature(Property.ofValue(0.1))
                 .seed(Property.ofValue(123456789))
@@ -85,7 +98,17 @@ class PostgreSQLTest extends ContainerTest {
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
 
-        // Second prompt : retrieve persisted chat memory
+        var secondMessages = List.of(
+            ChatMessage.builder()
+                .type(ChatMessageType.SYSTEM)
+                .content("You are a helpful assistant that remembers what the user says.")
+                .build(),
+            ChatMessage.builder()
+                .type(ChatMessageType.USER)
+                .content("What's my name?")
+                .build()
+        );
+
         rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -103,7 +126,7 @@ class PostgreSQLTest extends ContainerTest {
                 .password(Property.ofValue(password))
                 .memoryId(Property.ofValue("test-memory"))
                 .build())
-            .prompt(Property.ofValue("What's my name?"))
+            .messages(Property.ofValue(secondMessages))
             .chatConfiguration(ChatConfiguration.builder()
                 .temperature(Property.ofValue(0.1))
                 .seed(Property.ofValue(123456789))
@@ -115,7 +138,6 @@ class PostgreSQLTest extends ContainerTest {
         assertThat(ragOutput.getTextOutput()).isNotNull();
         assertThat(ragOutput.getTextOutput().toLowerCase()).contains("alice");
 
-        // Validate data persisted in default table
         try (Connection conn = DriverManager.getConnection(
             String.format("jdbc:postgresql://%s:%d/%s", pgHost, pgPort, database), user, password);
              Statement stmt = conn.createStatement();
@@ -140,7 +162,17 @@ class PostgreSQLTest extends ContainerTest {
             "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
         ));
 
-        // First prompt : store chat memory in a custom table
+        var firstMessages = List.of(
+            ChatMessage.builder()
+                .type(ChatMessageType.SYSTEM)
+                .content("You are a helpful assistant that remembers conversations.")
+                .build(),
+            ChatMessage.builder()
+                .type(ChatMessageType.USER)
+                .content("Hello, my name is Bob")
+                .build()
+        );
+
         var rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -160,7 +192,7 @@ class PostgreSQLTest extends ContainerTest {
                 .ttl(Property.ofValue(Duration.ofMinutes(5)))
                 .memoryId(Property.ofValue("custom-memory"))
                 .build())
-            .prompt(Property.ofValue("Hello, my name is Bob"))
+            .messages(Property.ofValue(firstMessages))
             .chatConfiguration(ChatConfiguration.builder()
                 .temperature(Property.ofValue(0.1))
                 .seed(Property.ofValue(123456789))
@@ -170,7 +202,6 @@ class PostgreSQLTest extends ContainerTest {
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
 
-        // Verify that the table was created and data stored correctly
         try (Connection conn = DriverManager.getConnection(
             String.format("jdbc:postgresql://%s:%d/%s", pgHost, pgPort, database), user, password);
              Statement stmt = conn.createStatement();

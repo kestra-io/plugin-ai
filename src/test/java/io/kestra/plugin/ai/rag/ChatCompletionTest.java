@@ -6,6 +6,8 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
@@ -35,36 +37,46 @@ class ChatCompletionTest extends ContainerTest {
     void rag() throws Exception {
         RunContext runContext = runContextFactory.of("namespace", Map.of(
             "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
+            "endpoint", ollamaEndpoint,
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.SYSTEM)
+                    .content("You are a helpful assistant that answers concisely.")
+                    .build(),
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("How's the weather today?")
+                    .build()
+            )
         ));
 
         var ingest = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
-            .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("It rains today")).build()))
+            .fromDocuments(List.of(
+                IngestDocument.InlineDocument.builder().content(Property.ofValue("It rains today")).build()
+            ))
             .build();
 
         IngestDocument.Output ingestOutput = ingest.run(runContext);
         assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(1);
 
         var rag = ChatCompletion.builder()
-            .chatProvider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .chatProvider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("How's the weather today?"))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         var ragOutput = rag.run(runContext);
@@ -79,17 +91,25 @@ class ChatCompletionTest extends ContainerTest {
             "modelName", "tinydolphin",
             "endpoint", ollamaEndpoint,
             "apikey", GOOGLE_API_KEY,
-            "csi", GOOGLE_CSI
+            "csi", GOOGLE_CSI,
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.SYSTEM)
+                    .content("You are a web search assistant that answers based on retrieved documents.")
+                    .build(),
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("How's the weather today?")
+                    .build()
+            )
         ));
 
         var ingest = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
             .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("It rains today")).build()))
             .build();
@@ -98,21 +118,23 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(1);
 
         var rag = ChatCompletion.builder()
-            .chatProvider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .chatProvider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("How's the weather today?"))
-            .contentRetrievers(Property.ofValue(List.of(GoogleCustomWebSearch.builder()
-                .csi(Property.ofExpression("{{ csi }}"))
-                .apiKey(Property.ofExpression("{{ apikey }}"))
-                .build())))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .contentRetrievers(Property.ofValue(List.of(
+                GoogleCustomWebSearch.builder()
+                    .csi(Property.ofExpression("{{ csi }}"))
+                    .apiKey(Property.ofExpression("{{ apikey }}"))
+                    .build()
+            )))
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         var ragOutput = rag.run(runContext);
@@ -125,17 +147,25 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of("namespace", Map.of(
             "modelName", "tinydolphin",
             "endpoint", ollamaEndpoint,
-            "apikey", TAVILY_API_KEY
+            "apikey", TAVILY_API_KEY,
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.SYSTEM)
+                    .content("You are a helpful assistant using Tavily web search results.")
+                    .build(),
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("How's the weather today?")
+                    .build()
+            )
         ));
 
         var ingest = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
             .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("It rains today")).build()))
             .build();
@@ -144,20 +174,22 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(1);
 
         var rag = ChatCompletion.builder()
-            .chatProvider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .chatProvider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("How's the weather today?"))
-            .contentRetrievers(Property.ofValue(List.of(TavilyWebSearch.builder()
-                .apiKey(Property.ofExpression("{{ apikey }}"))
-                .build())))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .contentRetrievers(Property.ofValue(List.of(
+                TavilyWebSearch.builder()
+                    .apiKey(Property.ofExpression("{{ apikey }}"))
+                    .build()
+            )))
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         var ragOutput = rag.run(runContext);
@@ -170,28 +202,32 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of("namespace", Map.of(
             "modelName", "tinydolphin",
             "endpoint", ollamaEndpoint,
-            "apikey", RAPID_API_KEY
+            "apikey", RAPID_API_KEY,
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("Use the JavaScript execution tool to evaluate `21*2`. Return only the number.")
+                    .build()
+            )
         ));
 
         var chat = ChatCompletion.builder()
-            .chatProvider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
+            .chatProvider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ endpoint }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue(
-                "Use the JavaScript execution tool to evaluate `21*2`. Return only the number."
-            ))
+            .messages(Property.ofExpression("{{ messages }}"))
             .tools(List.of(
                 CodeExecution.builder()
                     .apiKey(Property.ofExpression("{{ apikey }}"))
                     .build()
             ))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         var output = chat.run(runContext);
@@ -200,24 +236,31 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getToolExecutions()).isNotEmpty();
     }
 
-
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
     @Test
     void testGeminiChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
         RunContext runContext = runContextFactory.of("namespace", Map.of(
             "modelName", "gemini-2.0-flash",
-            "apiKey", GOOGLE_API_KEY
-        ));
-
-        // First ingest some documents
-        var ingest = IngestDocument.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+            "apiKey", GOOGLE_API_KEY,
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.SYSTEM)
+                    .content("You are a helpful assistant answering questions about geography.")
+                    .build(),
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("What is the capital of France and how many people live there?")
                     .build()
             )
+        ));
+
+        // First ingest documents
+        var ingest = IngestDocument.builder()
+            .provider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
             .fromDocuments(List.of(
                 IngestDocument.InlineDocument.builder()
@@ -231,24 +274,24 @@ class ChatCompletionTest extends ContainerTest {
 
         IngestDocument.Output ingestOutput = ingest.run(runContext);
         assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
+
         var rag = ChatCompletion.builder()
-            .chatProvider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddingProvider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
+            .chatProvider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .build())
+            .embeddingProvider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .build())
             .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         var ragOutput = rag.run(runContext);
@@ -261,6 +304,6 @@ class ChatCompletionTest extends ContainerTest {
         boolean foundParisSource = ragOutput.getSources().stream()
             .anyMatch(source -> source.getContent().contains("Paris") && source.getContent().contains("capital"));
         assertThat(foundParisSource).isTrue();
-        assertThat(ragOutput.getSources().get(0).getMetadata()).isNotNull();
+        assertThat(ragOutput.getSources().getFirst().getMetadata()).isNotNull();
     }
 }

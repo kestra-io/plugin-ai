@@ -7,11 +7,14 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +32,17 @@ class KestraKVStoreTest extends ContainerTest {
             "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
         ));
 
+        var firstMessages = List.of(
+            ChatMessage.builder()
+                .type(ChatMessageType.SYSTEM)
+                .content("You are a helpful assistant that remembers what the user says.")
+                .build(),
+            ChatMessage.builder()
+                .type(ChatMessageType.USER)
+                .content("Hello, my name is John.")
+                .build()
+        );
+
         var rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -39,15 +53,28 @@ class KestraKVStoreTest extends ContainerTest {
             )
             .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
             .memory(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("Hello, my name is John"))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofValue(firstMessages))
+            // deterministic output
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
 
-        // call it a second time, it should use the memory
+        var secondMessages = List.of(
+            ChatMessage.builder()
+                .type(ChatMessageType.SYSTEM)
+                .content("You are a helpful assistant that remembers what the user says.")
+                .build(),
+            ChatMessage.builder()
+                .type(ChatMessageType.USER)
+                .content("What's my name?")
+                .build()
+        );
+
         rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -58,13 +85,16 @@ class KestraKVStoreTest extends ContainerTest {
             )
             .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
             .memory(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("What's my name?"))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofValue(secondMessages))
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
             .build();
 
         ragOutput = rag.run(runContext);
+
         assertThat(ragOutput.getTextOutput()).isNotNull();
-        assertThat(ragOutput.getTextOutput()).contains("John");
+        assertThat(ragOutput.getTextOutput().toLowerCase()).contains("john");
     }
 }
