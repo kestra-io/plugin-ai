@@ -104,31 +104,25 @@ public class AzureOpenAI extends ModelProvider {
         var logRequestAndResponses = runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false) ||
             runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false);
 
+        AzureOpenAiChatModel.Builder defaultBuilder = AzureOpenAiChatModel.builder()
+            .deploymentName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
+            .endpoint(runContext.render(this.getEndpoint()).as(String.class).orElseThrow())
+            .serviceVersion(runContext.render(this.getServiceVersion()).as(String.class).orElse(null))
+            .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
+            .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
+            .seed(seed != null ? seed.longValue() : null)
+            .logRequestsAndResponses(logRequestAndResponses)
+            .responseFormat(configuration.computeResponseFormat(runContext))
+            .listeners(List.of(new TimingChatModelListener()))
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
         if (apiKey != null) {
-            return AzureOpenAiChatModel.builder()
+            return defaultBuilder
                 .apiKey(apiKey)
-                .deploymentName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-                .endpoint(runContext.render(this.getEndpoint()).as(String.class).orElseThrow())
-                .serviceVersion(runContext.render(this.getServiceVersion()).as(String.class).orElse(null))
-                .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
-                .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
-                .seed(seed != null ? seed.longValue() : null)
-                .logRequestsAndResponses(logRequestAndResponses)
-                .responseFormat(configuration.computeResponseFormat(runContext))
-                .listeners(List.of(new TimingChatModelListener()))
                 .build();
         } else if (tenantId != null && clientId != null && clientSecret != null) {
-            return AzureOpenAiChatModel.builder()
+            return defaultBuilder
                 .tokenCredential(credentials(runContext, tenantId, clientId, clientSecret))
-                .deploymentName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-                .endpoint(runContext.render(this.getEndpoint()).as(String.class).orElseThrow())
-                .serviceVersion(runContext.render(this.getServiceVersion()).as(String.class).orElse(null))
-                .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
-                .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
-                .seed(seed != null ? seed.longValue() : null)
-                .logRequestsAndResponses(logRequestAndResponses)
-                .responseFormat(configuration.computeResponseFormat(runContext))
-                .listeners(List.of(new TimingChatModelListener()))
                 .build();
         } else {
             throw new IllegalArgumentException("You need to set an API Key or a tenantId, clientId and clientSecret");
