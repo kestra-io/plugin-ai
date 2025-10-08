@@ -1,8 +1,6 @@
 package io.kestra.plugin.ai.rag;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -26,12 +24,14 @@ import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
@@ -41,46 +41,205 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Schema(title = "Create a Retrieval Augmented Generation (RAG) pipeline")
+    @Schema(title = "Create a Retrieval Augmented Generation (RAG) pipeline")
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Chat with your data using Retrieval Augmented Generation (RAG)",
+            title = """
+                Chat with your data using Retrieval Augmented Generation (RAG). This flow will index documents and use the RAG Chat task to interact with your data using natural language prompts. The flow contrasts prompts to LLM with and without RAG. The Chat with RAG retrieves embeddings stored in the KV Store and provides a response grounded in data rather than hallucinating.
+                WARNING: the Kestra KV embedding store is for quick prototyping only, as it stores the embedding vectors in Kestra's KV store and loads them all into memory.
+                """,
             code = """
-                id: rag_chat
+                id: rag
                 namespace: company.ai
 
                 tasks:
-                  - id: chat_with_rag
+                  - id: ingest
+                    type: io.kestra.plugin.ai.rag.IngestDocument
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-embedding-exp-03-07
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                    embeddings:
+                      type: io.kestra.plugin.ai.embeddings.KestraKVStore
+                    drop: true
+                    fromExternalURLs:
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
+
+                  - id: parallel
+                    type: io.kestra.plugin.core.flow.Parallel
+                    tasks:
+                      - id: chat_without_rag
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                        messages:
+                          - type: USER
+                            content: Which features were released in Kestra 0.24?
+
+                      - id: chat_with_rag
+                        type: io.kestra.plugin.ai.rag.ChatCompletion
+                        chatProvider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                        embeddingProvider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          modelName: gemini-embedding-exp-03-07
+                        embeddings:
+                          type: io.kestra.plugin.ai.embeddings.KestraKVStore
+                        systemMessage: You are a helpful assistant that can answer questions about Kestra.
+                        prompt: Which features were released in Kestra 0.24?
+
+                pluginDefaults:
+                  - type: io.kestra.plugin.ai.provider.GoogleGemini
+                    values:
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash"""
+        ),
+        @Example(
+            full = true,
+            title = "RAG chat with a web search content retriever (answers grounded in search results)",
+            code = """
+                id: rag_with_websearch_content_retriever
+                namespace: company.ai
+
+                tasks:
+                  - id: chat_with_rag_and_websearch_content_retriever
                     type: io.kestra.plugin.ai.rag.ChatCompletion
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.0-flash
+                      modelName: gemini-2.5-flash
                       apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                    contentRetrievers:
+                      - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                    systemMessage: You are a helpful assistant that can answer questions about Kestra.
+                    prompt: What is the latest release of Kestra?"""
+        ),
+        @Example(
+            full = true,
+            title = "Store chat memory as a Kestra KV pair",
+            code = """
+                id: chat_with_memory
+                namespace: company.ai
+
+                inputs:
+                  - id: first
+                    type: STRING
+                    defaults: Hello, my name is John and I'm from Paris
+
+                  - id: second
+                    type: STRING
+                    defaults: What's my name and where do I live?
+
+                tasks:
+                  - id: first
+                    type: io.kestra.plugin.ai.rag.ChatCompletion
+                    chatProvider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant that can answer questions about Kestra releases.
-                      - type: USER
-                        content: Which features were released in Kestra 0.24?
-                """
+                    memory:
+                      type: io.kestra.plugin.ai.memory.KestraKVStore
+                      ttl: PT1M
+                    systemMessage: You are a helpful assistant, answer concisely
+                    prompt: "{{inputs.first}}"
+
+                  - id: second
+                    type: io.kestra.plugin.ai.rag.ChatCompletion
+                    chatProvider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                    embeddingProvider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-embedding-exp-03-07
+                    embeddings:
+                      type: io.kestra.plugin.ai.embeddings.KestraKVStore
+                    memory:
+                      type: io.kestra.plugin.ai.memory.KestraKVStore
+                    systemMessage: You are a helpful assistant, answer concisely
+                    prompt: "{{inputs.second}}"
+
+                pluginDefaults:
+                  - type: io.kestra.plugin.ai.provider.GoogleGemini
+                    values:
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash"""
+        ),
+        @Example(
+            full = true,
+            title = """
+                Classify recent Kestra releases into MINOR or PATCH using a JSON schema.
+                Note: not all LLMs support structured outputs, or they may not support them when combined with tools like web search.
+                This example uses Mistral, which supports structured output with content retrievers.""",
+            code = """
+                id: chat_with_structured_output
+                namespace: company.ai
+
+                tasks:
+                  - id: categorize_releases
+                    type: io.kestra.plugin.ai.rag.ChatCompletion
+                    chatProvider:
+                      type: io.kestra.plugin.ai.provider.MistralAI
+                      apiKey: "{{ kv('MISTRAL_API_KEY') }}"
+                      modelName: open-mistral-7b
+
+                    contentRetrievers:
+                      - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        maxResults: 8
+
+                    chatConfiguration:
+                      responseFormat:
+                        type: JSON
+                        jsonSchema:
+                          type: object
+                          required: ["releases"]
+                          properties:
+                            releases:
+                              type: array
+                              minItems: 1
+                              items:
+                                type: object
+                                additionalProperties: false
+                                required: ["version", "date", "semver"]
+                                properties:
+                                  version:
+                                    type: string
+                                    description: "Release tag, e.g., 0.24.0"
+                                  date:
+                                    type: string
+                                    description: "Release date"
+                                  semver:
+                                    type: string
+                                    enum: ["MINOR", "PATCH"]
+                                  summary:
+                                    type: string
+                                    description: "Short plain-text summary (optional)"
+
+                    systemMessage: |
+                      You are a release analyst. Use the Tavily web retriever to find recent Kestra releases.
+                      Determine each release's SemVer category:
+                        - MINOR: new features, no major breaking changes (y in x.Y.z)
+                        - PATCH: bug fixes/patches only (z in x.y.Z)
+                      Return ONLY valid JSON matching the schema. No prose, no extra keys.
+
+                    prompt: |
+                      Find most recent Kestra releases (within the last ~6 months).
+                      Output their version, release date, semver category, and a one-line summary."""
         )
     },
     aliases = "io.kestra.plugin.langchain4j.rag.ChatCompletion"
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
+    @Schema(title = "System message", description = "Instruction that sets the assistant's role, tone, and constraints for this task.")
+    protected Property<String> systemMessage;
 
-    @Schema(
-        title = "Chat Messages",
-        description = "The list of chat messages for the conversation. There can be only one system message, and the last message must be a user message."
-    )
+    @Schema(title = "User prompt", description = "The user input for this run. May be templated from flow inputs.")
     @NotNull
-    private Property<List<io.kestra.plugin.ai.domain.ChatMessage>> messages;
+    protected Property<String> prompt;
 
     @Schema(
         title = "Embedding store",
@@ -91,7 +250,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
     @Schema(
         title = "Embedding model provider",
-        description = "Optional. If not set, the embedding model is created from `chatProvider`."
+        description = "Optional. If not set, the embedding model is created from `chatProvider`. Ensure the chosen chat provider supports embeddings."
     )
     @PluginProperty
     private ModelProvider embeddingProvider;
@@ -115,7 +274,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
     @Schema(
         title = "Additional content retrievers",
-        description = "Optional web or file retrievers to augment the RAG response."
+        description = "Some content retrievers like WebSearch can also be used as tools, but using them as content retrievers will ensure that they are always called whereas tools are only used when the LLM decides to."
     )
     private Property<List<ContentRetrieverProvider>> contentRetrievers;
 
@@ -133,26 +292,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
 
         try {
-            List<io.kestra.plugin.ai.domain.ChatMessage> rMessages =
-                runContext.render(messages).asList(io.kestra.plugin.ai.domain.ChatMessage.class);
-
-            if (rMessages.isEmpty()) {
-                throw new IllegalArgumentException("At least one user message must be provided.");
-            }
-
-            // Convert to LangChain4j messages
-            List<dev.langchain4j.data.message.ChatMessage> chatMessages = rMessages.stream()
-                .map(msg -> switch (msg.type()) {
-                    case SYSTEM -> SystemMessage.systemMessage(msg.content());
-                    case USER -> UserMessage.userMessage(msg.content());
-                    case AI -> AiMessage.aiMessage(msg.content());
-                })
-                .toList();
-
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatProvider.chatModel(runContext, chatConfiguration))
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
+                .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
                 .toolArgumentsErrorHandler((error, context) -> {
                     runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolArgumentsException(error);
@@ -166,11 +310,9 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 assistant.chatMemory(memory.chatMemory(runContext));
             }
 
-            // Extract the last USER message to chat
-            String userPrompt = chatMessages.getLast() instanceof UserMessage um ? um.singleText() : "";
-
-            Result<AiMessage> completion = assistant.build().chat(userPrompt);
-            runContext.logger().debug("Generated RAG completion: {}", completion.content());
+            String renderedPrompt = runContext.render(prompt).as(String.class).orElseThrow();
+            Result<AiMessage> completion = assistant.build().chat(renderedPrompt);
+            runContext.logger().debug("Generated completion: {}", completion.content());
 
             // send metrics for token usage
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
@@ -222,9 +364,14 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         if (toolContentRetrievers.isEmpty()) {
             return DefaultRetrievalAugmentor.builder().contentRetriever(contentRetriever.get()).build();
         } else {
+            // always add it first so it has precedence over the additional content retrievers
             contentRetriever.ifPresent(ct -> toolContentRetrievers.addFirst(ct));
             QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
-            return DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
+
+            // Create a query router that will route each query to the embedding store content retriever and the tools content retrievers
+            return DefaultRetrievalAugmentor.builder()
+                .queryRouter(queryRouter)
+                .build();
         }
     }
 
@@ -246,7 +393,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
     @SuperBuilder
     @Getter
-    public static class Output extends AIOutput {
+    public static class Output extends AIOutput { // we must keep this one to keep the deprecated aiResponse
         @Schema(title = "Generated text completion", description = "Deprecated. Use `textOutput` or `jsonOutput` instead.")
         @Deprecated(forRemoval = true, since = "1.0.0")
         private String completion;

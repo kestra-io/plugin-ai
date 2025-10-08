@@ -7,8 +7,6 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
-import io.kestra.plugin.ai.domain.ChatMessage;
-import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
@@ -19,7 +17,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,18 +47,7 @@ class RedisTest extends ContainerTest {
             "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
         ));
 
-        // First interaction — stores memory in Redis
-        var firstMessages = List.of(
-            ChatMessage.builder()
-                .type(ChatMessageType.SYSTEM)
-                .content("You are a helpful assistant that remembers user details.")
-                .build(),
-            ChatMessage.builder()
-                .type(ChatMessageType.USER)
-                .content("Hello, my name is John")
-                .build()
-        );
-
+        // First prompt - store memory in Redis
         var rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -77,28 +63,15 @@ class RedisTest extends ContainerTest {
                 .ttl(Property.ofValue(Duration.ofMinutes(5)))
                 .memoryId(Property.ofValue("test-memory"))
                 .build())
-            .messages(Property.ofValue(firstMessages))
-            .chatConfiguration(ChatConfiguration.builder()
-                .temperature(Property.ofValue(0.1))
-                .seed(Property.ofValue(123456789))
-                .build())
+            .prompt(Property.ofValue("Hello, my name is John"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
 
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
 
-        // Second interaction — retrieves memory from Redis
-        var secondMessages = List.of(
-            ChatMessage.builder()
-                .type(ChatMessageType.SYSTEM)
-                .content("You are a helpful assistant that remembers user details.")
-                .build(),
-            ChatMessage.builder()
-                .type(ChatMessageType.USER)
-                .content("What's my name?")
-                .build()
-        );
-
+        // Second prompt - should retrieve memory from Redis
         rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -113,11 +86,9 @@ class RedisTest extends ContainerTest {
                 .port(Property.ofValue(redisPort))
                 .memoryId(Property.ofValue("test-memory"))
                 .build())
-            .messages(Property.ofValue(secondMessages))
-            .chatConfiguration(ChatConfiguration.builder()
-                .temperature(Property.ofValue(0.1))
-                .seed(Property.ofValue(123456789))
-                .build())
+            .prompt(Property.ofValue("What's my name?"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
 
         ragOutput = rag.run(runContext);
