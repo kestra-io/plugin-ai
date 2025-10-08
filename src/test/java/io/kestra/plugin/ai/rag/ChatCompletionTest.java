@@ -9,13 +9,19 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
+import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.CodeExecution;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +33,7 @@ class ChatCompletionTest extends ContainerTest {
     private final String GOOGLE_CSI = System.getenv("GOOGLE_CSI_KEY");
     private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
     private final String RAPID_API_KEY = System.getenv("RAPID_API_KEY");
+    private final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
 
     @Inject
     private TestRunContextFactory runContextFactory;
@@ -261,6 +268,74 @@ class ChatCompletionTest extends ContainerTest {
         boolean foundParisSource = ragOutput.getSources().stream()
             .anyMatch(source -> source.getContent().contains("Paris") && source.getContent().contains("capital"));
         assertThat(foundParisSource).isTrue();
-        assertThat(ragOutput.getSources().get(0).getMetadata()).isNotNull();
+        assertThat(ragOutput.getSources().getFirst().getMetadata()).isNotNull();
+    }
+
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".*")
+    @Test
+    void rag_givenSqlDatabaseRetriever_withPostgres() throws Exception {
+        try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))) {
+            postgres.start();
+
+            String jdbcUrl = postgres.getJdbcUrl();
+            String username = postgres.getUsername();
+            String password = postgres.getPassword();
+
+            // Initialize schema and sample data
+            try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password);
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE customers (id SERIAL PRIMARY KEY, name VARCHAR(255), city VARCHAR(255));");
+                stmt.execute("INSERT INTO customers (name, city) VALUES ('Alice', 'Paris'), ('Bob', 'Berlin');");
+            }
+
+            RunContext runContext = runContextFactory.of("namespace", Map.of(
+                "jdbcUrl", jdbcUrl,
+                "username", username,
+                "password", password,
+                "apiKey", OPENAI_API_KEY,
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "https://api.openai.com/v1"
+            ));
+
+            var sqlRetriever = io.kestra.plugin.ai.retriever.SqlDatabaseRetriever.builder()
+                .databaseType(Property.ofValue(io.kestra.plugin.ai.retriever.SqlDatabaseRetriever.DatabaseType.POSTGRESQL))
+                .jdbcUrl(Property.ofExpression("{{ jdbcUrl }}"))
+                .username(Property.ofExpression("{{ username }}"))
+                .password(Property.ofExpression("{{ password }}"))
+                .provider(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build()
+                )
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .build();
+
+            var rag = ChatCompletion.builder()
+                .chatProvider(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build()
+                )
+                .prompt(Property.ofValue("List all customers and their cities."))
+                .contentRetrievers(Property.ofValue(List.of(sqlRetriever)))
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .build();
+
+            var ragOutput = rag.run(runContext);
+
+            assertThat(ragOutput.getTextOutput()).isNotNull();
+            assertThat(ragOutput.getTextOutput()).containsAnyOf("Alice", "Bob");
+            assertThat(ragOutput.getTextOutput()).containsAnyOf("Paris", "Berlin");
+
+            postgres.stop();
+        }
     }
 }

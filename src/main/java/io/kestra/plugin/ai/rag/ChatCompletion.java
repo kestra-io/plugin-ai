@@ -24,14 +24,12 @@ import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
@@ -234,6 +232,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     aliases = "io.kestra.plugin.langchain4j.rag.ChatCompletion"
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
+
     @Schema(title = "System message", description = "Instruction that sets the assistant's role, tone, and constraints for this task.")
     protected Property<String> systemMessage;
 
