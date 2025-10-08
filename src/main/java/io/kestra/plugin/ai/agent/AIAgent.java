@@ -9,11 +9,14 @@ import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.executions.TaskRun;
+import io.kestra.core.models.hierarchies.*;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.OutputFilesInterface;
 import io.kestra.core.models.tasks.RunnableTask;
@@ -21,6 +24,7 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.models.tasks.runners.ScriptService;
 import io.kestra.core.runners.FilesService;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.GraphUtils;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
@@ -351,7 +355,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         title = "Content retrievers",
         description = "Some content retrievers, like WebSearch, can also be used as tools. However, when configured as content retrievers, they will always be used, whereas tools are only invoked when the LLM decides to use them."
     )
-    private Property<List<ContentRetrieverProvider>> contentRetrievers;
+    @PluginProperty
+    private List<ContentRetrieverProvider> contentRetrievers;
 
     @Schema(
         title = "Agent memory",
@@ -360,6 +365,31 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     private MemoryProvider memory;
 
     private Property<List<String>> outputFiles;
+
+    @Override
+    public AbstractGraph graph(TaskRun taskRun, List<String> values, RelationType relationType) {
+        GraphTask root = new GraphTask(this, taskRun, values, relationType);
+
+        List<CustomGraphNode> nodes = new ArrayList<>();
+        nodes.add(new CustomGraphNode("provider", provider.getType(), provider));
+        if (this.tools != null) {
+            int count = 0;
+            for (ToolProvider tool : this.tools) {
+                nodes.add(new CustomGraphNode("tool-" + count++, tool.getType(), tool));
+            }
+        }
+        if (this.contentRetrievers != null) {
+            int count = 0;
+            for (ContentRetrieverProvider contentRetriever : this.contentRetrievers) {
+                nodes.add(new CustomGraphNode("contentRetriever-" + count++, contentRetriever.getType(), contentRetriever));
+            }
+        }
+        if (this.memory != null) {
+            nodes.add(new CustomGraphNode("memory", memory.getType(), memory));
+        }
+
+        return new CustomGraphCluster(this.id, root, nodes);
+    }
 
     @Override
     public AIOutput run(RunContext runContext) throws Exception {
@@ -385,7 +415,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 agent.chatMemory(memory.chatMemory(runContext));
             }
 
-            List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
+            List<ContentRetriever> toolContentRetrievers = ListUtils.emptyOnNull(this.contentRetrievers).stream()
                 .map(throwFunction(provider -> provider.contentRetriever(runContext)))
                 .toList();
             if (!toolContentRetrievers.isEmpty()) {
@@ -418,6 +448,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             TimingChatModelListener.clear();
         }
     }
+
+
 
     // output files should all be inside the working directory
     private Map<String, URI> gatherOutputFiles(RunContext runContext) throws Exception {
