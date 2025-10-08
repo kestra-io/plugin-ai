@@ -7,8 +7,6 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.ContainerTest;
-import io.kestra.plugin.ai.domain.ChatMessage;
-import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
@@ -36,16 +34,8 @@ class JSONStructuredExtractionTest extends ContainerTest {
     void testJSONStructuredGemini() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.SYSTEM)
-                    .content("You extract structured JSON data from natural language text.")
-                    .build(),
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Hello, my name is John. I was born on January 1, 2000.")
-                    .build()
-            ),
+            "prompt", "Hello, my name is John. I was born on January 1, 2000.",
+            "systemMessage", "You extract structured JSON data from natural language text.",
             "jsonFields", List.of("name", "date"),
             "schemaName", "Person",
             "modelName", "gemini-2.0-flash",
@@ -53,7 +43,8 @@ class JSONStructuredExtractionTest extends ContainerTest {
         ));
 
         JSONStructuredExtraction task = JSONStructuredExtraction.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
+            .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofExpression("{{ systemMessage }}"))
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(GoogleGemini.builder()
@@ -79,12 +70,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
     void testJSONStructuredOllama() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Hello, my name is Alice, I live in London.")
-                    .build()
-            ),
+            "prompt", "Hello, my name is Alice, I live in London.",
             "schemaName", "Person",
             "jsonFields", List.of("name", "city"),
             "modelName", "tinydolphin",
@@ -92,7 +78,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
         ));
 
         JSONStructuredExtraction task = JSONStructuredExtraction.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
+            .prompt(Property.ofExpression("{{ prompt }}"))
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(Ollama.builder()
@@ -117,16 +103,8 @@ class JSONStructuredExtractionTest extends ContainerTest {
     void testJSONStructuredOpenAI() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.SYSTEM)
-                    .content("You extract structured JSON data from text following the given schema.")
-                    .build(),
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Hello, my name is John. I was born on January 1, 2000.")
-                    .build()
-            ),
+            "prompt", "Hello, my name is John. I was born on January 1, 2000.",
+            "systemMessage", "You extract structured JSON data from text following the given schema.",
             "jsonFields", List.of("name", "date"),
             "schemaName", "Person",
             "modelName", "gpt-4o-mini",
@@ -135,7 +113,8 @@ class JSONStructuredExtractionTest extends ContainerTest {
         ));
 
         JSONStructuredExtraction task = JSONStructuredExtraction.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
+            .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofExpression("{{ systemMessage }}"))
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(OpenAI.builder()

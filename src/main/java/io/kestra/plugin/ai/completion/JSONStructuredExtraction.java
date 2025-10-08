@@ -1,6 +1,5 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -21,7 +20,6 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
-import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,33 +46,30 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: json_structured_extraction
-                namespace: company.ai
+                    id: json_structured_extraction
+                    namespace: company.ai
 
-                tasks:
-                  - id: extract_person
-                    type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
-                    schemaName: Person
-                    jsonFields:
-                      - name
-                      - city
-                      - country
-                      - email
-                    messages:
-                      - type: SYSTEM
-                        content: You extract structured data in JSON format.
-                      - type: USER
-                        content: |
+                    tasks:
+                      - id: extract_person
+                        type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
+                        schemaName: Person
+                        jsonFields:
+                          - name
+                          - city
+                          - country
+                          - email
+                        prompt: |
                           From the text below, extract the person's name, city, and email.
                           If a field is missing, leave it blank.
 
                           Text:
                           "Hi! I'm John Smith from Paris, France. You can reach me at john.smith@example.com."
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.0-flash
-                """
+                        systemMessage: You extract structured data in JSON format.
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                    """
             }
         ),
         @Example(
@@ -82,34 +77,31 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: json_structured_extraction_order
-                namespace: company.ai
+                    id: json_structured_extraction_order
+                    namespace: company.ai
 
-                tasks:
-                  - id: extract_order
-                    type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
-                    schemaName: Order
-                    jsonFields:
-                      - order_id
-                      - customer_name
-                      - city
-                      - total_amount
-                    messages:
-                      - type: SYSTEM
-                        content: You are a precise JSON data extraction assistant.
-                      - type: USER
-                        content: |
+                    tasks:
+                      - id: extract_order
+                        type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
+                        schemaName: Order
+                        jsonFields:
+                          - order_id
+                          - customer_name
+                          - city
+                          - total_amount
+                        prompt: |
                           Extract the order_id, customer_name, city, and total_amount from the message.
                           For the total amount, keep only the number without the currency symbol.
                           Return only JSON with the requested keys.
 
                           Message:
                           "Order #A-1043 for Jane Doe, shipped to Berlin. Total: 249.99 EUR."
-                    provider:
-                      type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
-                      modelName: gpt-4o-mini
-                """
+                        systemMessage: You are a precise JSON data extraction assistant.
+                        provider:
+                          type: io.kestra.plugin.ai.provider.OpenAI
+                          apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                          modelName: gpt-5-mini
+                    """
             }
         )
     },
@@ -117,12 +109,11 @@ import java.util.List;
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
-    @Schema(
-        title = "Chat Messages",
-        description = "The list of chat messages for the extraction context. There can be only one system message, and the last message must be a user message."
-    )
-    @NotNull
-    private Property<List<ChatMessage>> messages;
+    @Schema(title = "Text prompt", description = "The input text for structured JSON extraction.")
+    private Property<String> prompt;
+
+    @Schema(title = "System message", description = "Optional system instruction for the model.")
+    private Property<String> systemMessage;
 
     @Schema(title = "Schema Name", description = "The name of the JSON schema for structured extraction")
     @NotNull
@@ -147,25 +138,15 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     public JSONStructuredExtraction.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Render inputs
-        List<ChatMessage> rMessages = runContext.render(messages).asList(ChatMessage.class);
+        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow(() ->
+            new IllegalArgumentException("Prompt must be provided for structured extraction"));
+
         String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
 
-        if (rMessages.isEmpty()) {
-            throw new IllegalArgumentException("At least one user message must be provided for structured extraction");
-        }
+        String rSystemMessage = runContext.render(systemMessage).as(String.class)
+            .orElse("You are a structured JSON extraction assistant. Always respond with valid JSON.");
 
-        // Convert messages to LangChain4j messages
-        List<dev.langchain4j.data.message.ChatMessage> chatMessages = rMessages.stream()
-            .map(msg -> switch (msg.type()) {
-                case SYSTEM -> SystemMessage.systemMessage(msg.content());
-                case USER -> UserMessage.userMessage(msg.content());
-                case AI -> AiMessage.aiMessage(msg.content());
-            })
-            .toList();
-
-        // Build JSON schema
         ResponseFormat responseFormat = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
             .jsonSchema(JsonSchema.builder()
@@ -174,22 +155,21 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
                 .build())
             .build();
 
-        // Build chat request
         ChatRequest chatRequest = ChatRequest.builder()
             .parameters(ChatRequestParameters.builder()
                 .responseFormat(responseFormat)
                 .build())
-            .messages(chatMessages)
+            .messages(List.of(
+                SystemMessage.systemMessage(rSystemMessage),
+                UserMessage.userMessage(rPrompt)
+            ))
             .build();
 
-        // Get model
         ChatModel model = this.provider.chatModel(runContext, configuration);
 
-        // Execute
         ChatResponse answer = model.chat(chatRequest);
         logger.debug("Generated Structured Extraction: {}", answer.aiMessage().text());
 
-        // Send metrics for token usage
         TokenUsage tokenUsage = TokenUsage.from(answer.tokenUsage());
         AIUtils.sendMetrics(runContext, tokenUsage);
 
