@@ -303,19 +303,19 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     },
     metrics = {
         @Metric(
-            name = "ai.token.usage.input.count",
+            name = "input.token.count",
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) input token count"
         ),
         @Metric(
-            name = "ai.token.usage.output.count",
+            name = "output.token.count",
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) output token count"
         ),
         @Metric(
-            name = "ai.token.usage.token.count",
+            name = "total.token.count",
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) total token count"

@@ -9,6 +9,7 @@ import dev.langchain4j.data.document.splitter.*;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.IngestionResult;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -68,6 +69,32 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         ),
+    },
+    metrics = {
+        @Metric(
+            name = "indexed.documents",
+            type = Counter.TYPE,
+            unit = "records",
+            description = "Number of indexed documents"
+        ),
+        @Metric(
+            name = "input.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) input token count"
+        ),
+        @Metric(
+            name = "output.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) output token count"
+        ),
+        @Metric(
+            name = "total.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) total token count"
+        )
     },
     aliases = "io.kestra.plugin.langchain4j.rag.IngestDocument"
 )
@@ -157,16 +184,16 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         EmbeddingStoreIngestor ingestor = builder.build();
         IngestionResult result = ingestor.ingest(documents);
 
-        runContext.metric(Counter.of("indexedDocuments", documents.size()));
+        runContext.metric(Counter.of("indexed.documents", documents.size()));
         if (result.tokenUsage() != null) {
             if (result.tokenUsage().inputTokenCount() != null) {
-                runContext.metric(Counter.of("inputTokenCount", result.tokenUsage().inputTokenCount()));
+                runContext.metric(Counter.of("input.token.count", result.tokenUsage().inputTokenCount()));
             }
             if (result.tokenUsage().outputTokenCount() != null) {
-                runContext.metric(Counter.of("outputTokenCount", result.tokenUsage().outputTokenCount()));
+                runContext.metric(Counter.of("output.token.count", result.tokenUsage().outputTokenCount()));
             }
             if (result.tokenUsage().totalTokenCount() != null) {
-                runContext.metric(Counter.of("totalTokenCount", result.tokenUsage().totalTokenCount()));
+                runContext.metric(Counter.of("total.token.count", result.tokenUsage().totalTokenCount()));
             }
         }
 

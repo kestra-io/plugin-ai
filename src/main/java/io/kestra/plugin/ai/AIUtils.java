@@ -35,9 +35,9 @@ public final class AIUtils {
 
     public static void sendMetrics(RunContext runContext, TokenUsage tokenUsage) {
         if (tokenUsage != null) {
-            runContext.metric(Counter.of("ai.token.usage.input.count", "Large Language Model (LLM) input token count", orZero(tokenUsage.getInputTokenCount())));
-            runContext.metric(Counter.of("ai.token.usage.output.count", "Large Language Model (LLM) output token count", orZero(tokenUsage.getOutputTokenCount())));
-            runContext.metric(Counter.of("ai.token.usage.token.count", "Large Language Model (LLM) total token count", orZero(tokenUsage.getTotalTokenCount())));
+            runContext.metric(Counter.of("input.token.count", "Large Language Model (LLM) input token count", orZero(tokenUsage.getInputTokenCount())));
+            runContext.metric(Counter.of("output.token.count", "Large Language Model (LLM) output token count", orZero(tokenUsage.getOutputTokenCount())));
+            runContext.metric(Counter.of("total.token.count", "Large Language Model (LLM) total token count", orZero(tokenUsage.getTotalTokenCount())));
         }
     }
 
