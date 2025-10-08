@@ -113,7 +113,10 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     private Property<String> prompt;
 
     @Schema(title = "System message", description = "Optional system instruction for the model.")
-    private Property<String> systemMessage;
+    @Builder.Default
+    private Property<String> systemMessage = Property.ofValue(
+        "You are a structured JSON extraction assistant. Always respond with valid JSON."
+    );
 
     @Schema(title = "Schema Name", description = "The name of the JSON schema for structured extraction")
     @NotNull
@@ -144,8 +147,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
 
-        String rSystemMessage = runContext.render(systemMessage).as(String.class)
-            .orElse("You are a structured JSON extraction assistant. Always respond with valid JSON.");
+        String rSystemMessage = runContext.render(systemMessage).as(String.class).orElseThrow();
 
         ResponseFormat responseFormat = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)

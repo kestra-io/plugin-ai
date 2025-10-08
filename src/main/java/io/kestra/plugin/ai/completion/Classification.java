@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @SuperBuilder
 @ToString
@@ -68,8 +69,14 @@ public class Classification extends Task implements RunnableTask<Classification.
     @NotNull
     private Property<String> prompt;
 
-    @Schema(title = "Optional system message", description = "Instruction message for the model. Defaults to a standard classification instruction.")
-    private Property<String> systemMessage;
+    @Schema(
+        title = "Optional system message",
+        description = "Instruction message for the model. Defaults to a standard classification instruction using the provided classes."
+    )
+    @Builder.Default
+    private Property<String> systemMessage = Property.ofExpression(
+        "Respond by only one of the following classes by typing just the exact class name: {{ classes }}"
+    );
 
     @Schema(title = "Classification Options", description = "The list of possible classification categories")
     @NotNull
@@ -92,11 +99,9 @@ public class Classification extends Task implements RunnableTask<Classification.
 
         String rPrompt = runContext.render(prompt).as(String.class).orElseThrow();
         List<String> rClasses = runContext.render(classes).asList(String.class);
-        String rSystemMessage = runContext.render(systemMessage).as(String.class)
-            .orElse("Respond by only one of the following classes by typing just the exact class name: " + rClasses);
+        String rSystemMessage = runContext.render(systemMessage).as(String.class, Map.of("classes", rClasses)).orElseThrow();
 
         List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
-
         chatMessages.add(SystemMessage.systemMessage(rSystemMessage));
         chatMessages.add(UserMessage.userMessage(rPrompt));
 
