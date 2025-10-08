@@ -5,8 +5,6 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
-import io.kestra.plugin.ai.domain.ChatMessage;
-import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
@@ -34,23 +32,15 @@ class ClassificationTest extends ContainerTest {
     void testClassificationGemini() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.SYSTEM)
-                    .content("You are a text classification assistant.")
-                    .build(),
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Is 'This is a joke' a good joke?")
-                    .build()
-            ),
+            "prompt", "Is 'This is a joke' a good joke?",
             "classes", List.of("true", "false"),
             "apiKey", GEMINI_API_KEY,
             "modelName", "gemini-2.0-flash"
         ));
 
         Classification task = Classification.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
+            .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofValue("You are a text classification assistant."))
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(GoogleGemini.builder()
                 .type(GoogleGemini.class.getName())
@@ -71,19 +61,14 @@ class ClassificationTest extends ContainerTest {
     void testClassificationOllama() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Is 'This is a joke' a good joke?")
-                    .build()
-            ),
+            "prompt", "Is 'This is a joke' a good joke?",
             "classes", List.of("true", "false"),
             "modelName", "tinydolphin",
             "endpoint", ollamaEndpoint
         ));
 
         Classification task = Classification.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
+            .prompt(Property.ofExpression("{{ prompt }}"))
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(Ollama.builder()
                 .type(Ollama.class.getName())
@@ -105,16 +90,7 @@ class ClassificationTest extends ContainerTest {
     void testClassificationOpenAI() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.SYSTEM)
-                    .content("You are a text classification assistant.")
-                    .build(),
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Is 'This is a joke' a good joke?")
-                    .build()
-            ),
+            "prompt", "Is 'This is a joke' a good joke?",
             "classes", List.of("true", "false"),
             "apiKey", "demo",
             "modelName", "gpt-4o-mini",
@@ -122,7 +98,8 @@ class ClassificationTest extends ContainerTest {
         ));
 
         Classification task = Classification.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
+            .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofValue("You are a text classification assistant."))
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(OpenAI.builder()
                 .type(OpenAI.class.getName())

@@ -1,6 +1,5 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -15,7 +14,6 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
-import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,26 +41,22 @@ import java.util.List;
             full = true,
             code = {
                 """
-                    id: text_categorization
-                    namespace: company.ai
+                id: text_categorization
+                namespace: company.ai
 
-                    tasks:
-                      - id: categorize
-                        type: io.kestra.plugin.ai.completion.Classification
-                        messages:
-                          - type: SYSTEM
-                            content: You are a sentiment analysis assistant. Classify text as positive, negative or neutral.
-                          - type: USER
-                            content: "I absolutely love this product, it's fantastic!"
-                        classes:
-                          - positive
-                          - negative
-                          - neutral
-                        provider:
-                          type: io.kestra.plugin.ai.provider.GoogleGemini
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
-                          modelName: gemini-2.0-flash
-                    """
+                tasks:
+                  - id: categorize
+                    type: io.kestra.plugin.ai.completion.Classification
+                    prompt: "Categorize the sentiment of: I love this product!"
+                    classes:
+                      - positive
+                      - negative
+                      - neutral
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.0-flash
+                """
             }
         )
     },
@@ -70,12 +64,12 @@ import java.util.List;
 )
 public class Classification extends Task implements RunnableTask<Classification.Output> {
 
-    @Schema(
-        title = "Chat Messages",
-        description = "The list of chat messages for the current conversation. There can be only one system message, and the last message must be a user message."
-    )
+    @Schema(title = "Text prompt", description = "The input text to classify")
     @NotNull
-    private Property<List<ChatMessage>> messages;
+    private Property<String> prompt;
+
+    @Schema(title = "Optional system message", description = "Instruction message for the model. Defaults to a standard classification instruction.")
+    private Property<String> systemMessage;
 
     @Schema(title = "Classification Options", description = "The list of possible classification categories")
     @NotNull
@@ -96,55 +90,21 @@ public class Classification extends Task implements RunnableTask<Classification.
     public Classification.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Render messages and classes
-        List<io.kestra.plugin.ai.domain.ChatMessage> rMessages =
-            runContext.render(messages).asList(io.kestra.plugin.ai.domain.ChatMessage.class);
+        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow();
         List<String> rClasses = runContext.render(classes).asList(String.class);
+        String rSystemMessage = runContext.render(systemMessage).as(String.class)
+            .orElse("Respond by only one of the following classes by typing just the exact class name: " + rClasses);
 
-        if (rMessages.isEmpty()) {
-            throw new IllegalArgumentException("At least one user message must be provided");
-        }
-
-        // Convert provided messages to LangChain4j format
         List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
 
-        // Add system message for classification instruction only if classes are provided
-        if (rClasses != null && !rClasses.isEmpty()) {
-            chatMessages.add(SystemMessage.systemMessage(
-                "Respond by only one of the following classes by typing just the exact class name: " + rClasses
-            ));
-        }
+        chatMessages.add(SystemMessage.systemMessage(rSystemMessage));
+        chatMessages.add(UserMessage.userMessage(rPrompt));
 
-        // Add all provided messages
-        chatMessages.addAll(
-            rMessages.stream()
-                .map(dto -> switch (dto.type()) {
-                    case SYSTEM -> SystemMessage.systemMessage(dto.content());
-                    case AI -> AiMessage.aiMessage(dto.content());
-                    case USER -> UserMessage.userMessage(dto.content());
-                })
-                .toList()
-        );
-
-        // Validate structure
-        long nbSystem = chatMessages.stream()
-            .filter(msg -> msg.type() == dev.langchain4j.data.message.ChatMessageType.SYSTEM)
-            .count();
-        if (nbSystem > 2) { // counting the one for classes
-            throw new IllegalArgumentException("Only one system message is allowed");
-        }
-        if (chatMessages.getLast().type() != dev.langchain4j.data.message.ChatMessageType.USER) {
-            throw new IllegalArgumentException("The last message must be a user message");
-        }
-
-        // Get model
         ChatModel model = this.provider.chatModel(runContext, configuration);
-
-        // Perform classification
         ChatResponse response = model.chat(chatMessages);
+
         logger.debug("Generated Classification: {}", response.aiMessage().text());
 
-        // Send token usage metrics
         TokenUsage tokenUsage = TokenUsage.from(response.tokenUsage());
         AIUtils.sendMetrics(runContext, tokenUsage);
 
