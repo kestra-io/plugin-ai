@@ -7,6 +7,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterAll;
@@ -74,7 +76,7 @@ class StreamableHttpMcpClientTest {
                 StreamableHttpMcpClient.builder().url(Property.ofExpression("{{mcpUrl}}")).timeout(Property.ofValue(Duration.ofSeconds(60))).build())
             )
             .messages(Property.ofValue(
-                List.of(ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("What is 5+12? Use the provided tool to answer and always assume that the tool is correct.").build()
+                List.of(ChatMessage.builder().type(ChatMessageType.USER).content("What is 5+12? Use the provided tool to answer and always assume that the tool is correct.").build()
                 )))
             .build();
 

@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai.completion;
 
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -45,29 +46,30 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: json_structured_extraction
-                namespace: company.ai
+                    id: json_structured_extraction
+                    namespace: company.ai
 
-                tasks:
-                  - id: extract_person
-                    type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
-                    schemaName: Person
-                    jsonFields:
-                      - name
-                      - city
-                      - country
-                      - email
-                    prompt: |
-                      From the text below, extract the person's name, city, and email.
-                      If a field is missing, leave it blank.
-                      
-                      Text:
-                      "Hi! I'm John Smith from Paris, France. You can reach me at john.smith@example.com."
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                """
+                    tasks:
+                      - id: extract_person
+                        type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
+                        schemaName: Person
+                        jsonFields:
+                          - name
+                          - city
+                          - country
+                          - email
+                        prompt: |
+                          From the text below, extract the person's name, city, and email.
+                          If a field is missing, leave it blank.
+
+                          Text:
+                          "Hi! I'm John Smith from Paris, France. You can reach me at john.smith@example.com."
+                        systemMessage: You extract structured data in JSON format.
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                    """
             }
         ),
         @Example(
@@ -75,30 +77,31 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: json_structured_extraction_order
-                namespace: company.ai
+                    id: json_structured_extraction_order
+                    namespace: company.ai
 
-                tasks:
-                  - id: extract_order
-                    type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
-                    schemaName: Order
-                    jsonFields:
-                      - order_id
-                      - customer_name
-                      - city
-                      - total_amount
-                    prompt: |
-                      Extract the order_id, customer_name, city, and total_amount from the message. 
-                      For the total amount, keep only the number without the currency symbol. 
-                      Return only JSON with the requested keys. 
-                      
-                      Message:
-                      "Order #A-1043 for Jane Doe, shipped to Berlin. Total: 249.99 EUR."
-                    provider:
-                      type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
-                      modelName: gpt-5-mini
-                """
+                    tasks:
+                      - id: extract_order
+                        type: io.kestra.plugin.ai.completion.JSONStructuredExtraction
+                        schemaName: Order
+                        jsonFields:
+                          - order_id
+                          - customer_name
+                          - city
+                          - total_amount
+                        prompt: |
+                          Extract the order_id, customer_name, city, and total_amount from the message.
+                          For the total amount, keep only the number without the currency symbol.
+                          Return only JSON with the requested keys.
+
+                          Message:
+                          "Order #A-1043 for Jane Doe, shipped to Berlin. Total: 249.99 EUR."
+                        systemMessage: You are a precise JSON data extraction assistant.
+                        provider:
+                          type: io.kestra.plugin.ai.provider.OpenAI
+                          apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                          modelName: gpt-5-mini
+                    """
             }
         )
     },
@@ -106,9 +109,14 @@ import java.util.List;
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
-    @Schema(title = "Text prompt", description = "The input prompt for the AI model")
-    @NotNull
+    @Schema(title = "Text prompt", description = "The input text for structured JSON extraction.")
     private Property<String> prompt;
+
+    @Schema(title = "System message", description = "Optional system instruction for the model.")
+    @Builder.Default
+    private Property<String> systemMessage = Property.ofValue(
+        "You are a structured JSON extraction assistant. Always respond with valid JSON."
+    );
 
     @Schema(title = "Schema Name", description = "The name of the JSON schema for structured extraction")
     @NotNull
@@ -133,41 +141,42 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     public JSONStructuredExtraction.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Render input properties
-        String renderedPrompt = runContext.render(prompt).as(String.class).orElseThrow();
-        String renderedSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
-        List<String> renderedJsonFields = Property.asList(jsonFields, runContext, String.class);
+        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow(() ->
+            new IllegalArgumentException("Prompt must be provided for structured extraction"));
 
-        // Get the appropriate model from the factory
-        ChatModel model = this.provider.chatModel(runContext, configuration);
+        String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
+        List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
 
-        // Build JSON schema
+        String rSystemMessage = runContext.render(systemMessage).as(String.class).orElseThrow();
+
         ResponseFormat responseFormat = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
             .jsonSchema(JsonSchema.builder()
-                .name(renderedSchemaName)
-                .rootElement(buildDynamicSchema(renderedJsonFields))
+                .name(rSchemaName)
+                .rootElement(buildDynamicSchema(rJsonFields))
                 .build())
             .build();
 
-        // Build request
         ChatRequest chatRequest = ChatRequest.builder()
-            .parameters(ChatRequestParameters.builder().responseFormat(responseFormat).build())
-            .messages(UserMessage.from(renderedPrompt))
+            .parameters(ChatRequestParameters.builder()
+                .responseFormat(responseFormat)
+                .build())
+            .messages(List.of(
+                SystemMessage.systemMessage(rSystemMessage),
+                UserMessage.userMessage(rPrompt)
+            ))
             .build();
 
+        ChatModel model = this.provider.chatModel(runContext, configuration);
 
-        // Generate structured JSON output
         ChatResponse answer = model.chat(chatRequest);
+        logger.debug("Generated Structured Extraction: {}", answer.aiMessage().text());
 
-        logger.debug("Generated Structured Extraction: {}", answer);
-
-        // send metrics for token usage
         TokenUsage tokenUsage = TokenUsage.from(answer.tokenUsage());
         AIUtils.sendMetrics(runContext, tokenUsage);
 
         return Output.builder()
-            .schemaName(renderedSchemaName)
+            .schemaName(rSchemaName)
             .extractedJson(answer.aiMessage().text())
             .tokenUsage(tokenUsage)
             .finishReason(answer.finishReason())
@@ -196,5 +205,4 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         schemaBuilder.required(fields);
         return schemaBuilder.build();
     }
-
 }

@@ -12,6 +12,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.micronaut.data.model.Pageable;
 import jakarta.inject.Inject;
@@ -65,8 +67,8 @@ class KestraFlowTest {
             )
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to execute a flow to say Hello World, please answer with its execution id.").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute a flow to say Hello World, please answer with its execution id.").build()
                 )))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
@@ -123,8 +125,8 @@ class KestraFlowTest {
             )
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to execute a flow to say Hello World, please return its response as a valid JSON.").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute a flow to say Hello World, please return its response as a valid JSON.").build()
                 )))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder()
@@ -196,8 +198,8 @@ class KestraFlowTest {
             )
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("""
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("""
                         I want to execute a flow to say Hello World.
                         Call it with the input id 'name' value 'John' and add a label key 'llm' value 'true'.""").build()
                 )))
@@ -259,8 +261,8 @@ class KestraFlowTest {
             )
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("I want to execute the flow 'hello-world' from the namespace 'company.team', please answer with its execution id.").build()
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute the flow 'hello-world' from the namespace 'company.team', please answer with its execution id.").build()
                 )))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())

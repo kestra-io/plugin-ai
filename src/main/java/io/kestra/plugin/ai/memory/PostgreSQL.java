@@ -75,6 +75,7 @@ public class PostgreSQL extends MemoryProvider {
     private Property<String> host;
 
     @Schema(title = "PostgreSQL port", description = "The port of your PostgreSQL server")
+    @Builder.Default
     private Property<Integer> port = Property.ofValue(5432);
 
     @NotNull

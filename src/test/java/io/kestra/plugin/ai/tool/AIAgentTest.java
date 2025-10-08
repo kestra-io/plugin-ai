@@ -7,6 +7,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -52,8 +54,8 @@ class AIAgentTest {
             ))
             .messages(Property.ofValue(
                 List.of(
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.SYSTEM).content("You are an AI agent, summarize the user message then translate it in french using the provided tool.").build(),
-                    ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("""
+                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, summarize the user message then translate it in french using the provided tool.").build(),
+                    ChatMessage.builder().type(ChatMessageType.USER).content("""
                         Each flow can produce outputs that can be consumed by other flows. This is a list property, so that your flow can produce as many outputs as you need.
                         Each output needs to have an `id` (the name of the output), a `type` (the same types you know from inputs e.g., STRING, URI or JSON), and `value`, which is the actual output value that will be stored in internal storage and passed to other flows when needed.""").build()
                 )))

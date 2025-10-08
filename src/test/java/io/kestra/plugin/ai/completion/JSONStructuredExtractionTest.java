@@ -10,17 +10,17 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
@@ -35,14 +35,16 @@ class JSONStructuredExtractionTest extends ContainerTest {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
             "prompt", "Hello, my name is John. I was born on January 1, 2000.",
+            "systemMessage", "You extract structured JSON data from natural language text.",
             "jsonFields", List.of("name", "date"),
             "schemaName", "Person",
-            "modelName", "gemini-1.5-flash",
+            "modelName", "gemini-2.0-flash",
             "apiKey", GEMINI_API_KEY
         ));
 
         JSONStructuredExtraction task = JSONStructuredExtraction.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofExpression("{{ systemMessage }}"))
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(GoogleGemini.builder()
@@ -68,9 +70,9 @@ class JSONStructuredExtractionTest extends ContainerTest {
     void testJSONStructuredOllama() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
-            "prompt", "Hello, my name is Alice, I live in London",
+            "prompt", "Hello, my name is Alice, I live in London.",
             "schemaName", "Person",
-            "jsonFields", List.of("name", "City"),
+            "jsonFields", List.of("name", "city"),
             "modelName", "tinydolphin",
             "endpoint", ollamaEndpoint
         ));
@@ -102,6 +104,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
         // GIVEN
         RunContext runContext = runContextFactory.of(Map.of(
             "prompt", "Hello, my name is John. I was born on January 1, 2000.",
+            "systemMessage", "You extract structured JSON data from text following the given schema.",
             "jsonFields", List.of("name", "date"),
             "schemaName", "Person",
             "modelName", "gpt-4o-mini",
@@ -111,13 +114,14 @@ class JSONStructuredExtractionTest extends ContainerTest {
 
         JSONStructuredExtraction task = JSONStructuredExtraction.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofExpression("{{ systemMessage }}"))
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(OpenAI.builder()
                 .type(OpenAI.class.getName())
                 .modelName(Property.ofExpression("{{ modelName }}"))
                 .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl}}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
                 .build()
             )
             .build();

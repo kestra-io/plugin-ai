@@ -35,13 +35,13 @@ class ClassificationTest extends ContainerTest {
             "prompt", "Is 'This is a joke' a good joke?",
             "classes", List.of("true", "false"),
             "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-1.5-flash"
-
+            "modelName", "gemini-2.0-flash"
         ));
 
         Classification task = Classification.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
-            .classes(Property.ofValue(List.of("{{ classes }}")))
+            .systemMessage(Property.ofValue("You are a text classification assistant."))
+            .classes(Property.ofExpression("{{ classes }}"))
             .provider(GoogleGemini.builder()
                 .type(GoogleGemini.class.getName())
                 .apiKey(Property.ofExpression("{{ apiKey }}"))
@@ -57,7 +57,6 @@ class ClassificationTest extends ContainerTest {
         assertThat(runOutput.getClassification(), notNullValue());
     }
 
-
     @Test
     void testClassificationOllama() throws Exception {
         // GIVEN
@@ -70,7 +69,7 @@ class ClassificationTest extends ContainerTest {
 
         Classification task = Classification.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
-            .classes(Property.ofValue(List.of("{{ classes }}")))
+            .classes(Property.ofExpression("{{ classes }}"))
             .provider(Ollama.builder()
                 .type(Ollama.class.getName())
                 .modelName(Property.ofExpression("{{ modelName }}"))
@@ -86,7 +85,6 @@ class ClassificationTest extends ContainerTest {
         assertThat(runOutput.getClassification(), notNullValue());
     }
 
-
     @Test
     @Disabled("demo apikey has quotas")
     void testClassificationOpenAI() throws Exception {
@@ -101,7 +99,8 @@ class ClassificationTest extends ContainerTest {
 
         Classification task = Classification.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
-            .classes(Property.ofValue(List.of("{{ classes }}")))
+            .systemMessage(Property.ofValue("You are a text classification assistant."))
+            .classes(Property.ofExpression("{{ classes }}"))
             .provider(OpenAI.builder()
                 .type(OpenAI.class.getName())
                 .apiKey(Property.ofExpression("{{ apiKey }}"))

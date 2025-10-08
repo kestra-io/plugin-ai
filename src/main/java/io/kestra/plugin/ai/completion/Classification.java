@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai.completion;
 
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -21,7 +22,9 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @SuperBuilder
 @ToString
@@ -66,6 +69,15 @@ public class Classification extends Task implements RunnableTask<Classification.
     @NotNull
     private Property<String> prompt;
 
+    @Schema(
+        title = "Optional system message",
+        description = "Instruction message for the model. Defaults to a standard classification instruction using the provided classes."
+    )
+    @Builder.Default
+    private Property<String> systemMessage = Property.ofExpression(
+        "Respond by only one of the following classes by typing just the exact class name: {{ classes }}"
+    );
+
     @Schema(title = "Classification Options", description = "The list of possible classification categories")
     @NotNull
     private Property<List<String>> classes;
@@ -85,28 +97,26 @@ public class Classification extends Task implements RunnableTask<Classification.
     public Classification.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Render input properties
-        String renderedPrompt = runContext.render(prompt).as(String.class).orElseThrow();
-        List<String> renderedClasses = runContext.render(classes).asList(String.class);
+        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow();
+        List<String> rClasses = runContext.render(classes).asList(String.class);
+        String rSystemMessage = runContext.render(systemMessage).as(String.class, Map.of("classes", rClasses)).orElseThrow();
 
-        // Get the appropriate model from the factory
+        List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
+        chatMessages.add(SystemMessage.systemMessage(rSystemMessage));
+        chatMessages.add(UserMessage.userMessage(rPrompt));
+
         ChatModel model = this.provider.chatModel(runContext, configuration);
+        ChatResponse response = model.chat(chatMessages);
 
-        String classificationPrompt = renderedPrompt +
-            "\nRespond by only one of the following classes by typing just the exact class name: " + renderedClasses;
+        logger.debug("Generated Classification: {}", response.aiMessage().text());
 
-        // Perform text classification
-        ChatResponse classificationResponse = model.chat(UserMessage.userMessage(classificationPrompt));
-        logger.debug("Generated Classification: {}", classificationResponse.aiMessage().text());
-
-        // send metrics for token usage
-        TokenUsage tokenUsage = TokenUsage.from(classificationResponse.tokenUsage());
+        TokenUsage tokenUsage = TokenUsage.from(response.tokenUsage());
         AIUtils.sendMetrics(runContext, tokenUsage);
 
         return Output.builder()
-            .classification(classificationResponse.aiMessage().text())
+            .classification(response.aiMessage().text())
             .tokenUsage(tokenUsage)
-            .finishReason(classificationResponse.finishReason())
+            .finishReason(response.finishReason())
             .build();
     }
 
