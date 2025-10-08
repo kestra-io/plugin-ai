@@ -4,6 +4,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -74,6 +75,14 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
                 """
         ),
     },
+    metrics = {
+        @Metric(
+            name = "fetch.size",
+            type = Counter.TYPE,
+            unit = "records",
+            description = "The number of rows fetch from the embedding store."
+        ),
+    },
     aliases = "io.kestra.plugin.langchain4j.rag.Search"
 )
 @Schema(
@@ -134,22 +143,21 @@ public class Search extends Task implements RunnableTask<Search.Output> {
         switch (renderedFetchType) {
             case NONE:
                 output = Output.builder().build();
-                runContext.metric(Counter.of("store.fetchedItemsCount", 0));
-                runContext.metric(Counter.of("fetch.fetchedItemsCount", 0));
+                runContext.metric(Counter.of("fetch.size", 0, "fetch", "false", "store", "false"));
                 break;
             case FETCH:
                 output = Output.builder()
                     .results(results)
                     .size(results.size())
                     .build();
-                runContext.metric(Counter.of("fetch.fetchedItemsCount", fetchedItemsCount));
+                runContext.metric(Counter.of("fetch.size", fetchedItemsCount, "fetch", "true", "store", "false"));
                 break;
             case FETCH_ONE:
                 output = Output.builder()
                     .results(List.of(results.getFirst()))
                     .size(fetchedItemsCount)
                     .build();
-                runContext.metric(Counter.of("fetch.fetchedItemsCount", fetchedItemsCount));
+                runContext.metric(Counter.of("fetch.size", fetchedItemsCount, "fetch", "true", "store", "false"));
                 break;
             case STORE:
                 var result = storeResult(results, runContext);
@@ -158,7 +166,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
                     .uri(result.getKey())
                     .size(storedItemsCount)
                     .build();
-                runContext.metric(Counter.of("store.fetchedItemsCount", storedItemsCount));
+                runContext.metric(Counter.of("fetch.size", storedItemsCount, "fetch", "false", "store", "true"));
                 break;
             default:
                 throw new IllegalStateException("Unexpected fetchType value: " + fetchType);
