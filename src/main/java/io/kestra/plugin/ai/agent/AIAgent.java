@@ -10,8 +10,10 @@ import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.OutputFilesInterface;
 import io.kestra.core.models.tasks.RunnableTask;
@@ -297,6 +299,26 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     outputFiles:
                       - report.md
                 """
+        )
+    },
+    metrics = {
+        @Metric(
+            name = "ai.token.usage.input.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) input token count"
+        ),
+        @Metric(
+            name = "ai.token.usage.output.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) output token count"
+        ),
+        @Metric(
+            name = "ai.token.usage.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) total token count"
         )
     }
 )
