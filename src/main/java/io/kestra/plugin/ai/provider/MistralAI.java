@@ -46,7 +46,7 @@ import java.util.List;
 
                 tasks:
                   - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.MistralAI
                       apiKey: "{{ kv('MISTRAL_API_KEY') }}"

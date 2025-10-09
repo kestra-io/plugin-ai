@@ -33,7 +33,7 @@ import lombok.experimental.SuperBuilder;
 
                 tasks:
                   - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.DeepSeek
                       apiKey: "{{ kv('DEEPSEEK_API_KEY') }}"
