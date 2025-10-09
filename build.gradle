@@ -92,6 +92,10 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-web-search-engine-tavily"
     implementation "dev.langchain4j:langchain4j-mcp"
 
+    // retrievers
+    implementation "dev.langchain4j:langchain4j-experimental-sql"
+    compileOnly "com.zaxxer:HikariCP"
+
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
     implementation 'org.awaitility:awaitility:4.3.0'
