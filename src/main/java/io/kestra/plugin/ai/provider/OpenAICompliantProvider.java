@@ -15,6 +15,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -31,10 +32,6 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     @NotNull
     private Property<String> apiKey;
 
-    @Schema(title = "API base URL")
-    @NotNull
-    private Property<String> baseUrl;
-
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
@@ -43,7 +40,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
 
         return OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(baseUrl).as(String.class).orElse(getDefaultBaseUrl()))
+            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
@@ -63,7 +60,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(baseUrl).as(String.class).orElse(null))
+            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElse(null))
             .build();
     }
 
@@ -72,9 +69,9 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
         return OpenAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(baseUrl).as(String.class).orElse(getDefaultBaseUrl()))
+            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .build();
     }
 
-    abstract String getDefaultBaseUrl();
+    abstract Property<String> getBaseUrl();
 }

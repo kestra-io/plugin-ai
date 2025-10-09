@@ -1,9 +1,12 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.model.openai.internal.OpenAiUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.property.Property;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -48,9 +51,7 @@ import lombok.experimental.SuperBuilder;
     aliases = "io.kestra.plugin.langchain4j.provider.OpenAI"
 )
 public class OpenAI extends OpenAICompliantProvider {
-
-    @Override
-    String getDefaultBaseUrl() {
-        return null;
-    }
+    @Schema(title = "API base URL")
+    @Builder.Default
+    private Property<String> baseUrl = Property.ofValue(OpenAiUtils.DEFAULT_OPENAI_URL);
 }

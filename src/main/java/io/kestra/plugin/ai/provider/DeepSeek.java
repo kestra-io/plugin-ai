@@ -3,7 +3,9 @@ package io.kestra.plugin.ai.provider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.property.Property;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -50,8 +52,7 @@ import lombok.experimental.SuperBuilder;
 public class DeepSeek extends OpenAICompliantProvider {
     private static final String BASE_URL = "https://api.deepseek.com/v1";
 
-    @Override
-    String getDefaultBaseUrl() {
-        return BASE_URL;
-    }
+    @Schema(title = "API base URL")
+    @Builder.Default
+    private Property<String> baseUrl = Property.ofValue(BASE_URL);
 }
