@@ -1372,7 +1372,7 @@ class ChatCompletionTest extends ContainerTest {
             "compartmentId", OCI_GENAI_COMPARTMENT_ID_PROPERTY,
             "region", OCI_GENAI_MODEL_REGION_PROPERTY,
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
 
             )
         ));
@@ -1405,7 +1405,7 @@ class ChatCompletionTest extends ContainerTest {
             "compartmentId", "dummy_compartment",
             "region", "OCI_GENAI_MODEL_REGION_PROPERTY",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
 
             )
         ));
@@ -1438,8 +1438,7 @@ class ChatCompletionTest extends ContainerTest {
             "compartmentId", "dummy_compartment",
             "region", "us-ashburn-1",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder()
-                    .type(ChatCompletion.ChatMessageType.USER)
+                ChatMessage.builder().type(ChatMessageType.USER)
                     .content("Hello, my name is John")
                     .build()
             )
