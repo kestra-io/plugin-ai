@@ -32,6 +32,7 @@ class ChatCompletionTest extends ContainerTest {
     private final String ANTHROPIC_API_KEY = System.getenv("ANTHROPIC_API_KEY");
     private final String MISTRAL_API_KEY = System.getenv("MISTRAL_API_KEY");
     private final String DEEPSEEK_API_KEY = System.getenv("DEEPSEEK_API_KEY");
+    private final String HUGGING_FACE_API_KEY = System.getenv("HUGGING_FACE_API_KEY");
     private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
     private final String AMAZON_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
     private final String AMAZON_SECRET_ACCESS_KEY = System.getenv("AWS_SECRET_ACCESS_KEY");
@@ -849,6 +850,98 @@ class ChatCompletionTest extends ContainerTest {
 
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("Authentication Fails, Your api key: ****_KEY is invalid"));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "HUGGING_FACE_API_KEY", matches = ".*")
+    void testChatCompletionHuggingFace() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", HUGGING_FACE_API_KEY,
+            "modelName", "HuggingFaceTB/SmolLM3-3B:hf-inference",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(HuggingFace.builder()
+                .type(HuggingFace.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "HUGGING_FACE_API_KEY", matches = ".*")
+    void testChatCompletionHuggingFace_givenThinkingConfiguration() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", HUGGING_FACE_API_KEY,
+            "modelName", "HuggingFaceTB/SmolLM3-3B:hf-inference",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                .thinkingEnabled(Property.ofValue(true)).build())
+            .provider(HuggingFace.builder()
+                .type(HuggingFace.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionHuggingFace_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", "DUMMY_HUGGING_FACE_API_KEY",
+            "modelName", "HuggingFaceTB/SmolLM3-3B:hf-inference",
+            "messages", List.of(
+                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(HuggingFace.builder()
+                .type(HuggingFace.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .build()
+            )
+            .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            ChatCompletion.Output output = task.run(runContext);
+        }, "status code: 401");
+
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("Invalid credentials in Authorization header"));
     }
 
 
