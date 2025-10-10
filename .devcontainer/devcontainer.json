@@ -34,5 +34,8 @@
         "vscjava.vscode-java-pack"
       ]
     }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   }
 }
