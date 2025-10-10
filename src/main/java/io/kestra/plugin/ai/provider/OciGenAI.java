@@ -70,7 +70,7 @@ import java.io.IOException;
 public class OciGenAI extends ModelProvider {
 
     private static final String DEFAULT = "DEFAULT";
-    @Schema(title = "OCID of OCI Compartment with the model.")
+    @Schema(title = "OCID of OCI Compartment with the model")
     @NotNull
     private Property<String> compartmentId;
 
@@ -78,7 +78,7 @@ public class OciGenAI extends ModelProvider {
     @NotNull
     private Property<String> region;
 
-    @Schema(title = "OCI SDK Authentication provider.")
+    @Schema(title = "OCI SDK Authentication provider")
     private Property<String> authProvider;
 
     @Override
