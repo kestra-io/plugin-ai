@@ -859,7 +859,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", HUGGING_FACE_API_KEY,
             "modelName", "HuggingFaceTB/SmolLM3-3B:hf-inference",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -889,7 +889,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", HUGGING_FACE_API_KEY,
             "modelName", "HuggingFaceTB/SmolLM3-3B:hf-inference",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
@@ -919,7 +919,7 @@ class ChatCompletionTest extends ContainerTest {
             "apiKey", "DUMMY_HUGGING_FACE_API_KEY",
             "modelName", "HuggingFaceTB/SmolLM3-3B:hf-inference",
             "messages", List.of(
-                ChatCompletion.ChatMessage.builder().type(ChatCompletion.ChatMessageType.USER).content("Hello, my name is John").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 

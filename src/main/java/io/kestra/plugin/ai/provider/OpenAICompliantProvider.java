@@ -15,7 +15,6 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -51,7 +50,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 
