@@ -64,7 +64,7 @@ import javax.sql.DataSource;
 public class SqlDatabaseRetriever extends ContentRetrieverProvider {
 
     @Schema(
-        title = "Supported database types.",
+        title = "Supported database types",
         description = "Determines the default JDBC driver and connection format."
     )
     public enum DatabaseType {
@@ -73,34 +73,34 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
         H2
     }
 
-    @Schema(title = "Type of database to connect to (PostgreSQL, MySQL, or H2).")
+    @Schema(title = "Type of database to connect to (PostgreSQL, MySQL, or H2)")
     @NotNull
     private Property<DatabaseType> databaseType;
 
-    @Schema(title = "JDBC connection URL to the target database.")
+    @Schema(title = "JDBC connection URL to the target database")
     private Property<String> jdbcUrl;
 
-    @Schema(title = "Database username.")
+    @Schema(title = "Database username")
     @NotNull
     private Property<String> username;
 
-    @Schema(title = "Database password.")
+    @Schema(title = "Database password")
     @NotNull
     private Property<String> password;
 
-    @Schema(title = "Optional JDBC driver class name. Automatically resolved if not provided.")
+    @Schema(title = "Optional JDBC driver class name – automatically resolved if not provided.")
     private Property<String> driver;
 
-    @Schema(title = "Maximum number of database connections in the pool.")
+    @Schema(title = "Maximum number of database connections in the pool")
     @Builder.Default
     private Property<Integer> maxPoolSize = Property.ofValue(2);
 
-    @Schema(title = "Language model provider.")
+    @Schema(title = "Language model provider")
     @NotNull
     @PluginProperty
     private ModelProvider provider;
 
-    @Schema(title = "Language model configuration.")
+    @Schema(title = "Language model configuration")
     @NotNull
     @PluginProperty
     @Builder.Default
