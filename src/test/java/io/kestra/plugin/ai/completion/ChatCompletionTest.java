@@ -47,7 +47,7 @@ class ChatCompletionTest extends ContainerTest {
           ZoneId.systemDefault().equals(ZoneId.of("Asia/Shanghai"))
               ? DASHSCOPE_CN_URL
               : DASHSCOPE_INTL_URL;
-    private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");
+    private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");;
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -1469,31 +1469,26 @@ class ChatCompletionTest extends ContainerTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".*")
     void testChatCompletionZhiPuAI() throws Exception {
-        RunContext runContext =
-            runContextFactory.of(
-                Map.of(
-                    "apiKey", ZHIPU_API_KEY,
-                    "modelName", "glm-4.5-flash",
-                    "messages", List.of(
-                        ChatMessage.builder()
-                            .type(ChatMessageType.USER)
-                            .content("Hello, my name is John")
-                            .build())));
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", ZHIPU_API_KEY,
+            "modelName", "glm-4.5-flash",
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("Hello, my name is John")
+                    .build())));
 
-        ChatCompletion task =
-            ChatCompletion.builder()
+        ChatCompletion task = ChatCompletion.builder()
                 .messages(Property.ofExpression("{{ messages }}"))
                 // Use a low temperature and a fixed seed so the completion would be more deterministic
-                .configuration(
-                    ChatConfiguration.builder()
-                        .temperature(Property.ofValue(0.7))
-                        .build())
-                .provider(
-                    ZhiPuAI.builder()
-                        .type(ZhiPuAI.class.getName())
-                        .apiKey(Property.ofExpression("{{ apiKey }}"))
-                        .modelName(Property.ofExpression("{{ modelName }}"))
-                        .build())
+                .configuration(ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.7))
+                    .build())
+                .provider(ZhiPuAI.builder()
+                    .type(ZhiPuAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build())
                 .build();
 
         ChatCompletion.Output output = task.run(runContext);
@@ -1506,31 +1501,27 @@ class ChatCompletionTest extends ContainerTest {
     @Test
     void testChatCompletionZhiPuAI_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
         RunContext runContext =
-            runContextFactory.of(
-                Map.of(
-                    "apiKey", "7321a0a9db4b316d9a468567ab1a4307.9SBMCgJRTDF3e0EA",
-                    "modelName", "glm-4.5-flash",
-                    "messages", List.of(
-                        ChatMessage.builder()
-                            .type(ChatMessageType.USER)
-                            .content("Hello, my name is John")
-                            .build())));
+            runContextFactory.of(Map.of(
+                "apiKey", "7321a0a9db4b316d9a468567ab1a4307.9SBMCgJRTDF3e0EA",
+                "modelName", "glm-4.5-flash",
+                "messages", List.of(
+                    ChatMessage.builder()
+                        .type(ChatMessageType.USER)
+                        .content("Hello, my name is John")
+                        .build())));
 
-        ChatCompletion task =
-            ChatCompletion.builder()
+        ChatCompletion task = ChatCompletion.builder()
                 .messages(Property.ofExpression("{{ messages }}"))
                 // Use a low temperature and a fixed seed so the completion would be more deterministic
-                .configuration(
-                    ChatConfiguration.builder()
-                        .temperature(Property.ofValue(0.7))
-                        .build())
-                .provider(
-                    ZhiPuAI.builder()
-                        .type(ZhiPuAI.class.getName())
-                        .apiKey(Property.ofExpression("{{ apiKey }}"))
-                        .modelName(Property.ofExpression("{{ modelName }}"))
-                        .maxRetries(Property.ofExpression("{{ 0 }}"))
-                        .build())
+                .configuration(ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.7))
+                    .build())
+                .provider(ZhiPuAI.builder()
+                    .type(ZhiPuAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .maxRetries(Property.ofExpression("{{ 0 }}"))
+                    .build())
                 .build();
 
         // Assert RuntimeException and error message

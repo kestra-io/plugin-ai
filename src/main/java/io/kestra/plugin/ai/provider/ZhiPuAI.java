@@ -35,30 +35,30 @@ import lombok.experimental.SuperBuilder;
         @Example(
             title = "Chat completion with ZhiPu AI",
             full = true,
-            code = {
+            code = """
+                id: chat_completion
+                namespace: company.ai
+
+                inputs:
+                  - id: prompt
+                    type: STRING
+
+                tasks:
+                  - id: chat_completion
+                    type: io.kestra.plugin.ai.ChatCompletion
+                    provider:
+                      type: io.kestra.plugin.ai.provider.ZhiPuAI
+                      apiKey: "{{ kv('ZHIPU_API_KEY') }}"
+                      modelName: glm-4.5-flash
+                    messages:
+                      - type: SYSTEM
+                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                      - type: USER
+                        content: "{{ inputs.prompt }}"
                 """
-                    id: chat_completion
-                    namespace: company.ai
-
-                    inputs:
-                      - id: prompt
-                        type: STRING
-
-                    tasks:
-                      - id: chat_completion
-                        type: io.kestra.plugin.ai.ChatCompletion
-                        provider:
-                          type: io.kestra.plugin.ai.provider.ZhiPuAI
-                          apiKey: "{{ kv('ZHIPU_API_KEY') }}"
-                          modelName: glm-4.5-flash
-                        messages:
-                          - type: SYSTEM
-                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                          - type: USER
-                            content: "{{ inputs.prompt }}"
-                    """
-            })
-    })
+        )
+    }
+)
 public class ZhiPuAI extends ModelProvider {
     private static final String BASE_URL = "https://open.bigmodel.cn/";
 
