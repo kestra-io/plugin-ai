@@ -47,6 +47,7 @@ class ChatCompletionTest extends ContainerTest {
           ZoneId.systemDefault().equals(ZoneId.of("Asia/Shanghai"))
               ? DASHSCOPE_CN_URL
               : DASHSCOPE_INTL_URL;
+    private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");;
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -1463,5 +1464,76 @@ class ChatCompletionTest extends ContainerTest {
         });
 
         assertThat(ociException.getMessage(), containsString("Error when setting up auth provider."));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".*")
+    void testChatCompletionZhiPuAI() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", ZHIPU_API_KEY,
+            "modelName", "glm-4.5-flash",
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("Hello, my name is John")
+                    .build())));
+
+        ChatCompletion task = ChatCompletion.builder()
+                .messages(Property.ofExpression("{{ messages }}"))
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.7))
+                    .build())
+                .provider(ZhiPuAI.builder()
+                    .type(ZhiPuAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build())
+                .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionZhiPuAI_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+        RunContext runContext =
+            runContextFactory.of(Map.of(
+                "apiKey", "7321a0a9db4b316d9a468567ab1a4307.9SBMCgJRTDF3e0EA",
+                "modelName", "glm-4.5-flash",
+                "messages", List.of(
+                    ChatMessage.builder()
+                        .type(ChatMessageType.USER)
+                        .content("Hello, my name is John")
+                        .build())));
+
+        ChatCompletion task = ChatCompletion.builder()
+                .messages(Property.ofExpression("{{ messages }}"))
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.7))
+                    .build())
+                .provider(ZhiPuAI.builder()
+                    .type(ZhiPuAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .maxRetries(Property.ofExpression("{{ 0 }}"))
+                    .build())
+                .build();
+
+        // Assert RuntimeException and error message
+        RuntimeException exception =
+            assertThrows(
+                RuntimeException.class,
+                () -> {
+                    ChatCompletion.Output output = task.run(runContext);
+                },
+                "status code: 401");
+
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("Authorization Token非法，请确认Authorization Token正确传递"));
     }
 }

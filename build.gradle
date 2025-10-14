@@ -72,9 +72,8 @@ dependencies {
     implementation 'dev.langchain4j:langchain4j-workers-ai'
     implementation 'dev.langchain4j:langchain4j-local-ai'
     implementation 'dev.langchain4j:langchain4j-community-oci-genai'
-
-
     implementation "dev.langchain4j:langchain4j-community-dashscope"
+    implementation "dev.langchain4j:langchain4j-community-zhipu-ai"
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
 
