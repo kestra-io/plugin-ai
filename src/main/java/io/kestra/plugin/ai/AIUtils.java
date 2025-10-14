@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.Metric;
+import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
@@ -16,6 +18,29 @@ import java.util.List;
 import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
+
+@Plugin(
+    metrics = {
+        @Metric(
+           name = "input.token.count",
+           type = Counter.TYPE,
+           unit = "token",
+           description = "Large Language Model (LLM) input token count"
+       ),
+       @Metric(
+           name = "output.token.count",
+           type = Counter.TYPE,
+           unit = "token",
+           description = "Large Language Model (LLM) output token count"
+       ),
+       @Metric(
+           name = "total.token.count",
+           type = Counter.TYPE,
+           unit = "token",
+           description = "Large Language Model (LLM) total token count"
+       )
+    }
+ )
 
 public final class AIUtils {
 
