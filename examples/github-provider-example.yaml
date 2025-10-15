@@ -1,0 +1,10 @@
+id: github-model-demo
+namespace: demo.ai
+tasks:
+  - id: github_chat
+    type: io.kestra.plugin.ai.chat.ChatCompletion
+    provider:
+      type: github
+      token: "{{ secrets.GITHUB_MODELS_TOKEN }}"
+      model: "gpt-4.1-mini"
+    prompt: "Explain Kestra in 2 lines."

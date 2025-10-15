@@ -7,6 +7,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
+import io.kestra.plugin.ai.provider.GitHubModels;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
@@ -34,6 +35,7 @@ class ChatCompletionTest extends ContainerTest {
     private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
     private final String RAPID_API_KEY = System.getenv("RAPID_API_KEY");
     private final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
+    private final String GITHUB_TOKEN = System.getenv("GITHUB_TOKEN");
 
     @Inject
     private TestRunContextFactory runContextFactory;
@@ -337,5 +339,40 @@ class ChatCompletionTest extends ContainerTest {
 
             postgres.stop();
         }
+    }
+
+    @EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".*")
+    @Test
+    void chatCompletion_givenGitHubModels_withJsonResponseFormat() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "apiKey", GITHUB_TOKEN,
+            "modelName", "gpt-4o-mini"
+        ));
+
+        var chat = ChatCompletion.builder()
+            .chatProvider(
+                GitHubModels.builder()
+                    .type(GitHubModels.class.getName())
+                    .gitHubToken(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build()
+            )
+            .prompt(Property.ofValue(
+                "Return a JSON object with a single key 'answer' and value 42. Return only JSON."
+            ))
+            .chatConfiguration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .responseFormat(ChatConfiguration.ResponseFormat.builder()
+                    .type(Property.ofValue(dev.langchain4j.model.chat.request.ResponseFormatType.JSON))
+                    .build())
+                .build())
+            .build();
+
+        var output = chat.run(runContext);
+
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getTextOutput().trim()).contains("{").contains("}");
+        assertThat(output.getTextOutput()).contains("42");
     }
 }

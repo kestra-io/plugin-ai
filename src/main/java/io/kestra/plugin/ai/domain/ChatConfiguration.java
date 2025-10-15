@@ -62,6 +62,7 @@ public class ChatConfiguration {
             When using a JSON schema, the output will be returned under the key `jsonOutput`."""
     )
     private ResponseFormat responseFormat;
+
     @Schema(
         title = "Enable Thinking",
         description = """
@@ -78,6 +79,7 @@ public class ChatConfiguration {
             thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output."""
     )
     private Property<Integer> thinkingBudgetTokens;
+
     @Schema(
         title = "Return Thinking",
         description = """
@@ -86,12 +88,14 @@ public class ChatConfiguration {
             It Does not trigger the thinking process itself—only affects whether the output is parsed and returned."""
     )
     private Property<Boolean> returnThinking;
+
     @Schema(
         description = "Maximum number of tokens the model can generate in the completion (response). This limits the length of the output.",
         example = "1024"
     )
     @Nullable
     private Property<Integer> maxToken;
+
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
             return dev.langchain4j.model.chat.request.ResponseFormat.TEXT;

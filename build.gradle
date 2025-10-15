@@ -63,6 +63,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-anthropic"
     implementation "dev.langchain4j:langchain4j-azure-open-ai"
     implementation "dev.langchain4j:langchain4j-bedrock"
+    implementation "dev.langchain4j:langchain4j-github-models"
     implementation "dev.langchain4j:langchain4j-google-ai-gemini"
     implementation "dev.langchain4j:langchain4j-mistral-ai"
     implementation "dev.langchain4j:langchain4j-ollama"
