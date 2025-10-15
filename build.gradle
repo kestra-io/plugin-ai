@@ -72,6 +72,7 @@ dependencies {
     implementation 'dev.langchain4j:langchain4j-workers-ai'
     implementation 'dev.langchain4j:langchain4j-local-ai'
     implementation 'dev.langchain4j:langchain4j-community-oci-genai'
+    implementation 'dev.langchain4j:langchain4j-mariadb'
 
 
     implementation "dev.langchain4j:langchain4j-community-dashscope"
@@ -163,6 +164,7 @@ dependencies {
     testImplementation 'org.testcontainers:chromadb:1.21.3'
     testImplementation 'org.testcontainers:milvus:1.21.3'
     testImplementation 'org.testcontainers:mongodb:1.21.3'
+    testImplementation 'org.testcontainers:mariadb:1.21.3'
 
     // Memories
     testImplementation "org.testcontainers:postgresql:1.21.3"
