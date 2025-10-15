@@ -46,8 +46,7 @@ import lombok.experimental.SuperBuilder;
                 """
             }
         )
-    },
-    aliases = "io.kestra.plugin.langchain4j.provider.OpenAI"
+    }
 )
 public class HuggingFace extends OpenAICompliantProvider {
     private static final String BASE_URL = "https://router.huggingface.co/v1";
