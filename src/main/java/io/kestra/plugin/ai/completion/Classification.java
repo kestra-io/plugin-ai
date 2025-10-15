@@ -6,8 +6,10 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
@@ -59,6 +61,26 @@ import java.util.Map;
                       modelName: gemini-2.5-flash
                 """
             }
+        )
+    },
+    metrics = {
+        @Metric(
+            name = "input.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) input token count"
+        ),
+        @Metric(
+            name = "output.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) output token count"
+        ),
+        @Metric(
+            name = "total.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) total token count"
         )
     },
     aliases = {"io.kestra.plugin.langchain4j.Classification", "io.kestra.plugin.langchain4j.completion.Classification"}

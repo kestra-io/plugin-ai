@@ -5,8 +5,10 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
@@ -58,6 +60,26 @@ import org.slf4j.Logger;
                 """
             }
         ),
+    },
+    metrics = {
+        @Metric(
+            name = "input.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) input token count"
+        ),
+        @Metric(
+            name = "output.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) output token count"
+        ),
+        @Metric(
+            name = "total.token.count",
+            type = Counter.TYPE,
+            unit = "token",
+            description = "Large Language Model (LLM) total token count"
+        )
     },
     aliases = {"io.kestra.plugin.langchain4j.ImageGeneration", "io.kestra.plugin.langchain4j.completion.ImageGeneration"}
 )
