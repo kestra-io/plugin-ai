@@ -18,25 +18,23 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Getter
 @SuperBuilder
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "MariaDB Atlas Embedding Store"
+    title = "MariaDB Embedding Store"
 )
 @Plugin(
     examples = {
         @Example(
             full = true,
-            title = "Ingest documents into a MariaDB Atlas embedding store",
+            title = "Ingest documents into a MariaDB embedding store",
             code = """
                 id: document_ingestion
                 namespace: company.ai
@@ -49,7 +47,7 @@ import java.util.stream.Collectors;
                       modelName: gemini-embedding-exp-03-07
                       apiKey: "{{ kv('GEMINI_API_KEY') }}"
                     embeddings:
-                      type: io.kestra.plugin.ai.embeddings.MongoDBAtlas
+                      type: io.kestra.plugin.ai.embeddings.MariaDB
                       username: "{{ kv('MARIADB_USERNAME') }}"
                       password: "{{ kv('MARIADB_PASSWORD') }}"
                       databaseUrl: "{{ kv('MARIADB_DATABASE_URL') }}"
@@ -118,15 +116,18 @@ public class MariaDB extends EmbeddingStoreProvider {
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
         List<String> rColumnDefinitions = runContext.render(columnDefinitions).asList(String.class);
         List<String> rIndexes = runContext.render(indexes).asList(String.class);
+        String rFieldName = runContext.render(this.databaseUrl).as(String.class).orElse(StringUtils.EMPTY);
         MariaDbEmbeddingStore.Builder builder = MariaDbEmbeddingStore.builder()
             .url(runContext.render(this.databaseUrl).as(String.class).orElseThrow())
             .user(runContext.render(this.username).as(String.class).orElseThrow())
             .password(runContext.render(this.password).as(String.class).orElseThrow())
             .table(runContext.render(this.tableName).as(String.class).orElseThrow())
             .dimension(dimension)
-            .idFieldName(runContext.render(this.fieldName).as(String.class).orElseThrow())
             .createTable(runContext.render(this.createTable).as(Boolean.class).orElse(false))
             .dropTableFirst(drop);
+        if (!rFieldName.isEmpty()) {
+            builder.idFieldName(rFieldName);
+        }
         // Add metadata config only if both columns and indexes are present
         if (!rColumnDefinitions.isEmpty() && !rIndexes.isEmpty()) {
             builder.metadataStorageConfig(toMetadataStorageConfig(runContext));

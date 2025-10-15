@@ -69,7 +69,6 @@ class MariaDBTest extends ContainerTest {
                     .password(Property.ofValue(mariaDBContainer.getPassword()))
                     .databaseUrl(Property.ofValue(mariaDBContainer.getJdbcUrl()))
                     .tableName(Property.ofValue("embeddings"))
-                    .fieldName(Property.ofValue("id"))
                     .createTable(Property.ofValue(true))
                     .build()
             )
