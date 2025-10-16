@@ -48,7 +48,7 @@ import java.util.List;
 
                 tasks:
                   - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ kv('GOOGLE_API_KEY') }}"
