@@ -73,7 +73,7 @@ dependencies {
     implementation 'dev.langchain4j:langchain4j-local-ai'
     implementation 'dev.langchain4j:langchain4j-community-oci-genai'
     implementation 'dev.langchain4j:langchain4j-mariadb'
-
+    implementation "dev.langchain4j:langchain4j-tablestore"
     implementation "dev.langchain4j:langchain4j-community-dashscope"
     implementation "dev.langchain4j:langchain4j-community-zhipu-ai"
 
