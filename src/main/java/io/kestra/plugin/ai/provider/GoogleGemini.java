@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
@@ -12,8 +13,8 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -63,6 +64,39 @@ import java.util.List;
                         content: "{{inputs.prompt}}"
                 """
             }
+        ),
+        @Example(
+            title = "Chat completion with Google Gemini with a local base URL + PEM certificates",
+            full = true,
+            code = {
+                """
+                id: chat_completion
+                namespace: company.ai
+
+                inputs:
+                  - id: prompt
+                    type: STRING
+
+                tasks:
+                  - id: chat_completion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+                      clientPem: "{{ kv('CLIENT_PEM') }}"
+                      caPem: "{{ kv('CA_PEM') }}"
+                      baseUrl: "https://internal.gemini.company.com/endpoint"
+                      thinkingEnabled: true
+                      thinkingBudgetTokens: 1024
+                      returnThinking: true
+                    messages:
+                      - type: SYSTEM
+                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                      - type: USER
+                        content: "{{inputs.prompt}}"
+                """
+            }
         )
     },
     aliases = "io.kestra.plugin.langchain4j.provider.GoogleGemini"
@@ -74,7 +108,7 @@ public class GoogleGemini extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return GoogleAiGeminiChatModel.builder()
+        GoogleAiGeminiChatModel.GoogleAiGeminiChatModelBuilder chatModelBuilder = GoogleAiGeminiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
@@ -88,8 +122,19 @@ public class GoogleGemini extends ModelProvider {
             .listeners(List.of(new TimingChatModelListener()))
             .thinkingConfig(getThinkingConfig(configuration, runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
-            .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-            .build();
+            .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            chatModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(null);
+        if (rBaseUrl != null) {
+            chatModelBuilder.baseUrl(rBaseUrl);
+        }
+
+        return chatModelBuilder.build();
     }
 
     @Override

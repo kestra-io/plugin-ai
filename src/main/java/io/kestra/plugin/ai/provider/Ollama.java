@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -71,7 +72,7 @@ public class Ollama extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return OllamaChatModel.builder()
+        OllamaChatModel.OllamaChatModelBuilder chatModelBuilder = OllamaChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(this.endpoint).as(String.class).orElseThrow())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
@@ -84,8 +85,19 @@ public class Ollama extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .think(runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false) ? true : null)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
-            .listeners(List.of(new TimingChatModelListener()))
-            .build();
+            .listeners(List.of(new TimingChatModelListener()));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            chatModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(null);
+        if (rBaseUrl != null) {
+            chatModelBuilder.baseUrl(rBaseUrl);
+        }
+
+        return chatModelBuilder.build();
     }
 
     @Override

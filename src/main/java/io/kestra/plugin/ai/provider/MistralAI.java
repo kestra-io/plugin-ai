@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -37,38 +38,36 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.MistralAI
-                      apiKey: "{{ kv('MISTRAL_API_KEY') }}"
-                      modelName: mistral:7b
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.MistralAI
+                          apiKey: "{{ kv('MISTRAL_API_KEY') }}"
+                          modelName: mistral:7b
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         )
     },
     aliases = "io.kestra.plugin.langchain4j.provider.MistralAI"
 )
 public class MistralAI extends ModelProvider {
+
     @Schema(title = "API Key")
     @NotNull
     private Property<String> apiKey;
-
-    @Schema(title = "API base URL")
-    private Property<String> baseUrl;
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
@@ -76,7 +75,7 @@ public class MistralAI extends ModelProvider {
             throw new IllegalArgumentException("Mistral models do not support setting the topK parameter.");
         }
 
-        return MistralAiChatModel.builder()
+        MistralAiChatModel.MistralAiChatModelBuilder chatModelBuilder = MistralAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse(null))
@@ -88,8 +87,19 @@ public class MistralAI extends ModelProvider {
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-            .build();
+            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            chatModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(null);
+        if (rBaseUrl != null) {
+            chatModelBuilder.baseUrl(rBaseUrl);
+        }
+
+        return chatModelBuilder.build();
     }
 
     @Override

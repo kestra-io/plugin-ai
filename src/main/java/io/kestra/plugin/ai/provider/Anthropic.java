@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -93,7 +94,7 @@ public class Anthropic extends ModelProvider {
                 "`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."
             );
         }
-        return AnthropicChatModel.builder()
+        AnthropicChatModel.AnthropicChatModelBuilder chatModelBuilder = AnthropicChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
@@ -107,8 +108,19 @@ public class Anthropic extends ModelProvider {
             .thinkingType(thinkingEnabled ? ENABLED : null)
             .thinkingBudgetTokens(thinkingBudgetTokens)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-            .build();
+            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            chatModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(null);
+        if (rBaseUrl != null) {
+            chatModelBuilder.baseUrl(rBaseUrl);
+        }
+
+        return chatModelBuilder.build();
     }
 
     @Override

@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.completion;
 
+import com.github.tomakehurst.wiremock.http.Body;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.workersai.WorkersAiChatModelName;
@@ -16,13 +19,18 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,10 +53,11 @@ class ChatCompletionTest extends ContainerTest {
     private final String DASHSCOPE_CN_URL = "https://dashscope.aliyuncs.com/api/v1";
     private final String DASHSCOPE_INTL_URL = "https://dashscope-intl.aliyuncs.com/api/v1";
     private final String DASHSCOPE_BASE_URL =
-          ZoneId.systemDefault().equals(ZoneId.of("Asia/Shanghai"))
-              ? DASHSCOPE_CN_URL
-              : DASHSCOPE_INTL_URL;
-    private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");;
+        ZoneId.systemDefault().equals(ZoneId.of("Asia/Shanghai"))
+            ? DASHSCOPE_CN_URL
+            : DASHSCOPE_INTL_URL;
+    private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");
+    ;
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -383,7 +392,7 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         System.out.println(output.getJsonOutput());
-        assertThat(output.getJsonOutput(),  aMapWithSize(2));
+        assertThat(output.getJsonOutput(), aMapWithSize(2));
 
     }
 
@@ -450,7 +459,7 @@ class ChatCompletionTest extends ContainerTest {
                 ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are a bot").build(),
                 ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build(),
                 ChatMessage.builder().type(ChatMessageType.AI).content("You are an alien").build()
-                )
+            )
         ));
 
         ChatCompletion task = ChatCompletion.builder()
@@ -498,6 +507,7 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getTextOutput(), containsString("John"));
         assertThat(output.getRequestDuration(), notNullValue());
     }
+
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
     @Test
     void testChatCompletionAnthropicAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
@@ -561,6 +571,7 @@ class ChatCompletionTest extends ContainerTest {
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("authentication_error"));
     }
+
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
     @Test
     void testChatCompletionAnthropicAI_givenThinkingConfiguration() throws Exception {
@@ -625,6 +636,7 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getRequestDuration(), notNullValue());
         assertThat(output.getThinking(), isEmptyOrNullString());
     }
+
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
     @Test
     void testChatCompletionAnthropicAI_givenThinkingEnabled_whenMaxTokensLessThanMaxToken_thenThrowException() throws Exception {
@@ -656,6 +668,7 @@ class ChatCompletionTest extends ContainerTest {
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."));
     }
+
     @EnabledIfEnvironmentVariable(named = "MISTRAL_API_KEY", matches = ".*")
     @Test
     void testChatCompletionMistralAI() throws Exception {
@@ -1086,7 +1099,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", OPENROUTER_API_KEY,
             "modelName", "mistralai/mistral-7b-instruct:free",
-                 "baseUrl", "https://openrouter.ai/api/v1",
+            "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
                 ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
@@ -1177,7 +1190,7 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
-   @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
     void testChatCompletionOpenRouter_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", OPENROUTER_API_KEY,
@@ -1208,131 +1221,132 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getRequestDuration(), notNullValue());
         assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
     }
-  @Test
-  @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".*")
-  void testChatCompletionDashScope() throws Exception {
-    RunContext runContext =
-        runContextFactory.of(
-            Map.of(
-                "apiKey", DASHSCOPE_API_KEY,
-                "modelName", "qwen-plus",
-                "baseUrl", DASHSCOPE_BASE_URL,
-                "messages", List.of(
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".*")
+    void testChatCompletionDashScope() throws Exception {
+        RunContext runContext =
+            runContextFactory.of(
+                Map.of(
+                    "apiKey", DASHSCOPE_API_KEY,
+                    "modelName", "qwen-plus",
+                    "baseUrl", DASHSCOPE_BASE_URL,
+                    "messages", List.of(
                         ChatMessage.builder()
                             .type(ChatMessageType.USER)
                             .content("Hello, my name is John")
                             .build())));
 
-    ChatCompletion task =
-        ChatCompletion.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(
-                ChatConfiguration.builder()
-                    .temperature(Property.ofValue(0.1))
-                    .seed(Property.ofValue(123456789))
-                    .build())
-            .provider(
-                DashScope.builder()
-                    .type(DashScope.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                    .build())
-            .build();
+        ChatCompletion task =
+            ChatCompletion.builder()
+                .messages(Property.ofExpression("{{ messages }}"))
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(
+                    ChatConfiguration.builder()
+                        .temperature(Property.ofValue(0.1))
+                        .seed(Property.ofValue(123456789))
+                        .build())
+                .provider(
+                    DashScope.builder()
+                        .type(DashScope.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build())
+                .build();
 
-    ChatCompletion.Output output = task.run(runContext);
+        ChatCompletion.Output output = task.run(runContext);
 
-    assertThat(output.getTextOutput(), notNullValue());
-    assertThat(output.getTextOutput(), containsString("John"));
-    assertThat(output.getRequestDuration(), notNullValue());
-  }
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
 
-  @Test
-  @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".*")
-  void testChatCompletionDashScope_givenThinkingConfiguration() throws Exception {
-    RunContext runContext =
-        runContextFactory.of(
-            Map.of(
-                "apiKey", DASHSCOPE_API_KEY,
-                "modelName", "qwen-plus",
-                "baseUrl", DASHSCOPE_BASE_URL,
-                "messages", List.of(
+    @Test
+    @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".*")
+    void testChatCompletionDashScope_givenThinkingConfiguration() throws Exception {
+        RunContext runContext =
+            runContextFactory.of(
+                Map.of(
+                    "apiKey", DASHSCOPE_API_KEY,
+                    "modelName", "qwen-plus",
+                    "baseUrl", DASHSCOPE_BASE_URL,
+                    "messages", List.of(
                         ChatMessage.builder()
                             .type(ChatMessageType.USER)
                             .content("Hello, my name is John")
                             .build())));
 
-    ChatCompletion task =
-        ChatCompletion.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(
-                ChatConfiguration.builder()
-                    .temperature(Property.ofValue(0.1))
-                    .seed(Property.ofValue(123456789))
-                    .thinkingEnabled(Property.ofValue(true))
-                    .build())
-            .provider(
-                DashScope.builder()
-                    .type(DashScope.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                    .build())
-            .build();
+        ChatCompletion task =
+            ChatCompletion.builder()
+                .messages(Property.ofExpression("{{ messages }}"))
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(
+                    ChatConfiguration.builder()
+                        .temperature(Property.ofValue(0.1))
+                        .seed(Property.ofValue(123456789))
+                        .thinkingEnabled(Property.ofValue(true))
+                        .build())
+                .provider(
+                    DashScope.builder()
+                        .type(DashScope.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build())
+                .build();
 
-    ChatCompletion.Output output = task.run(runContext);
+        ChatCompletion.Output output = task.run(runContext);
 
-    assertThat(output.getTextOutput(), notNullValue());
-    assertThat(output.getTextOutput(), containsString("John"));
-    assertThat(output.getRequestDuration(), notNullValue());
-  }
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
 
-  @Test
-  void testChatCompletionDashScope_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
-    RunContext runContext =
-        runContextFactory.of(
-            Map.of(
-                "apiKey", "DUMMY_DASHSCOPE_API_KEY",
-                "modelName", "qwen-plus",
-                "baseUrl", DASHSCOPE_BASE_URL,
-                "messages", List.of(
+    @Test
+    void testChatCompletionDashScope_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+        RunContext runContext =
+            runContextFactory.of(
+                Map.of(
+                    "apiKey", "DUMMY_DASHSCOPE_API_KEY",
+                    "modelName", "qwen-plus",
+                    "baseUrl", DASHSCOPE_BASE_URL,
+                    "messages", List.of(
                         ChatMessage.builder()
                             .type(ChatMessageType.USER)
                             .content("Hello, my name is John")
                             .build())));
 
-    ChatCompletion task =
-        ChatCompletion.builder()
-            .messages(Property.ofExpression("{{ messages }}"))
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(
-                ChatConfiguration.builder()
-                    .temperature(Property.ofValue(0.1))
-                    .seed(Property.ofValue(123456789))
-                    .build())
-            .provider(
-                DashScope.builder()
-                    .type(DashScope.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                    .build())
-            .build();
+        ChatCompletion task =
+            ChatCompletion.builder()
+                .messages(Property.ofExpression("{{ messages }}"))
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(
+                    ChatConfiguration.builder()
+                        .temperature(Property.ofValue(0.1))
+                        .seed(Property.ofValue(123456789))
+                        .build())
+                .provider(
+                    DashScope.builder()
+                        .type(DashScope.class.getName())
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build())
+                .build();
 
-    // Assert RuntimeException and error message
-    RuntimeException exception =
-        assertThrows(
-            RuntimeException.class,
-            () -> {
-              ChatCompletion.Output output = task.run(runContext);
-            },
-            "status code: 401");
+        // Assert RuntimeException and error message
+        RuntimeException exception =
+            assertThrows(
+                RuntimeException.class,
+                () -> {
+                    ChatCompletion.Output output = task.run(runContext);
+                },
+                "status code: 401");
 
-    // Verify error message contains 404 details
-    assertThat(exception.getMessage(), containsString("Invalid API-key provided."));
-  }
+        // Verify error message contains 404 details
+        assertThat(exception.getMessage(), containsString("Invalid API-key provided."));
+    }
 
     @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
     @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
@@ -1440,10 +1454,10 @@ class ChatCompletionTest extends ContainerTest {
             .messages(Property.ofExpression("{{ messages }}"))
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1))
                 .maxToken(Property.ofValue(10)).build())
-              .provider(LocalAI.builder()
+            .provider(LocalAI.builder()
                 .type(LocalAI.class.getName())
                 .modelName(Property.ofExpression("{{ modelName }}"))
-                  .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
                 .build()
             )
             .build();
@@ -1572,17 +1586,17 @@ class ChatCompletionTest extends ContainerTest {
                     .build())));
 
         ChatCompletion task = ChatCompletion.builder()
-                .messages(Property.ofExpression("{{ messages }}"))
-                // Use a low temperature and a fixed seed so the completion would be more deterministic
-                .configuration(ChatConfiguration.builder()
-                    .temperature(Property.ofValue(0.7))
-                    .build())
-                .provider(ZhiPuAI.builder()
-                    .type(ZhiPuAI.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build())
-                .build();
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.7))
+                .build())
+            .provider(ZhiPuAI.builder()
+                .type(ZhiPuAI.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build())
+            .build();
 
         ChatCompletion.Output output = task.run(runContext);
 
@@ -1604,18 +1618,18 @@ class ChatCompletionTest extends ContainerTest {
                         .build())));
 
         ChatCompletion task = ChatCompletion.builder()
-                .messages(Property.ofExpression("{{ messages }}"))
-                // Use a low temperature and a fixed seed so the completion would be more deterministic
-                .configuration(ChatConfiguration.builder()
-                    .temperature(Property.ofValue(0.7))
-                    .build())
-                .provider(ZhiPuAI.builder()
-                    .type(ZhiPuAI.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .maxRetries(Property.ofExpression("{{ 0 }}"))
-                    .build())
-                .build();
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.7))
+                .build())
+            .provider(ZhiPuAI.builder()
+                .type(ZhiPuAI.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .maxRetries(Property.ofExpression("{{ 0 }}"))
+                .build())
+            .build();
 
         // Assert RuntimeException and error message
         RuntimeException exception =
@@ -1628,5 +1642,93 @@ class ChatCompletionTest extends ContainerTest {
 
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("Authorization Token非法，请确认Authorization Token正确传递"));
+    }
+
+    @RegisterExtension
+    static WireMockExtension mtlsExtension = WireMockExtension.newInstance()
+        .options(wireMockConfig()
+            .dynamicPort()
+            .httpsPort(29443)
+            .keystorePath(Objects.requireNonNull(ChatCompletionTest.class.getClassLoader()
+                .getResource("mtls/server-keystore.p12")).getPath())
+            .keystorePassword("keystorePassword")
+            .keyManagerPassword("keystorePassword")
+            .keystoreType("PKCS12")
+            .needClientAuth(true)
+            .trustStorePath(Objects.requireNonNull(ChatCompletionTest.class.getClassLoader()
+                .getResource("mtls/client-truststore.p12")).getPath())
+            .trustStorePassword("changeit")
+            .trustStoreType("PKCS12"))
+        .build();
+
+    @Test
+    void testGeminiChatCompletion_withClientAndCaPem_shouldUseMtls() throws Exception {
+        // Mock Gemini API mTLS endpoint
+        mtlsExtension.stubFor(post(anyUrl())
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withResponseBody(Body.fromJsonBytes("""
+                    {
+                      "responseId" : "mock-response-id",
+                      "modelVersion" : "gemini-2.0-flash",
+                      "candidates" : [ {
+                        "content" : {
+                          "parts" : [ { "text" : "Hello John from Gemini mTLS" } ],
+                          "role" : "model"
+                        },
+                        "finishReason" : "STOP",
+                        "index" : 0
+                      } ],
+                      "usageMetadata" : {
+                        "promptTokenCount" : 10,
+                        "candidatesTokenCount" : 5,
+                        "totalTokenCount" : 15
+                      }
+                    }""".getBytes()))
+            ));
+
+        String baseUrl = "https://localhost:29443";
+
+        // Load PEMs from resources
+        String caPem = new String(Objects.requireNonNull(
+            ChatCompletionTest.class.getClassLoader().getResourceAsStream("mtls/ca-cert.pem")).readAllBytes());
+        String clientPem = new String(Objects.requireNonNull(
+            ChatCompletionTest.class.getClassLoader().getResourceAsStream("mtls/client-cert-key.pem")).readAllBytes());
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", "fakeApiKey",
+            "modelName", "gemini-2.0-flash",
+            "baseUrl", baseUrl,
+            "caPem", caPem,
+            "clientPem", clientPem,
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .caPem(Property.ofExpression("{{ caPem }}"))
+                .clientPem(Property.ofExpression("{{ clientPem }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build())
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("Hello John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+
+        // Ensure mTLS endpoint was actually hit
+        mtlsExtension.verify(postRequestedFor(anyUrl()));
     }
 }

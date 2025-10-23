@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -17,7 +18,6 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -39,46 +39,43 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.OpenRouter
-                      apiKey: "{{ kv('OPENROUTER_API_KEY') }}"
-                      baseUrl: https://openrouter.ai/api/v1
-                      modelName: x-ai/grok-beta
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.OpenRouter
+                          apiKey: "{{ kv('OPENROUTER_API_KEY') }}"
+                          baseUrl: https://openrouter.ai/api/v1
+                          modelName: x-ai/grok-beta
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         )
     },
     aliases = "io.kestra.plugin.langchain4j.provider.OpenRouter"
 )
 public class OpenRouter extends ModelProvider {
+
     private static final String BASE_URL = "https://openrouter.ai/api/v1";
+
     @Schema(title = "API Key")
     @NotNull
     private Property<String> apiKey;
 
-    @Schema(title = "API base URL", description = "The base URL for OpenRouter API (defaults to https://openrouter.ai/api/v1)")
-    @NotNull
-    @Builder.Default
-    private Property<String> baseUrl  = Property.ofValue(BASE_URL);
-
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return OpenAiChatModel.builder()
+        OpenAiChatModel.OpenAiChatModelBuilder chatModelBuilder = OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL))
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -90,8 +87,14 @@ public class OpenRouter extends ModelProvider {
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(List.of(new TimingChatModelListener()))
-            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-            .build();
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            chatModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        return chatModelBuilder.build();
     }
 
     @Override
