@@ -77,6 +77,8 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-community-dashscope"
     implementation "dev.langchain4j:langchain4j-community-zhipu-ai"
 
+    implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
+
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
 
     // Langchain4j embeddings stores

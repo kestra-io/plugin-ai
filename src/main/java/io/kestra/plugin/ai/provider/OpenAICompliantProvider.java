@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -37,7 +38,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
             throw new IllegalArgumentException("OpenAI models do not support setting the topK parameter.");
         }
 
-        return OpenAiChatModel.builder()
+        OpenAiChatModel.OpenAiChatModelBuilder chatModelBuilder = OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -50,8 +51,14 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
-            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-            .build();
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            chatModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        return chatModelBuilder.build();
     }
 
     @Override
@@ -59,7 +66,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElse(null))
+            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .build();
     }
 
@@ -71,6 +78,4 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
             .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .build();
     }
-
-    abstract Property<String> getBaseUrl();
 }
