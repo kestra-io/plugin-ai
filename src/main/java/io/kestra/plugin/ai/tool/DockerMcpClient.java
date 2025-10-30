@@ -161,6 +161,7 @@ public class DockerMcpClient extends AbstractMcpClient {
             .registryUrl(runContext.render(registryUrl).as(String.class, additionalVariables).orElse(null))
             .apiVersion(runContext.render(apiVersion).as(String.class, additionalVariables).orElse(null))
             .logEvents(runContext.render(logEvents).as(Boolean.class, additionalVariables).orElse(false))
+            .logger(runContext.logger())
             .binds(runContext.render(binds).asList(String.class, additionalVariables))
             .build();
     }
