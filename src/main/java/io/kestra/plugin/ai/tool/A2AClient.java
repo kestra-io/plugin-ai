@@ -57,8 +57,7 @@ import java.util.Map;
                             serverUrl: "http://localhost:10000\""""
             }
         ),
-    },
-    aliases = "io.kestra.plugin.ai.tool.A2AAgent"
+    }
 )
 @JsonDeserialize
 @Schema(
