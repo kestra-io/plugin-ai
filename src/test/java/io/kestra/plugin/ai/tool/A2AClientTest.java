@@ -21,7 +21,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest(startRunner = true)
-class A2AAgentTest {
+class A2AClientTest {
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -49,7 +49,7 @@ class A2AAgentTest {
                 .build()
             )
             .tools(List.of(
-                A2AAgent.builder()
+                A2AClient.builder()
                     .serverUrl(Property.ofExpression("{{agentUrl}}"))
                     .description(Property.ofValue("An AI agent expert on translation"))
                     .build()

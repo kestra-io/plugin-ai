@@ -52,12 +52,13 @@ import java.util.Map;
                         systemMessage: Summarize the user message, then translate it into French using the provided tool.
                         prompt: "{{inputs.prompt}}"
                         tools:
-                          - type: io.kestra.plugin.ai.tool.A2AAgent
+                          - type: io.kestra.plugin.ai.tool.A2AClient
                             description: Translation expert
                             serverUrl: "http://localhost:10000\""""
             }
         ),
-    }
+    },
+    aliases = "io.kestra.plugin.ai.tool.A2AAgent"
 )
 @JsonDeserialize
 @Schema(
@@ -66,7 +67,7 @@ import java.util.Map;
         This tool allows an LLM to call a remote AI Agent via the A2A protocol.
         Make sure to specify a name and a description so the LLM can understand what it does to decide if it needs to call it."""
 )
-public class A2AAgent extends ToolProvider {
+public class A2AClient extends ToolProvider {
     private static final String TOOL_DESCRIPTION = "This tool allows to call a remote A2A agent named '%s'.";
 
     @Schema(
