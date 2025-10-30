@@ -14,7 +14,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest
-class A2AAgentTest {
+class A2AClientTest {
     @Inject
     private TestRunContextFactory runContextFactory;
 
@@ -30,7 +30,7 @@ class A2AAgentTest {
             "agentUrl", "http://localhost:" + embeddedServer.getPort()
         ));
 
-        var agent = A2AAgent.builder()
+        var agent = A2AClient.builder()
             .serverUrl(Property.ofExpression("{{agentUrl}}"))
             .prompt(Property.ofValue("Hello a2a."))
             .build();
