@@ -7,7 +7,6 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -35,13 +34,14 @@ import lombok.experimental.SuperBuilder;
 
                 tasks:
                   - id: agent
-                    type: io.kestra.plugin.ai.agent.AIAgent
+                    type: io.kestra.plugin.ai.agent.A2AClient
                     serverUrl: "http://localhost:10000"
                     prompt: "Summarize the following content: {{ inputs.prompt }}\""""
         ),
-    }
+    },
+    aliases = "io.kestra.plugin.ai.agent.A2AAgent"
 )
-public class A2AAgent extends Task implements RunnableTask<A2AAgent.Output> {
+public class A2AClient extends Task implements RunnableTask<A2AClient.Output> {
     @Schema(title = "Server URL", description = "The URL of the remote agent A2A server")
     @NotNull
     protected Property<String> serverUrl;
