@@ -2,12 +2,12 @@ package io.kestra.plugin.ai.tool;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.tool.internal.DockerMcpTransport;
 import io.kestra.plugin.scripts.runner.docker.DockerService;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
