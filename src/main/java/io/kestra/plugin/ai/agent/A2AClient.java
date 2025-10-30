@@ -38,8 +38,7 @@ import lombok.experimental.SuperBuilder;
                     serverUrl: "http://localhost:10000"
                     prompt: "Summarize the following content: {{ inputs.prompt }}\""""
         ),
-    },
-    aliases = "io.kestra.plugin.ai.agent.A2AAgent"
+    }
 )
 public class A2AClient extends Task implements RunnableTask<A2AClient.Output> {
     @Schema(title = "Server URL", description = "The URL of the remote agent A2A server")
