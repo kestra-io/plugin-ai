@@ -65,6 +65,7 @@ class PostgreSQLTest extends ContainerTest {
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
+            .systemMessage(Property.ofValue("You are a helpful assistant. Always remember the user's name when asked again."))
             .embeddings(KestraKVStore.builder().build())
             .memory(PostgreSQL.builder()
                 .host(Property.ofValue(pgHost))
