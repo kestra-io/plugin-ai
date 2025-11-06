@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai;
 
+import io.kestra.core.utils.Await;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.Container;
@@ -10,8 +11,8 @@ import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 
-import static org.awaitility.Awaitility.await;
 
 public class ContainerTest {
 
@@ -47,27 +48,39 @@ public class ContainerTest {
     }
 
     private static void waitUntilOllamaResponds() {
-        await("ollama daemon responds")
-            .pollDelay(Duration.ZERO)
-            .pollInterval(Duration.ofMillis(250))
-            .atMost(Duration.ofSeconds(30))
-            .until(() -> execOk("ollama", "list"));
+        try {
+            Await.until(
+                () -> execOk("ollama", "list"),
+                Duration.ofMillis(250),
+                Duration.ofSeconds(30)
+            );
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timed out waiting for Ollama daemon to respond after 30 seconds", e);
+        }
     }
 
     private static void pullModel(String model) {
-        await("pull " + model)
-            .pollDelay(Duration.ZERO)
-            .pollInterval(Duration.ofSeconds(1))
-            .atMost(Duration.ofSeconds(180))
-            .until(() -> execOk("ollama", "pull", model));
+        try {
+            Await.until(
+                () -> execOk("ollama", "pull", model),
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(180)
+            );
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timed out pulling model '" + model + "' after 3 minutes", e);
+        }
     }
 
     private static void waitForModels() {
-        await("models installed")
-            .pollDelay(Duration.ZERO)
-            .pollInterval(Duration.ofSeconds(1))
-            .atMost(Duration.ofSeconds(30))
-            .until(() -> MODELS.stream().allMatch(m -> execOk("ollama", "show", m)));
+        try {
+            Await.until(
+                () -> MODELS.stream().allMatch(m -> execOk("ollama", "show", m)),
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(30)
+            );
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timed out waiting for all Ollama models to become available after 30 seconds", e);
+        }
     }
 
     private static boolean execOk(String... cmd) {
