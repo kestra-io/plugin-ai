@@ -1,0 +1,8 @@
+group: io.kestra.plugin.ai.embeddings
+name: "embeddings"
+title: "Embeddings"
+description: "This sub-group of plugins contains Embeddings Store providers for the other Langchain4j plugins."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
