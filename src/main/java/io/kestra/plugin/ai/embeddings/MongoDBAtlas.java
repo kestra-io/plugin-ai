@@ -13,13 +13,13 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.Await;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.awaitility.Awaitility;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Getter
@@ -126,23 +127,27 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
 
         if (renderedCreateIndex) {
             // Creating a vector search index can take up to a minute, so this delay allows the index to become queryable
-            Awaitility.await()
-                .atMost(Duration.ofMinutes(1))
-                .pollInterval(Duration.ofSeconds(1))
-                .ignoreExceptions()
-                .until(() -> {
-                    try {
-                        // Try a harmless dummy query to check index readiness
-                        store.search(EmbeddingSearchRequest.builder()
-                            .queryEmbedding(Embedding.from(Collections.nCopies(dimension, 0.0f)))
-                            .maxResults(1)
-                            .build()
-                        );
-                        return true;
-                    } catch (Exception e) {
-                        return false;
-                    }
-                });
+            try {
+                Await.until(
+                    () -> {
+                        try {
+                            // Try a harmless dummy query to check index readiness
+                            store.search(EmbeddingSearchRequest.builder()
+                                .queryEmbedding(Embedding.from(Collections.nCopies(dimension, 0.0f)))
+                                .maxResults(1)
+                                .build()
+                            );
+                            return true;
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    },
+                    Duration.ofSeconds(1),
+                    Duration.ofMinutes(1)
+                );
+            } catch (TimeoutException | RuntimeException e) {
+                throw new RuntimeException("MongoDB vector index was not ready within 1 minute.", e);
+            }
         }
 
         if (drop) {

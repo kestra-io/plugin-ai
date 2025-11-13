@@ -52,7 +52,7 @@ import java.util.List;
 
                 tasks:
                   - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.AmazonBedrock
                       accessKeyId: "{{ kv('AWS_ACCESS_KEY') }}"

@@ -49,7 +49,7 @@ import java.util.List;
 
                 tasks:
                   - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleVertexAI
                       endpoint: your-vertex-ai-endpoint

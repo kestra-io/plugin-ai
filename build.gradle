@@ -72,8 +72,12 @@ dependencies {
     implementation 'dev.langchain4j:langchain4j-workers-ai'
     implementation 'dev.langchain4j:langchain4j-local-ai'
     implementation 'dev.langchain4j:langchain4j-community-oci-genai'
+    implementation 'dev.langchain4j:langchain4j-mariadb'
+    implementation "dev.langchain4j:langchain4j-tablestore"
     implementation "dev.langchain4j:langchain4j-community-dashscope"
     implementation "dev.langchain4j:langchain4j-community-zhipu-ai"
+
+    implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
 
@@ -92,6 +96,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-web-search-engine-google-custom"
     implementation "dev.langchain4j:langchain4j-web-search-engine-tavily"
     implementation "dev.langchain4j:langchain4j-mcp"
+    implementation "dev.langchain4j:langchain4j-mcp-docker"
 
     // retrievers
     implementation "dev.langchain4j:langchain4j-experimental-sql"
@@ -102,8 +107,6 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-agentic-a2a"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
-
-    implementation 'org.awaitility:awaitility:4.3.0'
 }
 
 
@@ -162,6 +165,7 @@ dependencies {
     testImplementation 'org.testcontainers:chromadb:1.21.3'
     testImplementation 'org.testcontainers:milvus:1.21.3'
     testImplementation 'org.testcontainers:mongodb:1.21.3'
+    testImplementation 'org.testcontainers:mariadb:1.21.3'
 
     // Memories
     testImplementation "org.testcontainers:postgresql:1.21.3"

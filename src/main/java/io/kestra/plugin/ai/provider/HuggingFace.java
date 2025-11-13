@@ -15,12 +15,12 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Deepseek Model Provider"
+    title = "HuggingFace Model Provider"
 )
 @Plugin(
     examples = {
         @Example(
-            title = "Chat completion with DeepSeek",
+            title = "Chat completion with HuggingFace",
             full = true,
             code = {
                 """
@@ -35,9 +35,9 @@ import lombok.experimental.SuperBuilder;
                   - id: chat_completion
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
-                      type: io.kestra.plugin.ai.provider.DeepSeek
-                      apiKey: "{{ kv('DEEPSEEK_API_KEY') }}"
-                      modelName: deepseek-chat
+                      type: io.kestra.plugin.ai.provider.HuggingFace
+                      apiKey: "{{ kv('HUGGING_FACE_API_KEY') }}"
+                      modelName: HuggingFaceTB/SmolLM3-3B:hf-inference
                     messages:
                       - type: SYSTEM
                         content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -46,11 +46,10 @@ import lombok.experimental.SuperBuilder;
                 """
             }
         )
-    },
-    aliases = "io.kestra.plugin.langchain4j.provider.DeepSeek"
+    }
 )
-public class DeepSeek extends OpenAICompliantProvider {
-    private static final String BASE_URL = "https://api.deepseek.com/v1";
+public class HuggingFace extends OpenAICompliantProvider {
+    private static final String BASE_URL = "https://router.huggingface.co/v1";
 
     @Schema(title = "API base URL")
     @Builder.Default

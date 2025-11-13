@@ -92,6 +92,7 @@ public class StreamableHttpMcpClient extends AbstractMcpClient {
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
             .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElse(false))
             .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElse(false))
+            .logger(runContext.logger())
             .customHeaders(runContext.render(headers).asMap(String.class, String.class))
             .build();
     }
