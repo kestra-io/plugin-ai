@@ -955,7 +955,7 @@ class ChatCompletionTest extends ContainerTest {
         }, "status code: 401");
 
         // Verify error message contains 404 details
-        assertThat(exception.getMessage(), containsString("Invalid credentials in Authorization header"));
+        assertThat(exception.getMessage(), containsString("Invalid username or password."));
     }
 
 
