@@ -1,0 +1,8 @@
+group: io.kestra.plugin.ai
+name: "ai"
+title: "AI"
+description: "This sub-group of plugins contains tasks for Generative AI for Kestra. It uses the Langchain4j framework."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"

@@ -1,0 +1,8 @@
+group: io.kestra.plugin.ai.provider
+name: "provider"
+title: "Provider"
+description: "This sub-group of plugins contains Large Language Model (LLM) providers for the other Langchain4j plugins."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
