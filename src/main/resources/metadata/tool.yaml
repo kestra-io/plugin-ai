@@ -1,0 +1,8 @@
+group: io.kestra.plugin.ai.tool
+name: "tool"
+title: "Tool"
+description: "This sub-group of plugins contains tools for Generative AI for Kestra. It uses the Langchain4j framework."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
