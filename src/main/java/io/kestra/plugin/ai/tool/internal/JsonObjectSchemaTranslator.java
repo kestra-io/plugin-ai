@@ -46,7 +46,7 @@ public final class JsonObjectSchemaTranslator {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, JsonSchemaElement>  mapProperties(Map<String, Object> properties) {
+    private static Map<String, JsonSchemaElement> mapProperties(Map<String, Object> properties) {
         return MapUtils.emptyOnNull(properties).entrySet().stream()
             .filter(prop -> !prop.getKey().equals("type"))
             .map(entry -> {
@@ -67,8 +67,8 @@ public final class JsonObjectSchemaTranslator {
     @SuppressWarnings("unchecked")
     private static JsonSchemaElement mapSchema(Map<String, Object> schema) {
         var type = (String) schema.get("type");
-        var title =  (String) schema.get("title");
-        var _enum =  (List<String>) schema.get("enum");
+        var title = (String) schema.get("title");
+        var _enum = (List<String>) schema.get("enum");
         var anyOf = (List<Map<String, Object>>) schema.get("anyOf");
         var ref = (String) schema.get("$ref");
         if (_enum != null) {
@@ -95,7 +95,8 @@ public final class JsonObjectSchemaTranslator {
             case "boolean" -> JsonBooleanSchema.builder().description(title).build();
             case "null" -> new JsonNullSchema();
             case "object" -> JsonObjectSchema.builder().description(title).build();
-            case "array" -> JsonArraySchema.builder().description(title).items(mapSchema((Map<String, Object>) schema.get("items"))).build();
+            case "array" ->
+                JsonArraySchema.builder().description(title).items(mapSchema((Map<String, Object>) schema.get("items"))).build();
             // it should not happen, but in this case we use String as it's the most proficient type for an LLM
             case null -> new JsonStringSchema();
             // we coalesce other types to String for now...
@@ -106,9 +107,10 @@ public final class JsonObjectSchemaTranslator {
     private static Map<String, JsonSchemaElement> replaceDefinitions(Map<String, JsonSchemaElement> properties, Map<String, JsonSchemaElement> definitions) {
         return properties.entrySet().stream()
             .map(entry -> {
-                JsonSchemaElement schema = switch(entry.getValue()) {
-                    case JsonReferenceSchema jsonReferenceSchema -> definitions.getOrDefault(jsonReferenceSchema.reference(),
-                        JsonObjectSchema.builder().description(jsonReferenceSchema.description()).build());
+                JsonSchemaElement schema = switch (entry.getValue()) {
+                    case JsonReferenceSchema jsonReferenceSchema ->
+                        definitions.getOrDefault(jsonReferenceSchema.reference(),
+                            JsonObjectSchema.builder().description(jsonReferenceSchema.description()).build());
                     case JsonObjectSchema jsonObjectSchema -> JsonObjectSchema.builder()
                         .description(jsonObjectSchema.description())
                         .required(jsonObjectSchema.required()).
