@@ -31,7 +31,10 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.net.URI;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -43,7 +46,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Schema(
     title = "Run an AI Agent",
     description = """
-        An AI agent is an autonomous system that uses a Large Language Model (LLM). Each run combines a **system message** and a **prompt**. The system message defines the agent's role and behavior, while the prompt carries the actual user input for that execution. Together, they guide the agent's response. The agent can also use **tools**, **content retrievers**, and **memory** to provide richer context during execution."""
+        An AI agent is an autonomous system that uses a Large Language Model (LLM). Each run combines a **system message** and a **prompt**. The system message defines the agent's role and behavior, while the prompt carries the actual user input for that execution. Together, they guide the agent's response. The agent can also use **tools**, **content retrievers**, and **memory** to provide richer context during execution.
+        """
 )
 @Plugin(
     examples = {
@@ -116,7 +120,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         type: io.kestra.plugin.ai.provider.GoogleGemini
                         modelName: gemini-2.5-flash
                         apiKey: "{{ kv('GEMINI_API_KEY') }}"
-                      """
+                """
         ),
         @Example(
             full = true,
@@ -142,7 +146,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     tools:
                       - type: io.kestra.plugin.ai.tool.DockerMcpClient
                         image: mcp/time
-                    """
+                """
         ),
         @Example(
             full = true,
@@ -172,7 +176,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         type: io.kestra.plugin.ai.memory.KestraKVStore
                         memoryId: JOHN
                         ttl: PT1M
-                        messages: 5"""
+                        messages: 5
+                """
         ),
         @Example(
             full = true,
@@ -198,7 +203,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
                         apiKey: "{{ kv('TAVILY_API_KEY') }}"
-                    """
+                """
         ),
         @Example(
             full = true,
@@ -299,7 +304,306 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     outputFiles:
                       - report.md
                 """
-        )
+        ),
+
+        @Example(
+            full = true,
+            title = """
+                Analyze a numeric series with CodeExecution.
+                The agent must call the code tool for all calculations, then explain the results in English.""",
+            code = """
+                id: agent_with_code_execution_stats
+                namespace: company.ai
+
+                inputs:
+                  - id: series
+                    type: STRING
+                    defaults: |
+                      12, 15, 15, 18, 21, 99, 102, 102, 104
+
+                tasks:
+                  - id: stats_agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+
+                    systemMessage: |
+                      You are a data analyst.
+                      Always use the CodeExecution tool for computations.
+                      Then summarize clearly in English.
+
+                    prompt: |
+                      Here is a numeric series: {{ inputs.series }}
+                      1) Compute mean, median, min, max, and standard deviation.
+                      2) Detect outliers using a z-score greater than 2.
+                      3) Explain the distribution in 5-8 lines.
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.CodeExecution
+                        apiKey: "{{ kv('RAPID_API_KEY') }}"
+                """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Generate release notes using Google Custom Web Search as a tool.
+                Unlike content retrievers, tools are called only when the LLM decides it needs fresh context.""",
+            code = """
+                id: agent_with_google_custom_search_release_notes
+                namespace: company.ai
+
+                inputs:
+                  - id: prompt
+                    type: STRING
+                    defaults: |
+                      Find the most recent Kestra release and summarize:
+                      - release date
+                      - 5 major new features
+                      - 3 important bug fixes
+                      Answer in English.
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+
+                    systemMessage: |
+                      You are a release-notes assistant.
+                      If you need up-to-date information, call GoogleCustomWebSearch.
+                      Summarize sources and avoid hallucinations.
+
+                    prompt: "{{ inputs.prompt }}"
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
+                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
+                """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Triage an incident and trigger the right Kestra flow using KestraFlow in implicit mode.
+                The agent infers namespace/flowId from the prompt and executes the flow.""",
+            code = """
+                id: incident_triage_orchestrator
+                namespace: company.ai
+
+                inputs:
+                  - id: incident
+                    type: STRING
+                    defaults: |
+                      The "billing-prod" SaaS data has been stale for 2 hours.
+                      We suspect an API extraction failure from an external provider.
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
+
+                    systemMessage: |
+                      You are an incident triage agent.
+                      Decide which flow to run to mitigate the issue.
+                      Use the kestra_flow tool to trigger it with relevant inputs.
+
+                    prompt: |
+                      Incident:
+                      {{ inputs.incident }}
+
+                      You can run the following flows in the "prod.ops" namespace:
+                      - restart-billing-extract (inputs: service, reason)
+                      - run-billing-backfill (inputs: service, sinceHours)
+                      - notify-oncall (inputs: team, severity, message)
+
+                      Pick the best flow and execute it using the tool.
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.KestraFlow
+                """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Route between multiple explicitly-defined Kestra flows.
+                Each flow becomes a separate tool and the LLM selects which one to call.""",
+            code = """
+                id: multi_flow_planner_agent
+                namespace: company.ai
+
+                inputs:
+                  - id: objective
+                    type: SELECT
+                    defaults: ingestion
+                    values:
+                      - ingestion
+                      - cleanup
+                      - alerting
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+
+                    prompt: |
+                      User objective: {{ inputs.objective }}
+                      Execute the most appropriate flow for this objective.
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.KestraFlow
+                        namespace: prod.data
+                        flowId: ingest-daily-snapshots
+                        description: Daily ingestion of snapshots
+
+                      - type: io.kestra.plugin.ai.tool.KestraFlow
+                        namespace: prod.data
+                        flowId: purge-stale-partitions
+                        description: Cleanup of obsolete partitions
+
+                      - type: io.kestra.plugin.ai.tool.KestraFlow
+                        namespace: prod.ops
+                        flowId: send-severity-alert
+                        description: Send an on-call alert
+                """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Self-healing automation using KestraTask.
+                The agent fills mandatory placeholders ("...") and then runs the task tool.""",
+            code = """
+                id: agent_using_kestra_task_self_healing
+                namespace: company.ai
+
+                inputs:
+                  - id: error_message
+                    type: STRING
+                    defaults: "Disk usage >= 95% on node worker-3"
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+
+                    systemMessage: |
+                      You are a self-healing automation agent.
+                      When remediation is needed, call the KestraTask tool.
+
+                    prompt: |
+                      Detected issue: {{ inputs.error_message }}
+                      1) Propose a safe remediation action.
+                      2) Execute the corresponding task using the tool.
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.KestraTask
+                        tasks:
+                          - id: cleanup
+                            type: io.kestra.plugin.scripts.shell.Commands
+                            commands:
+                              - "..."   # Placeholder: the agent will decide real commands.
+                            timeout: PT10M
+                """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Find places using an MCP SSE client tool.
+                The agent calls the MCP server to retrieve structured results, then ranks them.""",
+            code = """
+                id: agent_with_sse_mcp_places
+                namespace: company.ai
+
+                inputs:
+                  - id: city
+                    type: STRING
+                    defaults: Lyon, France
+                  - id: cuisine
+                    type: STRING
+                    defaults: "bistronomic"
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+
+                    systemMessage: |
+                      You are a local guide.
+                      Use the MCP places tool to search restaurants.
+                      Return a short ranked list with brief reasons.
+
+                    prompt: |
+                      Find 3 {{ inputs.cuisine }} restaurants in {{ inputs.city }}.
+                      Criteria: rating > 4.5, quiet atmosphere, mid-range budget.
+                      Provide name, address, and two short reasons for each.
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.SseMcpClient
+                        sseUrl: https://mcp.apify.com/?actors=compass/crawler-google-places
+                        timeout: PT3M
+                        headers:
+                          Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}
+                """
+        ),
+        @Example(
+            full = true,
+            title = """
+                Combine TavilyWebSearch and CodeExecution as tools.
+                The agent searches for market data, then computes projections with the code tool.""",
+            code = """
+                id: agent_research_and_validate_forecast
+                namespace: company.ai
+
+                inputs:
+                  - id: topic
+                    type: STRING
+                    defaults: "workflow and data orchestration market"
+                  - id: year
+                    type: INT
+                    defaults: 2028
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      modelName: gemini-2.5-flash
+
+                    systemMessage: |
+                      You are a market research analyst.
+                      1) Use TavilyWebSearch to gather current market size and CAGR.
+                      2) Use CodeExecution to project the market size to the target year.
+                      3) Summarize in English with sources.
+
+                    prompt: |
+                      Topic: {{ inputs.topic }}
+                      1) Find credible sources for the current market size and CAGR.
+                      2) Project the market size for {{ inputs.year }} using the CAGR.
+                      3) Write a compact report (2 paragraphs) plus a list of sources.
+
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.TavilyWebSearch
+                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                      - type: io.kestra.plugin.ai.tool.CodeExecution
+                        apiKey: "{{ kv('RAPID_API_KEY') }}"
+                """
+        ),
     },
     metrics = {
         @Metric(
@@ -323,6 +627,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     }
 )
 public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFilesInterface {
+
     @Schema(title = "System message", description = "The system message for the language model")
     protected Property<String> systemMessage;
 
@@ -364,7 +669,10 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     @Override
     public AIOutput run(RunContext runContext) throws Exception {
         Map<String, Object> additionalVariables = outputFiles != null ? Map.of(ScriptService.VAR_WORKING_DIR, runContext.workingDir().path(true).toString()) : Collections.emptyMap();
+        String rPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
+
+        var logger = runContext.logger();
 
         try {
             AiServices<Agent> agent = AiServices.builder(Agent.class)
@@ -373,11 +681,11 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
                 .toolArgumentsErrorHandler((error, context) -> {
-                    runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    logger.error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolArgumentsException(error);
                 })
                 .toolExecutionErrorHandler((error, context) -> {
-                    runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    logger.error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolExecutionException(error);
                 });
 
@@ -397,9 +705,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                     .build());
             }
 
-            String renderedPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
-            Result<AiMessage> completion = agent.build().invoke(renderedPrompt);
-            runContext.logger().debug("Generated completion: {}", completion.content());
+            Result<AiMessage> completion = agent.build().invoke(rPrompt);
+            logger.debug("Generated completion: {}", completion.content());
 
             // send metrics for token usage
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
