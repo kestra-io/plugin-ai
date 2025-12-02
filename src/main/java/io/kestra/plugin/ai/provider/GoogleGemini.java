@@ -31,7 +31,11 @@ import java.util.List;
 @JsonDeserialize
 @Schema(
     title = "Google Gemini Model Provider",
-    description = "WARNING: when using tools, this provider didn't support JSON Schema with `anyOf`."
+    description = """
+        WARNING:
+        - when using tools, this provider didn't support JSON Schema with `anyOf`
+        - function calling (tools) and response format are not yet supported together
+        """
 )
 @Plugin(
     examples = {
@@ -40,29 +44,29 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                      thinkingEnabled: true
-                      thinkingBudgetTokens: 1024
-                      returnThinking: true
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                          thinkingEnabled: true
+                          thinkingBudgetTokens: 1024
+                          returnThinking: true
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         ),
         @Example(
@@ -70,38 +74,39 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                      clientPem: "{{ kv('CLIENT_PEM') }}"
-                      caPem: "{{ kv('CA_PEM') }}"
-                      baseUrl: "https://internal.gemini.company.com/endpoint"
-                      thinkingEnabled: true
-                      thinkingBudgetTokens: 1024
-                      returnThinking: true
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                          clientPem: "{{ kv('CLIENT_PEM') }}"
+                          caPem: "{{ kv('CA_PEM') }}"
+                          baseUrl: "https://internal.gemini.company.com/endpoint"
+                          thinkingEnabled: true
+                          thinkingBudgetTokens: 1024
+                          returnThinking: true
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         )
     },
     aliases = "io.kestra.plugin.langchain4j.provider.GoogleGemini"
 )
 public class GoogleGemini extends ModelProvider {
+
     @Schema(title = "API Key")
     @NotNull
     private Property<String> apiKey;
