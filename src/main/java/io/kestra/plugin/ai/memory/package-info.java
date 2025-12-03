@@ -1,5 +1,5 @@
 @PluginSubGroup(
-    description = "This sub-group of plugins contains Memory providers for the other Langchain4j plugins.",
+    description = "Tasks that supply conversational memory backends (Kestra KV Store, Redis, PostgreSQL) to persist recent messages for agents and chat completions.",
     categories = { PluginSubGroup.PluginCategory.AI }
 )
 package io.kestra.plugin.ai.memory;

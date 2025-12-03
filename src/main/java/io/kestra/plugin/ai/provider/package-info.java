@@ -1,5 +1,5 @@
 @PluginSubGroup(
-    description = "This sub-group of plugins contains Large Language Model (LLM) providers for the other Langchain4j plugins.",
+    description = "Tasks that configure Large Language Model providers (OpenAI, Gemini, Anthropic, Mistral, Bedrock, etc.) to supply chat/completion models used across the AI plugins.",
     categories = PluginSubGroup.PluginCategory.AI
 )
 package io.kestra.plugin.ai.provider;
