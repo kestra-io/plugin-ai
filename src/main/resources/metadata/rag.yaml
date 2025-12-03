@@ -1,7 +1,7 @@
 group: io.kestra.plugin.ai.rag
 name: "rag"
 title: "RAG"
-description: "This sub-group of plugins contains tasks for Retrieval Augmented Generation AI for Kestra. It uses the Langchain4j framework."
+description: "Tasks that ingest, chunk, and embed documents, search vectors, and run retrieval-augmented chat so LLM answers stay grounded in indexed content."
 body: ""
 videos: []
 createdBy: "Kestra Core Team"
