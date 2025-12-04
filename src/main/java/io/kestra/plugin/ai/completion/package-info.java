@@ -1,5 +1,5 @@
 @PluginSubGroup(
-    description = "This sub-group of plugins contains AI completion tasks.",
+    description = "Tasks that call LLMs for chat, classification, image generation, and JSON-structured extraction, with optional tools, memory, and provider flexibility.",
     categories = { PluginSubGroup.PluginCategory.AI }
 )
 package io.kestra.plugin.ai.completion;

@@ -1,6 +1,5 @@
 @PluginSubGroup(
-    description = "This sub-group of plugins contains tasks for Generative AI for Kestra.\n" +
-        "It uses the Langchain4j framework.",
+    description = "Tasks that orchestrate generative AI in Kestra with LangChain4j, covering chat completions, agents, RAG, tools, and shared providers.",
     categories = PluginSubGroup.PluginCategory.AI
 )
 package io.kestra.plugin.ai;

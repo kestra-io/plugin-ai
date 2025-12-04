@@ -1,5 +1,5 @@
 @PluginSubGroup(
-    description = "This sub-group of plugins contains Embeddings Store providers for the other Langchain4j plugins.",
+    description = "Tasks that provision embeddings stores (Chroma, PGVector, Pinecone, Redis, Qdrant, etc.) for chunk storage and similarity search powering RAG flows.",
     categories = { PluginSubGroup.PluginCategory.AI, PluginSubGroup.PluginCategory.DATABASE }
 )
 package io.kestra.plugin.ai.embeddings;
