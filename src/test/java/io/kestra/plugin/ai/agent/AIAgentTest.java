@@ -9,19 +9,30 @@ import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.memory.KestraKVStore;
+import io.kestra.plugin.ai.provider.GoogleGemini;
+import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
+import io.kestra.plugin.ai.rag.ChatCompletion;
+import io.kestra.plugin.ai.rag.IngestDocument;
+import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
+import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 import java.util.Map;
 
+import static io.kestra.plugin.ai.ContainerTest.ollamaEndpoint;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest
 class AIAgentTest {
+    private final String GOOGLE_API_KEY = System.getenv("GOOGLE_API_KEY");
+    private final String GOOGLE_CSI = System.getenv("GOOGLE_CSI_KEY");
+    private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
     @Inject
     private TestRunContextFactory runContextFactory;
 
@@ -169,5 +180,64 @@ class AIAgentTest {
             var content = new String(is.readAllBytes());
             assertThat(content).isEqualTo("Hello World");
         }
+    }
+
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_CSI", matches = ".*")
+    @Test
+    void withGoogleCustomWebSearchContentRetriever() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "modelName", "gemini-2.0-flash",
+            "apiKey", GOOGLE_API_KEY,
+            "csi", GOOGLE_CSI
+        ));
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .contentRetrievers(Property.ofValue(List.of(GoogleCustomWebSearch.builder()
+                .csi(Property.ofExpression("{{ csi }}"))
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .build())))
+            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getTextOutput()).contains("Paris");
+    }
+
+    @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".*")
+    @Test
+    void withTavilyWebSearchContentRetriever() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "gpt-4o-mini",
+            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+            "apiKey", TAVILY_API_KEY
+        ));
+        var agent = AIAgent.builder()
+            .provider(OpenAI.builder()
+                .type(OpenAI.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+                .contentRetrievers(Property.ofValue(List.of(TavilyWebSearch.builder()
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build())))
+            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getTextOutput()).contains("Paris");
     }
 }
