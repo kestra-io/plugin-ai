@@ -4,7 +4,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
@@ -25,6 +27,7 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
+import io.kestra.plugin.ai.rag.ChatCompletion;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -35,6 +38,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -646,6 +651,26 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
+    @Schema(
+        title = "Embedding store",
+        description = "Optional when at least one entry is provided in `contentRetrievers`."
+    )
+    @PluginProperty
+    private EmbeddingStoreProvider embeddings;
+
+    @Schema(
+        title = "Embedding model provider",
+        description = "Optional. If not set, the embedding model is created from `chatProvider`. Ensure the chosen chat provider supports embeddings."
+    )
+    @PluginProperty
+    private ModelProvider embeddingProvider;
+
+    @Schema(title = "Content retriever configuration")
+    @NotNull
+    @PluginProperty
+    @Builder.Default
+    private ChatCompletion.ContentRetrieverConfiguration contentRetrieverConfiguration = ChatCompletion.ContentRetrieverConfiguration.builder().build();
+
     @Schema(title = "Tools that the LLM may use to augment its response")
     private List<ToolProvider> tools;
 
@@ -689,20 +714,20 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                     throw new ToolExecutionException(error);
                 });
 
+            // Attach retrieval augmentor (either explicit, embedding-based, or tools-based)
+            attachRetrievalAugmentor(agent, runContext);
+
             if (memory != null) {
                 agent.chatMemory(memory.chatMemory(runContext));
             }
 
-            List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
-                .map(throwFunction(provider -> provider.contentRetriever(runContext)))
-                .toList();
-            if (!toolContentRetrievers.isEmpty()) {
-                QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
-
-                // Create a query router that will route each query to the content retrievers
+            List<ContentRetriever> retrievers = buildToolRetrievers(runContext);
+            if (!retrievers.isEmpty()) {
+                QueryRouter router = new DefaultQueryRouter(retrievers.toArray(new ContentRetriever[0]));
                 agent.retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                    .queryRouter(queryRouter)
-                    .build());
+                        .queryRouter(router)
+                        .build()
+                );
             }
 
             Result<AiMessage> completion = agent.build().invoke(rPrompt);
@@ -733,6 +758,55 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             outputFiles.putAll(FilesService.outputFiles(runContext, runContext.render(this.outputFiles).asList(String.class)));
         }
         return outputFiles;
+    }
+
+    private void attachRetrievalAugmentor(AiServices<Agent> agent, RunContext runContext) throws Exception {
+
+        Optional<ContentRetriever> embeddingRetriever = buildEmbeddingRetriever(runContext);
+        List<ContentRetriever> toolRetrievers = buildToolRetrievers(runContext);
+        // No retrievers at all  nothing to attach
+        if (toolRetrievers.isEmpty() && embeddingRetriever.isEmpty()) {
+            return;
+        }
+        // Case 1: Only embedding retriever
+        if (toolRetrievers.isEmpty()) {
+            agent.retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                .contentRetriever(embeddingRetriever.orElseThrow())
+                .build()
+            );
+            return;
+        }
+        // Case 2: Tools exist add embedding retriever first if present
+        embeddingRetriever.ifPresent(toolRetrievers::addFirst);
+        QueryRouter router = new DefaultQueryRouter(toolRetrievers.toArray(new ContentRetriever[0]));
+        agent.retrievalAugmentor(
+            DefaultRetrievalAugmentor.builder()
+                .queryRouter(router)
+                .build()
+        );
+    }
+
+    private List<ContentRetriever> buildToolRetrievers(RunContext runContext) throws Exception {
+        return runContext.render(contentRetrievers)
+            .asList(ContentRetrieverProvider.class)
+            .stream()
+            .map(throwFunction(provider -> provider.contentRetriever(runContext)))
+            .toList();
+    }
+
+    private Optional<ContentRetriever> buildEmbeddingRetriever(final RunContext runContext) throws Exception {
+        if (embeddings == null) return Optional.empty();
+        var model = Optional.ofNullable(embeddingProvider).orElse(provider).embeddingModel(runContext);
+        return Optional.of(
+            EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(model)
+                .embeddingStore(
+                    embeddings.embeddingStore(runContext, model.dimension(), false)
+                )
+                .maxResults(contentRetrieverConfiguration.getMaxResults())
+                .minScore(contentRetrieverConfiguration.getMinScore())
+                .build()
+        );
     }
 
     interface Agent {
