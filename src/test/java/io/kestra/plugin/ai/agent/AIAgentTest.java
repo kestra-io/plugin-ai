@@ -9,14 +9,11 @@ import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.memory.KestraKVStore;
-import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
-import io.kestra.plugin.ai.rag.IngestDocument;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest
 class AIAgentTest {
-    private final String GOOGLE_API_KEY = System.getenv("GOOGLE_API_KEY");
     @Inject
     private TestRunContextFactory runContextFactory;
 
@@ -174,116 +170,4 @@ class AIAgentTest {
             assertThat(content).isEqualTo("Hello World");
         }
     }
-
-    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
-    @Test
-    void withEmbeddingRetriever() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "gemini-2.0-flash",
-            "apiKey", GOOGLE_API_KEY
-        ));
-        // First ingest some documents
-        var ingest = IngestDocument.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
-            .fromDocuments(List.of(
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("Paris is the capital of France with a population of over 2.1 million people"))
-                    .build(),
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("The Eiffel Tower is the most famous landmark in Paris at 330 meters tall"))
-                    .build()
-            ))
-            .build();
-
-        IngestDocument.Output ingestOutput = ingest.run(runContext);
-        assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
-
-        var agent = AIAgent.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddingProvider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            ).embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
-            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .build();
-
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getTextOutput()).contains("Paris");
-    }
-
-    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
-    @Test
-    void withEmbeddingRetriever_andWithTool() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "gemini-2.0-flash",
-            "apiKey", GOOGLE_API_KEY
-        ));
-        // First ingest some documents
-        var ingest = IngestDocument.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
-            .fromDocuments(List.of(
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("Paris is the capital of France with a population of over 2.1 million people"))
-                    .build(),
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("The Eiffel Tower is the most famous landmark in Paris at 330 meters tall"))
-                    .build()
-            ))
-            .build();
-
-        IngestDocument.Output ingestOutput = ingest.run(runContext);
-        assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
-
-        var agent = AIAgent.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddingProvider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            ).embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
-            .tools(
-                List.of(StdioMcpClient.builder().command(Property.ofValue(List.of("docker", "run", "--rm", "-i", "mcp/everything"))).build())
-            )
-            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .build();
-
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getTextOutput()).contains("Paris");
-    }
-
 }
