@@ -23,7 +23,7 @@ public final class AIUtils {
         // utility class pattern
     }
 
-    public static Map<ToolSpecification, ToolExecutor> buildTools(RunContext runContext, Map<String, Object> additionalVariables, List<ToolProvider> toolProviders) throws IllegalVariableEvaluationException {
+    public static Map<ToolSpecification, ToolExecutor> buildTools(RunContext runContext, Map<String, Object> additionalVariables, List<ToolProvider> toolProviders) throws Exception {
         if (toolProviders.isEmpty()) {
             return Collections.emptyMap();
         }

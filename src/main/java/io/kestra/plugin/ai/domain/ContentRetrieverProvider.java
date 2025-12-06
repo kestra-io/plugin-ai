@@ -11,6 +11,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.io.IOException;
+
 @Plugin
 @SuperBuilder(toBuilder = true)
 @Getter
@@ -19,5 +21,5 @@ import lombok.experimental.SuperBuilder;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class ContentRetrieverProvider extends AdditionalPlugin {
-    public abstract ContentRetriever contentRetriever(RunContext runContext) throws IllegalVariableEvaluationException;
+    public abstract ContentRetriever contentRetriever(RunContext runContext) throws IllegalVariableEvaluationException, IOException;
 }

@@ -10,10 +10,9 @@ import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
-import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
-import io.kestra.plugin.ai.rag.ChatCompletion;
 import io.kestra.plugin.ai.rag.IngestDocument;
+import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
@@ -25,11 +24,11 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.List;
 import java.util.Map;
 
-import static io.kestra.plugin.ai.ContainerTest.ollamaEndpoint;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest
 class AIAgentTest {
+    private static final String PINECONE_API_KEY = System.getenv("PINECONE_API_KEY");
     private final String GOOGLE_API_KEY = System.getenv("GOOGLE_API_KEY");
     private final String GOOGLE_CSI = System.getenv("GOOGLE_CSI_KEY");
     private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
@@ -240,4 +239,316 @@ class AIAgentTest {
         assertThat(output.getTextOutput()).isNotNull();
         assertThat(output.getTextOutput()).contains("Paris");
     }
+
+    /**
+     * Tests end-to-end retrieval-augmented generation (RAG) using:
+     * <ul>
+     *     <li>Google Gemini embedding model for document ingestion</li>
+     *     <li>A Kestra KV-store based embedding store</li>
+     *     <li>An EmbeddingStoreRetriever for semantic search</li>
+     *     <li>A Google Gemini chat model for answering the query</li>
+     * </ul>
+     **/
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void withEmbeddingStoreRetriever() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "modelName", "gemini-2.0-flash",
+            "googleApiKey", GOOGLE_API_KEY
+        ));
+
+        // Ingest documents into KV Store
+        var ingest = IngestDocument.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
+            .fromDocuments(List.of(
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("Paris is the capital of France with a population of over 2.1 million people"))
+                    .build(),
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("The Eiffel Tower is the most famous landmark in Paris at 330 meters tall"))
+                    .build()
+            ))
+            .build();
+
+        IngestDocument.Output ingestOutput = ingest.run(runContext);
+        assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
+
+        // Query using EmbeddingStoreRetriever
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .contentRetrievers(Property.ofValue(List.of(
+                EmbeddingStoreRetriever.builder()
+                    .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
+                    .embeddingProvider(
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                            .build()
+                    )
+                    .build()
+            )))
+            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getTextOutput()).contains("Paris");
+    }
+
+    /**
+     * Integration test demonstrating how can aggregate context from
+     * multiple heterogeneous retrieval sources, including:
+     * <ul>
+     *   <li><b>Two Kestra KVStore embedding stores</b> containing technical and business documents</li>
+     *   <li><b>Google Gemini</b> for both embedding generation
+     *       ({@code gemini-embedding-exp-03-07}) and LLM responses
+     *       ({@code gemini-2.0-flash})</li>
+     *   <li><b>Tavily Web Search</b> for real-time, general-purpose internet search</li>
+     *   <li><b>Google Custom Search (CSE)</b> for domain-specific or curated web search results</li>
+     * </ul>
+     */
+
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_CSI", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".*")
+    @Test
+    void withMultipleEmbeddingStores_andWebSearches() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "modelName", "gemini-2.0-flash",
+            "googleApiKey", GOOGLE_API_KEY,
+            "tavilyApiKey", TAVILY_API_KEY,
+            "csi", GOOGLE_CSI
+        ));
+
+        // Ingest technical docs into KV Store 1
+        var technicalIngest = IngestDocument.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                .kvName(Property.ofValue("technical-docs"))
+                .build())
+            .drop(Property.ofValue(true))
+            .fromDocuments(List.of(
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("Kestra is an open-source orchestration platform for workflow automation"))
+                    .build()
+            ))
+            .build();
+
+        technicalIngest.run(runContext);
+
+        // Ingest business docs into KV Store 2
+        var businessIngest = IngestDocument.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                .kvName(Property.ofValue("business-docs"))
+                .build())
+            .drop(Property.ofValue(true))
+            .fromDocuments(List.of(
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("We serve enterprise customers in financial services and healthcare"))
+                    .build()
+            ))
+            .build();
+
+        businessIngest.run(runContext);
+
+        // Query using multiple embedding stores + multiple web searches
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .contentRetrievers(Property.ofValue(List.of(
+                // Embedding Store 1
+                EmbeddingStoreRetriever.builder()
+                    .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                        .kvName(Property.ofValue("technical-docs"))
+                        .build())
+                    .embeddingProvider(
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                            .build()
+                    )
+                    .build(),
+                // Embedding Store 2
+                EmbeddingStoreRetriever.builder()
+                    .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                        .kvName(Property.ofValue("business-docs"))
+                        .build())
+                    .embeddingProvider(
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                            .build()
+                    )
+                    .build(),
+                // Web Search 1: Tavily
+                TavilyWebSearch.builder()
+                    .apiKey(Property.ofExpression("{{ tavilyApiKey }}"))
+                    .build(),
+                // Web Search 2: Google Custom Search
+                GoogleCustomWebSearch.builder()
+                    .csi(Property.ofExpression("{{ csi }}"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )))
+            .prompt(Property.ofValue("What is Kestra and what industries does it serve?"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+    }
+
+    /**
+     * Integration test demonstrating an {@link AIAgent} that retrieves context from multiple
+     * heterogeneous sources, including:
+     * <ul>
+     *   <li><b>Pinecone</b> for external vector retrieval</li>
+     *   <li><b>Kestra KVStore</b> as lightweight in-memory embedding stores</li>
+     *   <li><b>Google Gemini</b> for both embeddings and LLM reasoning</li>
+     *   <li><b>Tavily Web Search</b> for real-time external information</li>
+     * </ul>
+     * This test validates that the agent can combine all retrieval sources into a unified answer.
+     */
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".*")
+    void withMultipleDifferentEmbeddingStores_andWebSearch() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "modelName", "gemini-2.0-flash",
+            "googleApiKey", GOOGLE_API_KEY,
+            "tavilyApiKey", TAVILY_API_KEY,
+            "pineconeApiKey", PINECONE_API_KEY
+        ));
+
+        var businessIngest = IngestDocument.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                .kvName(Property.ofValue("qdrant-sim"))
+                .build())
+            .drop(Property.ofValue(true))
+            .fromDocuments(List.of(
+                IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("Kestra is used by Fortune 500 companies for data pipelines"))
+                    .build()
+            ))
+            .build();
+
+        businessIngest.run(runContext);
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                    .build()
+            )
+            .contentRetrievers(Property.ofValue(List.of(
+
+                /* ---------- Pinecone Retriever ---------- */
+                EmbeddingStoreRetriever.builder()
+                    .embeddings(io.kestra.plugin.ai.embeddings.Pinecone.builder()
+                        .apiKey(Property.ofExpression("{{ pineconeApiKey }}"))
+                        .index(Property.ofValue("embeddings"))
+                        .cloud(Property.ofValue("aws"))
+                        .region(Property.ofValue("us-east-1"))
+                        .namespace(Property.ofValue("test"))  // optional
+                        .build())
+                    .embeddingProvider(
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                            .build()
+                    )
+                    .build(),
+
+                /* ---------- KV Store #1 ---------- */
+                EmbeddingStoreRetriever.builder()
+                    .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                        .kvName(Property.ofValue("pinecone-sim"))
+                        .build())
+                    .embeddingProvider(
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                            .build()
+                    )
+                    .build(),
+
+                /* ---------- KV Store #2 ---------- */
+                EmbeddingStoreRetriever.builder()
+                    .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                        .kvName(Property.ofValue("qdrant-sim"))
+                        .build())
+                    .embeddingProvider(
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                            .build()
+                    )
+                    .build(),
+
+                /* ---------- Tavily Web Search ---------- */
+                TavilyWebSearch.builder()
+                    .apiKey(Property.ofExpression("{{ tavilyApiKey }}"))
+                    .build()
+            )))
+            .prompt(Property.ofValue("What programming languages does Kestra support and which companies use it?"))
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.1))
+                .seed(Property.ofValue(123456789))
+                .build())
+            .build();
+
+        var output = agent.run(runContext);
+
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getTextOutput()).contains("Kestra");
+    }
+
 }
