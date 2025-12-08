@@ -131,7 +131,7 @@ public class AIAgent extends ToolProvider {
     private transient List<ToolProvider> toolProviders;
 
     @Override
-    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+    public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws Exception {
         toolProviders = ListUtils.emptyOnNull(tools);
 
         AiServices<AgentTool> agent = AiServices.builder(AgentTool.class)
