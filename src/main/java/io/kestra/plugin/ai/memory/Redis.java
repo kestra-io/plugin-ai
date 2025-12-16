@@ -39,6 +39,7 @@ import java.time.Duration;
     examples = {
         @Example(
             title = "Use Redis-based chat memory for a conversation",
+            full = true,
             code = """
                 id: chat_with_memory
                 namespace: company.ai
