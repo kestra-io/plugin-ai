@@ -57,6 +57,8 @@ class ChatCompletionTest extends ContainerTest {
             ? DASHSCOPE_CN_URL
             : DASHSCOPE_INTL_URL;
     private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");
+    private final String WATSONX_API_KEY = System.getenv("WATSONX_API_KEY");
+    private final String WATSONX_PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
     ;
 
     @Inject
@@ -1731,4 +1733,45 @@ class ChatCompletionTest extends ContainerTest {
         // Ensure mTLS endpoint was actually hit
         mtlsExtension.verify(postRequestedFor(anyUrl()));
     }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "WATSONX_PROJECT_ID", matches = ".*")
+    void testChatCompletionWatsonxAI() throws Exception {
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", WATSONX_API_KEY,
+            "projectId", WATSONX_PROJECT_ID,
+            "baseUrl", "https://api.eu-de.dataplatform.cloud.ibm.com/wx",
+            "modelName", "ibm/granite-3-3-8b-instruct",
+            "messages", List.of(
+                ChatMessage.builder()
+                    .type(ChatMessageType.USER)
+                    .content("Hello, my name is John")
+                    .build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder()
+                .temperature(Property.ofValue(0.7))
+                .maxToken(Property.ofValue(512))
+                .build())
+            .provider(WatsonxAI.builder()
+                .type(WatsonxAI.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .projectId(Property.ofExpression("{{ projectId }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .build())
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
 }
