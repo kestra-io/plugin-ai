@@ -666,8 +666,11 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
     private Property<List<String>> outputFiles;
 
+    private static final ThreadLocal<RunContext> CURRENT_RUN_CONTEXT = new ThreadLocal<>();
+
     @Override
     public AIOutput run(RunContext runContext) throws Exception {
+
         Map<String, Object> additionalVariables = outputFiles != null ? Map.of(ScriptService.VAR_WORKING_DIR, runContext.workingDir().path(true).toString()) : Collections.emptyMap();
         String rPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
@@ -675,6 +678,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         var logger = runContext.logger();
 
         try {
+            CURRENT_RUN_CONTEXT.set(runContext);
             AiServices<Agent> agent = AiServices.builder(Agent.class)
                 .chatModel(provider.chatModel(runContext, configuration))
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
@@ -723,6 +727,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             }
 
             TimingChatModelListener.clear();
+            CURRENT_RUN_CONTEXT.remove();
         }
     }
 
@@ -733,6 +738,20 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             outputFiles.putAll(FilesService.outputFiles(runContext, runContext.render(this.outputFiles).asList(String.class)));
         }
         return outputFiles;
+    }
+
+    @Override
+    public void kill() {
+        RunContext runContext = CURRENT_RUN_CONTEXT.get();
+        if (this.tools != null && runContext != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill(runContext);
+                } catch (Exception e) {
+                    runContext.logger().warn("Unable to kill tool", e);
+                }
+            });
+        }
     }
 
     interface Agent {

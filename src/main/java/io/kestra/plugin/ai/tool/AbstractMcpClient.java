@@ -54,4 +54,15 @@ abstract class AbstractMcpClient extends ToolProvider {
             }
         }
     }
+
+    @Override
+    public void kill(RunContext runContext) {
+        if (mcpClient != null) {
+            try {
+                mcpClient.close();
+            } catch (Exception e) {
+                runContext.logger().warn("Unable to close the MCP client during kill", e);
+            }
+        }
+    }
 }

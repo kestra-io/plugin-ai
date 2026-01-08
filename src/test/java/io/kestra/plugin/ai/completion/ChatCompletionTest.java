@@ -14,6 +14,7 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
+import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.provider.*;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Disabled;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1772,6 +1774,180 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getTextOutput(), notNullValue());
         assertThat(output.getTextOutput(), containsString("John"));
         assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionKill_shouldCallKillOnTool() throws Exception {
+        // Track whether kill was called
+        final boolean[] toolKillCalled = {false};
+
+        // Create a simple test tool
+        ToolProvider testTool = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill(RunContext runContext) {
+                toolKillCalled[0] = true;
+            }
+        };
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "tinydolphin",
+            "ollamaEndpoint", ollamaEndpoint,
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .build()
+            )
+            .tools(List.of(testTool))
+            .build();
+
+        // Run the task
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+
+        // Call kill on the task
+        task.kill();
+
+        // Verify that kill was called on the tool
+        assertThat(toolKillCalled[0], equalTo(true));
+    }
+
+    @Test
+    void testChatCompletionKill_withMultipleTools_shouldCallKillOnAllTools() throws Exception {
+        final boolean[] tool1KillCalled = {false};
+        final boolean[] tool2KillCalled = {false};
+
+        ToolProvider testTool1 = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill(RunContext runContext) {
+                tool1KillCalled[0] = true;
+            }
+        };
+
+        ToolProvider testTool2 = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill(RunContext runContext) {
+                tool2KillCalled[0] = true;
+            }
+        };
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "tinydolphin",
+            "ollamaEndpoint", ollamaEndpoint,
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .build()
+            )
+            .tools(List.of(testTool1, testTool2))
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+
+        task.kill();
+
+        // Verify both tools had kill called
+        assertThat(tool1KillCalled[0], equalTo(true));
+        assertThat(tool2KillCalled[0], equalTo(true));
+    }
+
+    @Test
+    void testChatCompletionKill_whenToolThrowsException_shouldContinueToKillOtherTools() throws Exception {
+        final boolean[] tool1KillCalled = {false};
+        final boolean[] tool2KillCalled = {false};
+
+        ToolProvider failingTool = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill(RunContext runContext) {
+                tool1KillCalled[0] = true;
+                throw new RuntimeException("Tool kill failed");
+            }
+        };
+
+        ToolProvider normalTool = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill(RunContext runContext) {
+                tool2KillCalled[0] = true;
+            }
+        };
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "modelName", "tinydolphin",
+            "ollamaEndpoint", ollamaEndpoint,
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
+            .provider(Ollama.builder()
+                .type(Ollama.class.getName())
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .build()
+            )
+            .tools(List.of(failingTool, normalTool))
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+
+        // Call kill - should not throw despite first tool failing
+        task.kill();
+
+        // Verify both tools had kill called (exception didn't stop the chain)
+        assertThat(tool1KillCalled[0], equalTo(true));
+        assertThat(tool2KillCalled[0], equalTo(true));
     }
 
 }

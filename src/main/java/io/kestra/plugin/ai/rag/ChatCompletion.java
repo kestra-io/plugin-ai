@@ -308,11 +308,14 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     )
     private MemoryProvider memory;
 
+    private static final ThreadLocal<RunContext> CURRENT_RUN_CONTEXT = new ThreadLocal<>();
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
 
         try {
+            CURRENT_RUN_CONTEXT.set(runContext);
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatProvider.chatModel(runContext, chatConfiguration))
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
@@ -359,6 +362,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             TimingChatModelListener.clear();
+            CURRENT_RUN_CONTEXT.remove();
         }
     }
 
@@ -393,6 +397,20 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             return DefaultRetrievalAugmentor.builder()
                 .queryRouter(queryRouter)
                 .build();
+        }
+    }
+
+    @Override
+    public void kill() {
+        RunContext runContext = CURRENT_RUN_CONTEXT.get();
+        if (this.tools != null && runContext != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill(runContext);
+                } catch (Exception e) {
+                    runContext.logger().warn("Unable to kill tool", e);
+                }
+            });
         }
     }
 

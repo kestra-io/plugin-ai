@@ -181,6 +181,13 @@ public class AIAgent extends ToolProvider {
         toolProviders.forEach(tool -> tool.close(runContext));
     }
 
+    @Override
+    public void kill(RunContext runContext) {
+        if (toolProviders != null) {
+            toolProviders.forEach(tool -> tool.kill(runContext));
+        }
+    }
+
     interface AgentTool {
         Result<String> invoke(String userMessage);
     }
