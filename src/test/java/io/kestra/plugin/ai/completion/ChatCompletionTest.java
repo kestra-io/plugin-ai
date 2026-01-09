@@ -1777,6 +1777,7 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
     void testChatCompletionKill_shouldCallKillOnTool() throws Exception {
         // Track whether kill was called
         final boolean[] toolKillCalled = {false};
@@ -1796,37 +1797,36 @@ class ChatCompletionTest extends ContainerTest {
         };
 
         RunContext runContext = runContextFactory.of(Map.of(
-            "modelName", "tinydolphin",
-            "ollamaEndpoint", ollamaEndpoint,
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "mistralai/mistral-7b-instruct:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
-                ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
-
         ChatCompletion task = ChatCompletion.builder()
             .messages(Property.ofExpression("{{ messages }}"))
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
-            .provider(Ollama.builder()
-                .type(Ollama.class.getName())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
                 .modelName(Property.ofExpression("{{ modelName }}"))
-                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
                 .build()
             )
             .tools(List.of(testTool))
             .build();
 
-        // Run the task
         ChatCompletion.Output output = task.run(runContext);
         assertThat(output.getTextOutput(), notNullValue());
 
-        // Call kill on the task
         task.kill();
 
-        // Verify that kill was called on the tool
         assertThat(toolKillCalled[0], equalTo(true));
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
     void testChatCompletionKill_withMultipleTools_shouldCallKillOnAllTools() throws Exception {
         final boolean[] tool1KillCalled = {false};
         final boolean[] tool2KillCalled = {false};
@@ -1858,20 +1858,22 @@ class ChatCompletionTest extends ContainerTest {
         };
 
         RunContext runContext = runContextFactory.of(Map.of(
-            "modelName", "tinydolphin",
-            "ollamaEndpoint", ollamaEndpoint,
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "mistralai/mistral-7b-instruct:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
-                ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
         ChatCompletion task = ChatCompletion.builder()
             .messages(Property.ofExpression("{{ messages }}"))
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
-            .provider(Ollama.builder()
-                .type(Ollama.class.getName())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
                 .modelName(Property.ofExpression("{{ modelName }}"))
-                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
                 .build()
             )
             .tools(List.of(testTool1, testTool2))
@@ -1882,12 +1884,12 @@ class ChatCompletionTest extends ContainerTest {
 
         task.kill();
 
-        // Verify both tools had kill called
         assertThat(tool1KillCalled[0], equalTo(true));
         assertThat(tool2KillCalled[0], equalTo(true));
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
     void testChatCompletionKill_whenToolThrowsException_shouldContinueToKillOtherTools() throws Exception {
         final boolean[] tool1KillCalled = {false};
         final boolean[] tool2KillCalled = {false};
@@ -1920,20 +1922,22 @@ class ChatCompletionTest extends ContainerTest {
         };
 
         RunContext runContext = runContextFactory.of(Map.of(
-            "modelName", "tinydolphin",
-            "ollamaEndpoint", ollamaEndpoint,
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "mistralai/mistral-7b-instruct:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
-                ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
             )
         ));
 
         ChatCompletion task = ChatCompletion.builder()
             .messages(Property.ofExpression("{{ messages }}"))
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
-            .provider(Ollama.builder()
-                .type(Ollama.class.getName())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
                 .modelName(Property.ofExpression("{{ modelName }}"))
-                .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
                 .build()
             )
             .tools(List.of(failingTool, normalTool))
@@ -1942,10 +1946,8 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
         assertThat(output.getTextOutput(), notNullValue());
 
-        // Call kill - should not throw despite first tool failing
         task.kill();
 
-        // Verify both tools had kill called (exception didn't stop the chain)
         assertThat(tool1KillCalled[0], equalTo(true));
         assertThat(tool2KillCalled[0], equalTo(true));
     }

@@ -362,7 +362,6 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             TimingChatModelListener.clear();
-            CURRENT_RUN_CONTEXT.remove();
         }
     }
 
@@ -404,13 +403,17 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     public void kill() {
         RunContext runContext = CURRENT_RUN_CONTEXT.get();
         if (this.tools != null && runContext != null) {
-            this.tools.forEach(tool -> {
-                try {
-                    tool.kill(runContext);
-                } catch (Exception e) {
-                    runContext.logger().warn("Unable to kill tool", e);
-                }
-            });
+            try {
+                this.tools.forEach(tool -> {
+                    try {
+                        tool.kill(runContext);
+                    } catch (Exception e) {
+                        runContext.logger().warn("Unable to kill tool", e);
+                    }
+                });
+            } finally {
+                CURRENT_RUN_CONTEXT.remove();
+            }
         }
     }
 
