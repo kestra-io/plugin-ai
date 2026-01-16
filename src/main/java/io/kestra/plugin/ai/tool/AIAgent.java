@@ -182,9 +182,9 @@ public class AIAgent extends ToolProvider {
     }
 
     @Override
-    public void kill(RunContext runContext) {
+    public void kill() {
         if (toolProviders != null) {
-            toolProviders.forEach(tool -> tool.kill(runContext));
+            toolProviders.forEach(ToolProvider::kill);
         }
     }
 

@@ -58,7 +58,7 @@ public abstract class ToolProvider extends AdditionalPlugin {
         return tools;
     }
 
-    public void kill(RunContext runContext) {
+    public void kill() {
         // by default: no-op
     }
 }

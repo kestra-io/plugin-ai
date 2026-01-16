@@ -186,8 +186,6 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Nullable
     private List<ToolProvider> tools;
 
-    private static final ThreadLocal<RunContext> CURRENT_RUN_CONTEXT = new ThreadLocal<>();
-
     @Override
     public ChatCompletion.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -209,7 +207,6 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         try {
-            CURRENT_RUN_CONTEXT.set(runContext);
             ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(100); // this should be enough for most use cases
             // add all messages to memory except the system message and the last message that will be used for completion
             List<dev.langchain4j.data.message.ChatMessage> allExceptSystem = chatMessages.stream()
@@ -286,19 +283,13 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
     @Override
     public void kill() {
-        RunContext runContext = CURRENT_RUN_CONTEXT.get();
-        if (this.tools != null && runContext != null) {
-            try {
-                this.tools.forEach(tool -> {
-                    try {
-                        tool.kill(runContext);
-                    } catch (Exception e) {
-                        runContext.logger().warn("Unable to kill tool", e);
-                    }
-                });
-            } finally {
-                CURRENT_RUN_CONTEXT.remove();
-            }
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
         }
     }
 

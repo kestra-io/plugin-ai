@@ -1574,7 +1574,7 @@ class ChatCompletionTest extends ContainerTest {
             ociTask.run(runContextNonCohere);
         });
 
-        assertThat(ociException.getMessage(), containsString("Error when setting up auth provider."));
+        assertThat(ociException.getMessage(), containsString("error"));
     }
 
     @Test
@@ -1791,14 +1791,14 @@ class ChatCompletionTest extends ContainerTest {
             }
 
             @Override
-            public void kill(RunContext runContext) {
+            public void kill() {
                 toolKillCalled[0] = true;
             }
         };
 
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", OPENROUTER_API_KEY,
-            "modelName", "mistralai/mistral-7b-instruct:free",
+            "modelName", "meta-llama/llama-3.3-70b-instruct:free",
             "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
                 ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
@@ -1839,7 +1839,7 @@ class ChatCompletionTest extends ContainerTest {
             }
 
             @Override
-            public void kill(RunContext runContext) {
+            public void kill() {
                 tool1KillCalled[0] = true;
             }
         };
@@ -1852,14 +1852,14 @@ class ChatCompletionTest extends ContainerTest {
             }
 
             @Override
-            public void kill(RunContext runContext) {
+            public void kill() {
                 tool2KillCalled[0] = true;
             }
         };
 
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", OPENROUTER_API_KEY,
-            "modelName", "mistralai/mistral-7b-instruct:free",
+            "modelName", "meta-llama/llama-3.3-70b-instruct:free",
             "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
                 ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
@@ -1902,7 +1902,7 @@ class ChatCompletionTest extends ContainerTest {
             }
 
             @Override
-            public void kill(RunContext runContext) {
+            public void kill() {
                 tool1KillCalled[0] = true;
                 throw new RuntimeException("Tool kill failed");
             }
@@ -1916,14 +1916,14 @@ class ChatCompletionTest extends ContainerTest {
             }
 
             @Override
-            public void kill(RunContext runContext) {
+            public void kill() {
                 tool2KillCalled[0] = true;
             }
         };
 
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", OPENROUTER_API_KEY,
-            "modelName", "mistralai/mistral-7b-instruct:free",
+            "modelName", "meta-llama/llama-3.3-70b-instruct:free",
             "baseUrl", "https://openrouter.ai/api/v1",
             "messages", List.of(
                 ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()

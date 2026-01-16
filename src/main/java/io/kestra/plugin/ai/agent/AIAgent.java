@@ -741,21 +741,16 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
     @Override
     public void kill() {
-        RunContext runContext = CURRENT_RUN_CONTEXT.get();
-        if (this.tools != null && runContext != null) {
-            try {
-                this.tools.forEach(tool -> {
-                    try {
-                        tool.kill(runContext);
-                    } catch (Exception e) {
-                        runContext.logger().warn("Unable to kill tool", e);
-                    }
-                });
-            } finally {
-                CURRENT_RUN_CONTEXT.remove();
-            }
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
         }
     }
+
 
     interface Agent {
         Result<AiMessage> invoke(String userMessage);
