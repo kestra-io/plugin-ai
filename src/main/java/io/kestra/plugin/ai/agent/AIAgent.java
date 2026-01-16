@@ -666,8 +666,6 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
     private Property<List<String>> outputFiles;
 
-    private static final ThreadLocal<RunContext> CURRENT_RUN_CONTEXT = new ThreadLocal<>();
-
     @Override
     public AIOutput run(RunContext runContext) throws Exception {
 
@@ -678,7 +676,6 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         var logger = runContext.logger();
 
         try {
-            CURRENT_RUN_CONTEXT.set(runContext);
             AiServices<Agent> agent = AiServices.builder(Agent.class)
                 .chatModel(provider.chatModel(runContext, configuration))
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
