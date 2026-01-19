@@ -157,19 +157,19 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest-library"
     testImplementation "org.wiremock:wiremock-jetty12"
 
-    testImplementation 'org.testcontainers:ollama:1.21.3'
-    testImplementation 'org.testcontainers:elasticsearch:1.21.3'
+    testImplementation 'org.testcontainers:ollama:1.21.4'
+    testImplementation 'org.testcontainers:elasticsearch:1.21.4'
 
     // Embeddings stores
     testImplementation 'com.redis.testcontainers:testcontainers-redis:1.6.4'
     testImplementation "dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2"
-    testImplementation 'org.testcontainers:chromadb:1.21.3'
-    testImplementation 'org.testcontainers:milvus:1.21.3'
-    testImplementation 'org.testcontainers:mongodb:1.21.3'
-    testImplementation 'org.testcontainers:mariadb:1.21.3'
+    testImplementation 'org.testcontainers:chromadb:1.21.4'
+    testImplementation 'org.testcontainers:milvus:1.21.4'
+    testImplementation 'org.testcontainers:mongodb:1.21.4'
+    testImplementation 'org.testcontainers:mariadb:1.21.4'
 
     // Memories
-    testImplementation "org.testcontainers:postgresql:1.21.3"
+    testImplementation "org.testcontainers:postgresql:1.21.4"
 }
 
 /**********************************************************************************************************************\
