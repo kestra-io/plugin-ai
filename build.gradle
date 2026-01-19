@@ -1,4 +1,3 @@
-
 plugins {
     id 'java-library'
     id "idea"
@@ -52,7 +51,7 @@ dependencies {
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
 
     // compileOnly as it comes from Kestra script library
-    compileOnly ('com.github.docker-java:docker-java') {
+    compileOnly('com.github.docker-java:docker-java') {
         exclude group: 'com.github.docker-java', module: 'docker-java-transport-netty'
         exclude group: 'com.github.docker-java', module: 'docker-java-transport-jersey'
     }
@@ -258,10 +257,34 @@ jar {
     }
 }
 
+configurations.runtimeClasspath {
+    exclude group: "com.azure", module: "azure-core-test"
+    exclude group: "org.junit.jupiter"
+    exclude group: "org.junit.platform"
+    exclude group: "org.apache.ant"
+}
+
 shadowJar {
     archiveClassifier.set(null)
     mergeServiceFiles()
     zip64 true
+
+    minimize {
+        // avoid to minimize big SDKs (reflection + risky)
+        exclude(dependency("software.amazon.awssdk:.*"))
+        exclude(dependency("com.google.cloud:.*"))
+        exclude(dependency("com.azure:.*"))
+        exclude(dependency("io.netty:.*"))
+        exclude(dependency("com.fasterxml.jackson.*:.*"))
+        exclude(dependency("dev.langchain4j.*:.*"))
+    }
+
+    exclude "org/slf4j/**"
+    exclude "ch/qos/logback/**"
+    exclude "com/fasterxml/jackson/**"
+    exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
+    exclude "META-INF/INDEX.LIST"
+    exclude "module-info.class"
 }
 
 /**********************************************************************************************************************\
