@@ -54,4 +54,15 @@ abstract class AbstractMcpClient extends ToolProvider {
             }
         }
     }
+
+    @Override
+    public void kill() {
+        if (mcpClient != null) {
+            try {
+                mcpClient.close();
+            } catch (Exception ignored) {
+                // Silently ignore exceptions during kill - cleanup is best-effort
+            }
+        }
+    }
 }

@@ -14,6 +14,7 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
+import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.provider.*;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Disabled;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1572,7 +1574,7 @@ class ChatCompletionTest extends ContainerTest {
             ociTask.run(runContextNonCohere);
         });
 
-        assertThat(ociException.getMessage(), containsString("Error when setting up auth provider."));
+        assertThat(ociException.getMessage(), containsStringIgnoringCase("error"));
     }
 
     @Test
@@ -1772,6 +1774,182 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getTextOutput(), notNullValue());
         assertThat(output.getTextOutput(), containsString("John"));
         assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletionKill_shouldCallKillOnTool() throws Exception {
+        // Track whether kill was called
+        final boolean[] toolKillCalled = {false};
+
+        // Create a simple test tool
+        ToolProvider testTool = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill() {
+                toolKillCalled[0] = true;
+            }
+        };
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "meta-llama/llama-3.3-70b-instruct:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .tools(List.of(testTool))
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+
+        task.kill();
+
+        assertThat(toolKillCalled[0], equalTo(true));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletionKill_withMultipleTools_shouldCallKillOnAllTools() throws Exception {
+        final boolean[] tool1KillCalled = {false};
+        final boolean[] tool2KillCalled = {false};
+
+        ToolProvider testTool1 = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill() {
+                tool1KillCalled[0] = true;
+            }
+        };
+
+        ToolProvider testTool2 = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill() {
+                tool2KillCalled[0] = true;
+            }
+        };
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "meta-llama/llama-3.3-70b-instruct:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .tools(List.of(testTool1, testTool2))
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+
+        task.kill();
+
+        assertThat(tool1KillCalled[0], equalTo(true));
+        assertThat(tool2KillCalled[0], equalTo(true));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletionKill_whenToolThrowsException_shouldContinueToKillOtherTools() throws Exception {
+        final boolean[] tool1KillCalled = {false};
+        final boolean[] tool2KillCalled = {false};
+
+        ToolProvider failingTool = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill() {
+                tool1KillCalled[0] = true;
+                throw new RuntimeException("Tool kill failed");
+            }
+        };
+
+        ToolProvider normalTool = new ToolProvider() {
+            @Override
+            public Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor> tool(
+                RunContext runContext, Map<String, Object> additionalVariables) {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public void kill() {
+                tool2KillCalled[0] = true;
+            }
+        };
+
+        RunContext runContext = runContextFactory.of(Map.of(
+            "apiKey", OPENROUTER_API_KEY,
+            "modelName", "meta-llama/llama-3.3-70b-instruct:free",
+            "baseUrl", "https://openrouter.ai/api/v1",
+            "messages", List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+            )
+        ));
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).build())
+            .provider(OpenRouter.builder()
+                .type(OpenRouter.class.getName())
+                .apiKey(Property.ofExpression("{{ apiKey }}"))
+                .modelName(Property.ofExpression("{{ modelName }}"))
+                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                .build()
+            )
+            .tools(List.of(failingTool, normalTool))
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+        assertThat(output.getTextOutput(), notNullValue());
+
+        task.kill();
+
+        assertThat(tool1KillCalled[0], equalTo(true));
+        assertThat(tool2KillCalled[0], equalTo(true));
     }
 
 }

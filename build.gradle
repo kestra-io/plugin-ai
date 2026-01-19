@@ -1,10 +1,9 @@
-
 plugins {
     id 'java-library'
     id "idea"
     id 'jacoco'
     id "com.adarshr.test-logger" version "4.0.0"
-    id "com.gradleup.shadow" version "9.3.0"
+    id "com.gradleup.shadow" version "9.3.1"
     id 'signing'
     id "com.github.ben-manes.versions" version "0.53.0"
     id 'net.researchgate.release' version '3.1.0'
@@ -52,7 +51,7 @@ dependencies {
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
 
     // compileOnly as it comes from Kestra script library
-    compileOnly ('com.github.docker-java:docker-java') {
+    compileOnly('com.github.docker-java:docker-java') {
         exclude group: 'com.github.docker-java', module: 'docker-java-transport-netty'
         exclude group: 'com.github.docker-java', module: 'docker-java-transport-jersey'
     }
@@ -158,19 +157,19 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest-library"
     testImplementation "org.wiremock:wiremock-jetty12"
 
-    testImplementation 'org.testcontainers:ollama:1.21.3'
-    testImplementation 'org.testcontainers:elasticsearch:1.21.3'
+    testImplementation 'org.testcontainers:ollama:1.21.4'
+    testImplementation 'org.testcontainers:elasticsearch:1.21.4'
 
     // Embeddings stores
     testImplementation 'com.redis.testcontainers:testcontainers-redis:1.6.4'
     testImplementation "dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2"
-    testImplementation 'org.testcontainers:chromadb:1.21.3'
-    testImplementation 'org.testcontainers:milvus:1.21.3'
-    testImplementation 'org.testcontainers:mongodb:1.21.3'
-    testImplementation 'org.testcontainers:mariadb:1.21.3'
+    testImplementation 'org.testcontainers:chromadb:1.21.4'
+    testImplementation 'org.testcontainers:milvus:1.21.4'
+    testImplementation 'org.testcontainers:mongodb:1.21.4'
+    testImplementation 'org.testcontainers:mariadb:1.21.4'
 
     // Memories
-    testImplementation "org.testcontainers:postgresql:1.21.3"
+    testImplementation "org.testcontainers:postgresql:1.21.4"
 }
 
 /**********************************************************************************************************************\
@@ -258,10 +257,34 @@ jar {
     }
 }
 
+configurations.runtimeClasspath {
+    exclude group: "com.azure", module: "azure-core-test"
+    exclude group: "org.junit.jupiter"
+    exclude group: "org.junit.platform"
+    exclude group: "org.apache.ant"
+}
+
 shadowJar {
     archiveClassifier.set(null)
     mergeServiceFiles()
     zip64 true
+
+    minimize {
+        // avoid to minimize big SDKs (reflection + risky)
+        exclude(dependency("software.amazon.awssdk:.*"))
+        exclude(dependency("com.google.cloud:.*"))
+        exclude(dependency("com.azure:.*"))
+        exclude(dependency("io.netty:.*"))
+        exclude(dependency("com.fasterxml.jackson.*:.*"))
+        exclude(dependency("dev.langchain4j.*:.*"))
+    }
+
+    exclude "org/slf4j/**"
+    exclude "ch/qos/logback/**"
+    exclude "com/fasterxml/jackson/**"
+    exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
+    exclude "META-INF/INDEX.LIST"
+    exclude "module-info.class"
 }
 
 /**********************************************************************************************************************\
