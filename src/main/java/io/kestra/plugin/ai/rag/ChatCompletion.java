@@ -396,6 +396,18 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         }
     }
 
+    @Override
+    public void kill() {
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+    }
+
     interface Assistant {
         Result<AiMessage> chat(String userMessage);
     }
