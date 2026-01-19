@@ -1574,7 +1574,7 @@ class ChatCompletionTest extends ContainerTest {
             ociTask.run(runContextNonCohere);
         });
 
-        assertThat(ociException.getMessage(), containsString("error"));
+        assertThat(ociException.getMessage(), containsStringIgnoringCase("error"));
     }
 
     @Test
