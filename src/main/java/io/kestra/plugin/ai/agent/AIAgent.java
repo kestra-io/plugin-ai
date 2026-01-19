@@ -668,6 +668,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
     @Override
     public AIOutput run(RunContext runContext) throws Exception {
+
         Map<String, Object> additionalVariables = outputFiles != null ? Map.of(ScriptService.VAR_WORKING_DIR, runContext.workingDir().path(true).toString()) : Collections.emptyMap();
         String rPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
@@ -734,6 +735,19 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         }
         return outputFiles;
     }
+
+    @Override
+    public void kill() {
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+    }
+
 
     interface Agent {
         Result<AiMessage> invoke(String userMessage);

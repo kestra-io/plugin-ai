@@ -281,6 +281,18 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             .toList();
     }
 
+    @Override
+    public void kill() {
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+    }
+
     @SuperBuilder
     @Getter
     public static class Output extends AIOutput { // we must keep this one to keep the deprecated aiResponse
