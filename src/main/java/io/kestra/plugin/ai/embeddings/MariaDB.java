@@ -15,6 +15,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -110,6 +111,7 @@ public class MariaDB extends EmbeddingStoreProvider {
               If columnDefinitions and indexes are provided, COLUMN_PER_KEY must be used.
             """
     )
+    @Builder.Default
     private Property<String> metadataStorageMode = Property.ofValue(MetadataStorageMode.COLUMN_PER_KEY.name());
 
     @Override
