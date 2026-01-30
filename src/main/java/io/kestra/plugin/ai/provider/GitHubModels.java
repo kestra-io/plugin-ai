@@ -31,8 +31,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "GitHub Models AI Model Provider",
-    description = "Uses GitHub Models via Azure AI Inference API."
+    title = "Use GitHub Models via Azure AI Inference",
+    description = "Calls GitHub Models through the Azure AI Inference API with a GitHub token. Supports chat and embeddings; response format options map to Azure AI Inference capabilities."
 )
 @Plugin(
     examples = {

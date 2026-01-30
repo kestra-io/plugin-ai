@@ -25,7 +25,10 @@ import java.io.IOException;
 @SuperBuilder
 @NoArgsConstructor
 @JsonDeserialize
-@Schema(title = "Milvus Embedding Store")
+@Schema(
+    title = "Store embeddings in Milvus",
+    description = "Connects via URI or host/port with token-based auth; creates the target collection if missing. Metric/index/consistency options map to Milvus settings; `drop=true` clears the collection. Use defaults for host=localhost, port=19530, secure gRPC unless overridden."
+)
 @Plugin(
     examples = {
         @Example(

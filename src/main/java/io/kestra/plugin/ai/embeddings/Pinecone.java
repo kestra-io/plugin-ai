@@ -24,7 +24,8 @@ import java.io.IOException;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Pinecone Embedding Store"
+    title = "Store embeddings in Pinecone",
+    description = "Creates or connects to a serverless Pinecone index in the given cloud/region; `namespace` defaults to Pinecone’s default. Requires an API key; `drop=true` clears the index contents."
 )
 @Plugin(
     examples = {

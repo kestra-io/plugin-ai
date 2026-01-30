@@ -16,7 +16,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "OpenAI Model Provider"
+    title = "Use OpenAI models",
+    description = "Connects to OpenAI-compatible endpoints (defaults to api.openai.com) for chat, embeddings, or images. Requires API key; override `baseUrl` for Azure-compatible or proxy setups."
 )
 @Plugin(
     examples = {

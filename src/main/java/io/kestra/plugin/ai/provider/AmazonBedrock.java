@@ -34,7 +34,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Amazon Bedrock Model Provider"
+    title = "Use Amazon Bedrock models",
+    description = "Invokes Bedrock-hosted chat/embedding models with AWS credentials. Supports standard AWS region/auth settings; ensure model IDs match your Bedrock region and account access."
 )
 @Plugin(
     examples = {

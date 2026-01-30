@@ -78,10 +78,9 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 @JsonDeserialize
 @Schema(
-    title = "Call an AI Agent as a tool",
+    title = "Expose a nested AI Agent as a tool",
     description = """
-        This tool allows an LLM to call an AI Agent.
-        Make sure to specify a name and a description so the LLM can understand what it does to decide if it needs to call it."""
+        Wraps another AI Agent so the parent agent can invoke it as a tool. Provide a unique `name` and `description` per tool; the name defaults to `tool`. Content retrievers configured here always run, while other tools are invoked only when the LLM selects them."""
 )
 public class AIAgent extends ToolProvider {
     private static final String TOOL_DESCRIPTION = "This tool allows to call an AI agent named '%s'.";

@@ -28,7 +28,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonDeserialize
-@Schema(title = "DashScope (Qwen) Model Provider from Alibaba Cloud")
+@Schema(
+    title = "Use DashScope (Qwen) models",
+    description = "Calls Alibaba Cloud DashScope for Qwen chat/embeddings/images with API key. Some params (timeouts, retries, stop, maxTokens) map directly to DashScope limits."
+)
 @Plugin(
     examples = {
         @Example(

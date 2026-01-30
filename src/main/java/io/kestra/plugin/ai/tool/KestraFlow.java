@@ -169,24 +169,9 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 @JsonDeserialize
 @Schema(
-    title = "Call a Kestra flow as a tool",
+    title = "Execute Kestra flows from an agent",
     description = """
-        This tool allows an LLM to call a Kestra flow.
-
-        It supports two usage modes:
-
-        **1. Call a flow explicitly defined in the tool specification**
-        In this mode, the AI Agent creates a tool named `kestra_flow_<namespace>_<flowId>`.
-        Multiple flows can be added as separate tools, and the LLM can choose which one to call.
-        The tool's description comes from the tool's `description` property or the flow's description.
-        If no description is available, an error will be raised.
-
-        **2. Call a flow defined in the LLM prompt**
-        In this mode, the AI Agent creates a single tool named `kestra_flow`.
-        The LLM will infer the `namespace` and `flowId` parameters from the prompt.
-
-        The LLM can also set `inputs`, `labels`, and `scheduledDate` if required.
-        If no `correlationId` is provided, the called flow will inherit `correlationId` from the agent's execution."""
+        Triggers Kestra flows as tools, either predefined (`kestra_flow_<namespace>_<flowId>`) or generic (`kestra_flow` with namespace/flowId provided by the prompt). A description is mandatory from the flow or the tool `description`; inputs, labels, and schedule provided by the LLM override tool defaults. Labels are not inherited unless `inheritLabels=true`, while the correlationId is inherited when none is supplied."""
 )
 public class KestraFlow extends ToolProvider {
     // Tool description, it could be fine-tuned if needed

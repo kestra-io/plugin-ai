@@ -21,8 +21,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Chroma Embedding Store",
-    description = "Always uses cosine distance as the distance metric"
+    title = "Store embeddings in Chroma",
+    description = "Connects to a Chroma HTTP instance using cosine distance; targets the given collection and drops it when `drop=true`."
 )
 @Plugin(
     examples = {

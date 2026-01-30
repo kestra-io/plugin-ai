@@ -89,7 +89,9 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
 )
 @JsonDeserialize
 @Schema(
-    title = "Model Context Protocol (MCP) Docker client tool"
+    title = "Run MCP tools in Docker",
+    description = """
+        Launches an MCP server inside a Docker container and exposes its tools to the agent. Requires an `image`; optional `command`, `env`, and `binds` control the container. Docker host defaults to the detected runtime; `logEvents` defaults to false. Provide registry credentials and TLS settings when pulling from private registries."""
 )
 public class DockerMcpClient extends AbstractMcpClient {
     @Schema(title = "MCP client command, as a list of command parts")

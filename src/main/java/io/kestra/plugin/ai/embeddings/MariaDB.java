@@ -29,7 +29,8 @@ import java.util.List;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "MariaDB Embedding Store"
+    title = "Store embeddings in MariaDB",
+    description = "Persists embeddings to a MariaDB table; create/drop behavior is controlled by `createTable` and `drop`. Metadata defaults to COMBINED_JSON unless COLUMN_PER_KEY is configured with column/index definitions. Requires valid JDBC URL and credentials."
 )
 @Plugin(
     examples = {

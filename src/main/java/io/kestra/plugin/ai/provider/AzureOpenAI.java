@@ -33,7 +33,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-        title = "Azure OpenAI Model Provider"
+        title = "Use Azure OpenAI deployments",
+        description = "Targets Azure-hosted OpenAI models via the resource endpoint and deployment name. Supports API key or AAD client credentials; set `apiVersion` when required by the deployment."
 )
 @Plugin(
     examples = {

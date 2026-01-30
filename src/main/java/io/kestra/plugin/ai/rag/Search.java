@@ -86,8 +86,9 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
     aliases = "io.kestra.plugin.langchain4j.rag.Search"
 )
 @Schema(
-    title = "Search an embedding store",
-    description = "Perform a semantic search using a query string."
+    title = "Search embeddings and optionally return results",
+    description = """
+        Runs semantic search against the configured embedding store using the provided query embedding. `maxResults` limits hits and `minScore` filters low-similarity matches. `fetchType` controls output: NONE (metrics only), FETCH/FETCH_ONE (return matches), or STORE (write matches to internal storage)."""
 )
 public class Search extends Task implements RunnableTask<Search.Output> {
 

@@ -26,7 +26,8 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "LocalAI Model Provider"
+    title = "Use LocalAI OpenAI-compatible server",
+    description = "Targets a self-hosted LocalAI instance via its OpenAI-compatible API for chat/embeddings/images. Set `baseUrl` if your server is not on the default."
 )
 @Plugin(
     examples = {
