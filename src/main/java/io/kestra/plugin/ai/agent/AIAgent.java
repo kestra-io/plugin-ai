@@ -44,10 +44,9 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Run an AI Agent",
+    title = "Run an AI agent with tools",
     description = """
-        An AI agent is an autonomous system that uses a Large Language Model (LLM). Each run combines a **system message** and a **prompt**. The system message defines the agent's role and behavior, while the prompt carries the actual user input for that execution. Together, they guide the agent's response. The agent can also use **tools**, **content retrievers**, and **memory** to provide richer context during execution.
-        """
+        Combines a system message, prompt, and optional tools or content retrievers to invoke an LLM and return text/JSON outputs. Content retrievers always run; tools are only called when the model chooses them. `maxSequentialToolsInvocations` defaults to unlimited; memory keeps prior messages, and `outputFiles` collects files from the task working directory."""
 )
 @Plugin(
     examples = {

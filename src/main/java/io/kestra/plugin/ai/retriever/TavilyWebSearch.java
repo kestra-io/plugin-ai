@@ -25,7 +25,8 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "WebSearch content retriever for Tavily Search"
+    title = "Retrieve web results with Tavily",
+    description = "Uses Tavily Search to fetch live web context for RAG. Requires API key; `maxResults` caps returned snippets and defaults to 3. Requests count against Tavily quotas."
 )
 @Plugin(
     examples = {

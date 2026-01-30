@@ -32,12 +32,9 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Google Gemini Model Provider",
+    title = "Use Google Gemini models",
     description = """
-        WARNING:
-        - when using tools, this provider didn't support JSON Schema with `anyOf`
-        - function calling (tools) and response format are not yet supported together
-        """
+        Supports Gemini chat, embeddings, and images. Tools do not support JSON Schema `anyOf`, and tools cannot be combined with responseFormat; configure either but not both."""
 )
 @Plugin(
     examples = {

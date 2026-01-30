@@ -32,7 +32,8 @@ import java.io.IOException;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "OciGenAI Model Provider"
+    title = "Use OCI Generative AI models",
+    description = "Calls Oracle Cloud GenAI chat/embedding models with compartment OCID and region. Auth is handled via OCI SDK provider (config file or instance principals). Ensure the model is permitted in the chosen compartment."
 )
 @Plugin(
     examples = {

@@ -35,7 +35,8 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "MongoDB Atlas Embedding Store"
+    title = "Store embeddings in MongoDB Atlas",
+    description = "Uses MongoDB Atlas vector search with the provided collection/index; can optionally create the index and wait for readiness (up to 1 minute). Supply scheme/host and credentials; `drop=true` removes stored vectors."
 )
 @Plugin(
     examples = {

@@ -34,8 +34,9 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Text categorization with LLMs",
-    description = "Categorize text into one of the provided classes using an LLM."
+    title = "Classify text into provided classes",
+    description = """
+        Uses an LLM to assign the prompt to exactly one category from `classes`. A default system prompt forces a single-label reply; override it if you need different behavior. Output includes token usage and finish reason."""
 )
 @Plugin(
     examples = {

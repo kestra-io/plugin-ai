@@ -29,12 +29,9 @@ import java.time.Instant;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Chat Memory backed by PostgreSQL",
+    title = "Persist chat memory in PostgreSQL",
     description = """
-        Persist chat memory in a PostgreSQL table using the memory ID as the primary key.
-        The entry will expire after the provided TTL if configured.
-        Ensure your PostgreSQL database is reachable and configured via plugin properties.
-        """
+        Stores chat history in a PostgreSQL table keyed by `memory_id`; TTL sets an `expires_at` timestamp. Honors drop policies BEFORE/AFTER run; defaults to KEEP. Table is created if missing. Requires reachable Postgres with permissions to create tables."""
 )
 @Plugin(
     examples = {

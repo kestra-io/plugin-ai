@@ -29,7 +29,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonDeserialize
-@Schema(title = "ZhiPu AI Model Provider")
+@Schema(
+    title = "Use ZhiPu AI models",
+    description = "Calls ZhiPu’s OpenAI-compatible chat/embedding/image APIs with API key and model name. Supports stop tokens, retry count, and max tokens per request."
+)
 @Plugin(
     examples = {
         @Example(

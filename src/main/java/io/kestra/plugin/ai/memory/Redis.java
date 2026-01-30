@@ -28,12 +28,9 @@ import java.time.Duration;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Chat Memory backed by Redis",
+    title = "Persist chat memory in Redis",
     description = """
-        Persist chat memory in a Redis store using the memory ID as the key.
-        The Redis entry will expire after the provided TTL.
-        Ensure your Redis instance is reachable and configured via environment or plugin properties.
-        """
+        Stores chat history in Redis under `memoryId` with TTL-based expiry. Supports drop policies BEFORE/AFTER task run; defaults to KEEP. Ensure Redis is reachable; no TLS/auth fields are defined here."""
 )
 @Plugin(
     examples = {

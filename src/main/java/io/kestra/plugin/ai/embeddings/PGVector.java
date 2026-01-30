@@ -22,7 +22,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "PGVector Embedding Store"
+    title = "Store embeddings with pgvector",
+    description = "Uses the PostgreSQL pgvector extension to persist embeddings in the given table. `drop=true` recreates the table; optional IVF index (`useIndex`) defaults to false. Ensure pgvector extension is installed and the user can create tables/indexes."
 )
 @Plugin(
     examples = {

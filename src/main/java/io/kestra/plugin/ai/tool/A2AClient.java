@@ -61,10 +61,9 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "Call a remote AI agent via the A2A protocol.",
+    title = "Invoke remote AI agent over A2A",
     description = """
-        This tool allows an LLM to call a remote AI Agent via the A2A protocol.
-        Make sure to specify a name and a description so the LLM can understand what it does to decide if it needs to call it."""
+        Forwards prompts to a remote AI Agent using the A2A protocol and returns its response. Provide a meaningful `name` and `description` so the parent agent can choose the tool; the name defaults to `tool`. Requires `serverUrl` to reach the remote agent."""
 )
 public class A2AClient extends ToolProvider {
     private static final String TOOL_DESCRIPTION = "This tool allows to call a remote A2A agent named '%s'.";

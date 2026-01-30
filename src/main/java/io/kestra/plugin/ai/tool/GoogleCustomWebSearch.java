@@ -60,7 +60,9 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "Google Custom Search web tool"
+    title = "Search the web with Google CSE",
+    description = """
+        Runs queries through Google Custom Search and returns results to the agent. Requires a Google API key and Custom Search Engine ID (`csi`/`cx`); usage is subject to your CSE quotas and filters."""
 )
 public class GoogleCustomWebSearch extends ToolProvider {
     @Schema(title = "Custom search engine ID (cx)")

@@ -28,8 +28,9 @@ import java.io.IOException;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Embedding store content retriever for RAG (Retrieval Augmented Generation)",
-    description = "Retrieves relevant content from an embedding store based on semantic similarity to the query."
+    title = "Retrieve context from an embedding store",
+    description = """
+        Builds a content retriever over the configured embedding store using a query embedding from `embeddingProvider`. Results are filtered by `maxResults` and `minScore` (0–1). The store is not mutated; ensure the embedding model dimension matches stored vectors."""
 )
 @Plugin(
     examples = {

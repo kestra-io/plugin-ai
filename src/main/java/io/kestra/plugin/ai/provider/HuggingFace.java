@@ -15,7 +15,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "HuggingFace Model Provider"
+    title = "Use Hugging Face Inference endpoints",
+    description = "Routes requests to Hugging Face Inference Endpoints via the OpenAI-compatible gateway (default router.huggingface.co). Requires an API token and deployment model name."
 )
 @Plugin(
     examples = {

@@ -26,7 +26,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonDeserialize
-@Schema(title = "Watsonx AI Model Provider")
+@Schema(
+    title = "Use IBM watsonx.ai models",
+    description = "Calls IBM watsonx.ai chat/embedding endpoints with API key and project ID. Ensure the selected model ID is available in the configured project."
+)
 @Plugin(
     examples = {
         @Example(

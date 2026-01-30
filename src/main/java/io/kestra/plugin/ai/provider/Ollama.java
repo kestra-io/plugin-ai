@@ -29,7 +29,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Ollama Model Provider"
+    title = "Use local Ollama models",
+    description = "Calls an Ollama server for chat/embeddings using the given endpoint and model name. Ideal for self-hosted/local models; ensure the Ollama daemon is reachable."
 )
 @Plugin(
     examples = {

@@ -29,7 +29,8 @@ import java.util.Objects;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Anthropic AI Model Provider"
+    title = "Use Anthropic Claude models",
+    description = "Provides Claude chat models only; embeddings and images are unsupported. Enforces Anthropic rules (no seed/responseFormat). Thinking mode requires `max_tokens` > `thinking.budget_tokens`; set API key and optional base URL."
 )
 @Plugin(
     examples = {

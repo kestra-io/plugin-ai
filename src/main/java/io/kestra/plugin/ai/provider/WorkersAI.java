@@ -28,7 +28,8 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "WorkersAI Model Provider"
+    title = "Use Cloudflare Workers AI models",
+    description = "Invokes Workers AI chat, embedding, and image models using account ID and API key. Ensure the selected model is available in your account/region."
 )
 @Plugin(
     examples = {

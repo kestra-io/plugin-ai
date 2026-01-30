@@ -40,8 +40,9 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Ingest documents into an embedding store",
-    description = "Currently supports text documents (TXT, HTML, Markdown)."
+    title = "Ingest documents into embeddings",
+    description = """
+        Loads text from local path, internal storage, URLs, or inline docs; splits with the chosen splitter; then writes embeddings to the configured store. `drop=true` clears the store first. Default splitter is absent; provide one for chunking."""
 )
 @Plugin(
     examples = {

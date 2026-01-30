@@ -51,7 +51,8 @@ import java.util.Map;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Elasticsearch Embedding Store"
+    title = "Store embeddings in Elasticsearch",
+    description = "Targets an Elasticsearch 8.15+ cluster using the provided hosts/index; when `drop=true` the index is deleted. Supports basic auth, custom headers, path prefix, and trust-all TLS for self-signed certs."
 )
 @Plugin(
     examples = {

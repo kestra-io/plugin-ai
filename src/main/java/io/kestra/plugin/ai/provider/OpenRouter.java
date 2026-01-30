@@ -30,7 +30,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "OpenRouter Model Provider"
+    title = "Use OpenRouter models",
+    description = "Routes requests through OpenRouter’s multi-model API using your API key. Supports chat/embedding/image models exposed by OpenRouter; honor provider-specific safety/usage limits."
 )
 @Plugin(
     examples = {

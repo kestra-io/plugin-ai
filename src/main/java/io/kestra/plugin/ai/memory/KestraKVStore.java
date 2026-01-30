@@ -30,10 +30,9 @@ import java.util.Optional;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "In-memory Chat Memory that stores its data as Kestra KV pairs",
+    title = "Persist chat memory in Kestra KV",
     description = """
-        Memory stored as a KV pair with key named after the memory id and expiration date defined by the TTL property.
-        If your internal storage implementation doesn't support expiration, the KV pair may persist despite the TTL."""
+        Caches chat messages in-memory and saves them to a namespace KV entry keyed by `memoryId`; TTL sets KV expiry, but some backends may ignore it. `drop=AFTER_TASKRUN` deletes the KV after use."""
 )
 @Plugin(
     examples = {
