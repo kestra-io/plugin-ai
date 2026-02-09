@@ -21,6 +21,7 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -140,6 +141,13 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     @Builder.Default
     private Property<Boolean> drop = Property.ofValue(Boolean.FALSE);
 
+    @Schema(
+        title = "Bulk ingestion size",
+        description = "Maximum number of documents sent per ingestion request."
+    )
+    @Builder.Default
+    private Property<@Min(1) Integer> bulkSize = Property.ofValue(500);
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         List<Document> documents = new ArrayList<>();
@@ -182,30 +190,46 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         }
 
         EmbeddingStoreIngestor ingestor = builder.build();
-        IngestionResult result = ingestor.ingest(documents);
+        int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
+
+        Integer inputTokenCount = null;
+        Integer outputTokenCount = null;
+        Integer totalTokenCount = null;
+
+        for (int i = 0; i < documents.size(); i += rBulkSize) {
+            List<Document> batch = documents.subList(i, Math.min(i + rBulkSize, documents.size()));
+            IngestionResult result = ingestor.ingest(batch);
+
+            if (result.tokenUsage() != null) {
+                if (result.tokenUsage().inputTokenCount() != null) {
+                    inputTokenCount = (inputTokenCount == null ? 0 : inputTokenCount) + result.tokenUsage().inputTokenCount();
+                }
+                if (result.tokenUsage().outputTokenCount() != null) {
+                    outputTokenCount = (outputTokenCount == null ? 0 : outputTokenCount) + result.tokenUsage().outputTokenCount();
+                }
+                if (result.tokenUsage().totalTokenCount() != null) {
+                    totalTokenCount = (totalTokenCount == null ? 0 : totalTokenCount) + result.tokenUsage().totalTokenCount();
+                }
+            }
+        }
 
         runContext.metric(Counter.of("indexed.documents", documents.size()));
-        if (result.tokenUsage() != null) {
-            if (result.tokenUsage().inputTokenCount() != null) {
-                runContext.metric(Counter.of("input.token.count", result.tokenUsage().inputTokenCount()));
-            }
-            if (result.tokenUsage().outputTokenCount() != null) {
-                runContext.metric(Counter.of("output.token.count", result.tokenUsage().outputTokenCount()));
-            }
-            if (result.tokenUsage().totalTokenCount() != null) {
-                runContext.metric(Counter.of("total.token.count", result.tokenUsage().totalTokenCount()));
-            }
+        if (inputTokenCount != null) {
+            runContext.metric(Counter.of("input.token.count", inputTokenCount));
+        }
+        if (outputTokenCount != null) {
+            runContext.metric(Counter.of("output.token.count", outputTokenCount));
+        }
+        if (totalTokenCount != null) {
+            runContext.metric(Counter.of("total.token.count", totalTokenCount));
         }
 
         var output = Output.builder()
             .ingestedDocuments(documents.size())
-            .embeddingStoreOutputs(embeddings.outputs(runContext));
-
-        if (result.tokenUsage() != null) {
-            output = output.inputTokenCount(result.tokenUsage().inputTokenCount())
-                .outputTokenCount(result.tokenUsage().outputTokenCount())
-                .totalTokenCount(result.tokenUsage().totalTokenCount());
-        }
+            .embeddingStoreOutputs(embeddings.outputs(runContext))
+            .inputTokenCount(inputTokenCount)
+            .outputTokenCount(outputTokenCount)
+            .totalTokenCount(totalTokenCount);
 
         return output.build();
     }
