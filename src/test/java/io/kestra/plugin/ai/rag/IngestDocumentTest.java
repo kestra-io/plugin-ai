@@ -161,6 +161,48 @@ class IngestDocumentTest extends ContainerTest {
         assertKvStore(kvStore, kvKey, 2);
     }
 
+    @Test
+    void inlineDocumentsWithBulkSize() throws Exception {
+        RunContext runContext = runContextFactory.of("namespace", Map.of(
+            "modelName", "tinydolphin",
+            "endpoint", ollamaEndpoint
+        ));
+
+        int bulkSize = 5;
+        int totalDocs = 12;
+
+        List<IngestDocument.InlineDocument> docs =
+            java.util.stream.IntStream.range(0, totalDocs)
+                .mapToObj(i -> IngestDocument.InlineDocument.builder()
+                    .content(Property.ofValue("doc-" + i))
+                    .build()
+                )
+                .toList();
+
+        var task = IngestDocument.builder()
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(KestraKVStore.builder().build())
+            .drop(Property.ofValue(true))
+            .bulkSize(Property.ofValue(bulkSize))
+            .fromDocuments(docs)
+            .build();
+
+        IngestDocument.Output output = task.run(runContext);
+
+        assertThat(output.getIngestedDocuments()).isEqualTo(totalDocs);
+
+        String kvKey = (String) output.getEmbeddingStoreOutputs().get("kvName");
+        KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
+        assertKvStore(kvStore, kvKey, totalDocs);
+    }
+
+
     private void assertKvStore(KVStore kvStore, String kvKey, int nbDocuments) throws IOException, ResourceExpiredException {
         Optional<KVEntry> kvEntry = kvStore.get(kvKey);
         assertThat(kvEntry.isPresent()).isTrue();
