@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -171,8 +172,7 @@ class IngestDocumentTest extends ContainerTest {
         int bulkSize = 5;
         int totalDocs = 12;
 
-        List<IngestDocument.InlineDocument> docs =
-            java.util.stream.IntStream.range(0, totalDocs)
+        List<IngestDocument.InlineDocument> docs = IntStream.range(0, totalDocs)
                 .mapToObj(i -> IngestDocument.InlineDocument.builder()
                     .content(Property.ofValue("doc-" + i))
                     .build()
