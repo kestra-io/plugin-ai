@@ -23,7 +23,10 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @JsonDeserialize
-@Schema(title = "Weaviate Embedding Store")
+@Schema(
+    title = "Store embeddings in Weaviate",
+    description = "Connects to a Weaviate cluster (HTTP + optional gRPC) using the given host/scheme. Defaults: objectClass \"Default\", avoidDups true, consistency QUORUM. Provide API key when auth is enabled; `drop=true` clears the class contents."
+)
 @Plugin(
     examples = {
         @Example(

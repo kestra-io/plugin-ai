@@ -23,7 +23,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Qdrant Embedding Store"
+    title = "Store embeddings in Qdrant",
+    description = "Uses the Qdrant gRPC client with API key, host, and port. Targets the specified collection; `drop=true` removes its contents. Distance metric follows the Qdrant collection defaults."
 )
 @Plugin(
     examples = {

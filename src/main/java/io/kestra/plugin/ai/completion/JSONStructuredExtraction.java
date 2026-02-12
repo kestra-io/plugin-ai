@@ -38,8 +38,9 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Extract structured JSON with LLMs",
-    description = "Convert unstructured text into a JSON object with predefined fields. Provide a schema name and the list of fields to extract. Compatible with OpenAI, Gemini, and Ollama."
+    title = "Extract JSON fields from text",
+    description = """
+        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given prompt. Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
 )
 @Plugin(
     examples = {

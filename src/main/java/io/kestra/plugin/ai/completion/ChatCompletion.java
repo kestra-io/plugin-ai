@@ -40,8 +40,10 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Chat completion with AI models",
-    description = "Handles chat interactions using AI models (OpenAI, Ollama, Gemini, Anthropic, MistralAI, Deepseek).")
+    title = "Run chat completion with tools",
+    description = """
+        Executes a chat turn from a message list (max one system message; last must be USER) using the configured provider. Optional tools may be invoked by the model; token metrics are reported. JSON-schema formats in `configuration` require provider support."""
+)
 @Plugin(
     examples = {
         @Example(
@@ -279,6 +281,18 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 case USER ->  UserMessage.userMessage(dto.content());
             })
             .toList();
+    }
+
+    @Override
+    public void kill() {
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
+        }
     }
 
     @SuperBuilder

@@ -25,8 +25,8 @@ import java.util.List;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Tablestore Embedding Store",
-    description = "Always uses cosine distance as the distance metric"
+    title = "Store embeddings in Alibaba Tablestore",
+    description = "Connects to Tablestore using access keys and writes embeddings with cosine distance. Uses the configured instance/endpoint; metadata schemas are optional. `drop=true` is not supported—manage cleanup in Tablestore."
 )
 @Plugin(
     examples = {

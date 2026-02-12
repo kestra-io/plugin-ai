@@ -59,7 +59,9 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "WebSearch tool for Tavily Search"
+    title = "Search the web with Tavily",
+    description = """
+        Uses Tavily's web search API to fetch live results for the agent. Requires a Tavily API key; queries count against your Tavily quota and follow Tavily relevance settings."""
 )
 public class TavilyWebSearch extends ToolProvider {
     @Schema(title = "Tavily API Key - you can obtain one from [the Tavily website](https://www.tavily.com/#pricing)")

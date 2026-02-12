@@ -15,7 +15,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Deepseek Model Provider"
+    title = "Use DeepSeek models",
+    description = "Connects to DeepSeek’s OpenAI-compatible endpoint with API key and model name for chat/embedding tasks."
 )
 @Plugin(
     examples = {

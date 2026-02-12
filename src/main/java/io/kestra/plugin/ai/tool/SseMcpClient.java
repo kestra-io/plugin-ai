@@ -59,7 +59,9 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "Model Context Protocol (MCP) SSE client tool"
+    title = "Call MCP server over SSE",
+    description = """
+        Connects to an MCP server that streams Server-Sent Events and exposes its tools to the agent. Requires `sseUrl`; `timeout` is optional. Request/response logging is disabled by default; add `headers` for auth tokens."""
 )
 public class SseMcpClient extends AbstractMcpClient {
     @Schema(title = "SSE URL of the MCP server")

@@ -27,8 +27,9 @@ import org.slf4j.Logger;
 @EqualsAndHashCode
 @Getter
 @Schema(
-    title = "Generate an image with LLMs",
-    description = "Generate images with LLMs using a natural language prompt."
+    title = "Generate images from a prompt",
+    description = """
+        Calls the configured image model to create an image from the provided text prompt and returns the image URL. Output includes finish reason and token usage; image size/format limits follow the provider model."""
 )
 @NoArgsConstructor
 @Plugin(

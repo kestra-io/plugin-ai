@@ -49,7 +49,9 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "Code execution tool using Judge0"
+    title = "Execute JavaScript via Judge0",
+    description = """
+        Sends JavaScript snippets to the Judge0 sandbox (RapidAPI) and returns the program output. Requires a RapidAPI key; execution limits and timeouts follow the Judge0 plan. Avoid sending untrusted secrets in code."""
 )
 public class CodeExecution extends ToolProvider {
 

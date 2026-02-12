@@ -17,7 +17,11 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Schema(title = "Call a remote AI agent via the A2A protocol.")
+@Schema(
+    title = "Proxy prompts to a remote A2A agent",
+    description = """
+        Sends the prompt to a remote AI Agent over the A2A protocol and returns its text response. Requires `serverUrl`; ensure the endpoint is trusted and reachable."""
+)
 @Plugin(
     examples = {
         @Example(

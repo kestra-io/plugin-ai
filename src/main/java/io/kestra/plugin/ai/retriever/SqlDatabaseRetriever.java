@@ -31,8 +31,9 @@ import javax.sql.DataSource;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "SQL Database content retriever using LangChain4j experimental SqlDatabaseContentRetriever. " +
-        "⚠ IMPORTANT: the database user should have READ-ONLY permissions."
+    title = "Retrieve context from SQL (experimental)",
+    description = """
+        Uses LangChain4j’s experimental SqlDatabaseContentRetriever to translate questions into SQL and return rows as context. Requires a read-only JDBC user; supports PostgreSQL/MySQL/H2 with auto driver selection. Connection pooling defaults to size 2."""
 )
 @Plugin(
     examples = {

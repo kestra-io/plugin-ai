@@ -31,7 +31,8 @@ import java.util.Optional;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "In-memory embedding store that stores data as Kestra KV pairs"
+    title = "Prototype embeddings in Kestra KV",
+    description = "Stores embeddings in-memory and persists them to Kestra namespace KV on completion. Suitable for small demos; not scalable. `drop=true` discards any previously saved KV snapshot."
 )
 @Plugin(
     examples = {

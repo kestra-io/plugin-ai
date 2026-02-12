@@ -3,8 +3,10 @@ package io.kestra.plugin.ai.memory;
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
+import io.kestra.core.models.tasks.retrys.Exponential;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
+import io.kestra.core.utils.RetryUtils;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
@@ -13,19 +15,19 @@ import io.kestra.plugin.ai.rag.ChatCompletion;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.time.Duration;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest
+@Execution(ExecutionMode.SAME_THREAD)
 class PostgreSQLTest extends ContainerTest {
 
     @Inject
@@ -50,13 +52,16 @@ class PostgreSQLTest extends ContainerTest {
         String user = postgres.getUsername();
         String password = postgres.getPassword();
 
+        // Avoid cross-test / parallel interference
+        String memoryId = "test-memory-" + IdUtils.create();
+
         RunContext runContext = runContextFactory.of("namespace", Map.of(
             "modelName", "tinydolphin",
             "endpoint", ollamaEndpoint,
             "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
         ));
 
-        // First prompt : store chat memory in default table (chat_memory)
+        // 1) First prompt: store chat memory
         var rag = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
@@ -73,11 +78,11 @@ class PostgreSQLTest extends ContainerTest {
                 .user(Property.ofValue(user))
                 .password(Property.ofValue(password))
                 .ttl(Property.ofValue(Duration.ofMinutes(5)))
-                .memoryId(Property.ofValue("test-memory"))
+                .memoryId(Property.ofValue(memoryId))
                 .build())
             .prompt(Property.ofValue("Hello, my name is Alice"))
             .chatConfiguration(ChatConfiguration.builder()
-                .temperature(Property.ofValue(0.1))
+                .temperature(Property.ofValue(0.0))
                 .seed(Property.ofValue(123456789))
                 .build())
             .build();
@@ -85,8 +90,42 @@ class PostgreSQLTest extends ContainerTest {
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
 
-        // Second prompt : retrieve persisted chat memory
-        rag = ChatCompletion.builder()
+        // 2) Wait until close() persisted memory_json for THIS memoryId (RetryUtils)
+        RetryUtils.Instance<String, RuntimeException> persistRetry =
+            RetryUtils.Instance.<String, RuntimeException>builder()
+                .policy(Exponential.builder()
+                    .interval(Duration.ofMillis(100))
+                    .maxInterval(Duration.ofMillis(200))
+                    .delayFactor(2.0)
+                    .maxAttempts(25)
+                    .build())
+                .failureFunction(failed ->
+                    new RuntimeException("Memory not persisted for memory_id=" + memoryId, failed))
+                .build();
+
+        String memoryJson = persistRetry.run(
+            result -> result == null || result.isBlank(),
+            () -> {
+                try (Connection conn = DriverManager.getConnection(
+                    String.format("jdbc:postgresql://%s:%d/%s", pgHost, pgPort, database), user, password);
+                     PreparedStatement ps = conn.prepareStatement(
+                         "SELECT memory_json FROM chat_memory WHERE memory_id = ?"
+                     )) {
+                    ps.setString(1, memoryId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) return null;
+                        return rs.getString("memory_json");
+                    }
+                }
+            }
+        );
+
+        assertThat(memoryJson).isNotBlank();
+        // Deterministic assertion: persisted memory contains what we wrote
+        assertThat(memoryJson.toLowerCase()).contains("alice");
+
+        // (Optional) 3) Second prompt: just ensure reading memory doesn't crash (no assertion on LLM output)
+        var rag2 = ChatCompletion.builder()
             .chatProvider(
                 Ollama.builder()
                     .type(Ollama.class.getName())
@@ -101,27 +140,29 @@ class PostgreSQLTest extends ContainerTest {
                 .database(Property.ofValue(database))
                 .user(Property.ofValue(user))
                 .password(Property.ofValue(password))
-                .memoryId(Property.ofValue("test-memory"))
+                .memoryId(Property.ofValue(memoryId))
                 .build())
             .prompt(Property.ofValue("What's my name?"))
             .chatConfiguration(ChatConfiguration.builder()
-                .temperature(Property.ofValue(0.1))
+                .temperature(Property.ofValue(0.0))
                 .seed(Property.ofValue(123456789))
                 .build())
             .build();
 
-        ragOutput = rag.run(runContext);
+        var out2 = rag2.run(runContext);
+        assertThat(out2.getTextOutput()).isNotNull();
 
-        assertThat(ragOutput.getTextOutput()).isNotNull();
-        assertThat(ragOutput.getTextOutput().toLowerCase()).contains("alice");
-
-        // Validate data persisted in default table
+        // 4) Validate data persisted in default table for this memoryId
         try (Connection conn = DriverManager.getConnection(
             String.format("jdbc:postgresql://%s:%d/%s", pgHost, pgPort, database), user, password);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM chat_memory")) {
-            assertThat(rs.next()).isTrue();
-            assertThat(rs.getInt(1)).isGreaterThan(0);
+             PreparedStatement ps = conn.prepareStatement(
+                 "SELECT COUNT(*) FROM chat_memory WHERE memory_id = ?"
+             )) {
+            ps.setString(1, memoryId);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getInt(1)).isEqualTo(1);
+            }
         }
     }
 

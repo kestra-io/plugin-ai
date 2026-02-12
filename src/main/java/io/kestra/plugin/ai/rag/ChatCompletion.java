@@ -41,7 +41,11 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-    @Schema(title = "Create a Retrieval Augmented Generation (RAG) pipeline")
+@Schema(
+    title = "Run RAG chat with retrievers/tools",
+    description = """
+        Combines chat, an embedding-store retriever, optional content retrievers, and optional tools. Requires chat and embedding providers. Retrievers always supply context; tools run only when invoked by the model. Retriever limits (`maxResults`, `minScore`) filter retrieved chunks."""
+)
 @Plugin(
     examples = {
         @Example(
@@ -393,6 +397,18 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             return DefaultRetrievalAugmentor.builder()
                 .queryRouter(queryRouter)
                 .build();
+        }
+    }
+
+    @Override
+    public void kill() {
+        if (this.tools != null) {
+            this.tools.forEach(tool -> {
+                try {
+                    tool.kill();
+                } catch (Exception ignored) {
+                }
+            });
         }
     }
 

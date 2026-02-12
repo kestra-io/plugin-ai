@@ -29,7 +29,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Mistral AI Model Provider"
+    title = "Use Mistral models",
+    description = "Calls Mistral chat/embedding APIs with an API key. `topK` is not supported; chat configuration must respect model limits."
 )
 @Plugin(
     examples = {

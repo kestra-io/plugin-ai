@@ -15,6 +15,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -28,7 +29,8 @@ import java.util.List;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "MariaDB Embedding Store"
+    title = "Store embeddings in MariaDB",
+    description = "Persists embeddings to a MariaDB table; create/drop behavior is controlled by `createTable` and `drop`. Metadata defaults to COMBINED_JSON unless COLUMN_PER_KEY is configured with column/index definitions. Requires valid JDBC URL and credentials."
 )
 @Plugin(
     examples = {
@@ -110,6 +112,7 @@ public class MariaDB extends EmbeddingStoreProvider {
               If columnDefinitions and indexes are provided, COLUMN_PER_KEY must be used.
             """
     )
+    @Builder.Default
     private Property<String> metadataStorageMode = Property.ofValue(MetadataStorageMode.COLUMN_PER_KEY.name());
 
     @Override

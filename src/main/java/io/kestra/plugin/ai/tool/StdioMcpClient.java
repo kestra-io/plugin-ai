@@ -57,7 +57,9 @@ import java.util.Map;
 )
 @JsonDeserialize
 @Schema(
-    title = "Model Context Protocol (MCP) Stdio client tool"
+    title = "Run MCP tools over stdio",
+    description = """
+        Starts an MCP server via a local command and exposes its advertised tools to the agent over stdio. `command` is required; `logEvents` defaults to false. Use `env` to pass credentials or config needed by the server process."""
 )
 public class StdioMcpClient extends AbstractMcpClient {
     @Schema(title = "MCP client command, as a list of command parts")

@@ -25,7 +25,8 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Web search content retriever for Google Custom Search"
+    title = "Retrieve web results with Google Custom Search",
+    description = "Uses Google Custom Search (CSE) to fetch web snippets for RAG. Requires API key and CSE ID (`csi`/`cx`); `maxResults` limits returned items (default 3). Requests consume CSE quota."
 )
 @Plugin(
     examples = {

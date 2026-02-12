@@ -27,7 +27,8 @@ import java.io.IOException;
 @NoArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Redis Embedding Store"
+    title = "Store embeddings in Redis",
+    description = "Backs an embedding index with Redis (jedis). Uses `indexName` (defaults to `embedding-index`); `drop=true` clears stored vectors. Ensure Redis deployment supports vector search modules for production use."
 )
 @Plugin(
     examples = {

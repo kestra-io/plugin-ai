@@ -67,17 +67,9 @@ import java.util.stream.Collectors;
 )
 @JsonDeserialize
 @Schema(
-    title = "Call a Kestra runnable task as a tool",
+    title = "Expose Kestra runnable tasks as tools",
     description = """
-       This tool exposes a tool for each Kestra task. The name of the tool will be `kestra_task_<taskId>`.
-
-       When you define the tasks:
-        - You can set task properties as usual; these will not be overridden by the agent.
-        - If you want the agent to fill a mandatory property, set its value to `...` and the agent will fill it.
-        - Optional properties that are not set may be filled by the agent if it chooses to do so.
-
-        WARNING: Since some model providers don't support JSON schema with `anyOf`, when creating the JSON Schema to call the task, each `anyOf` will be replaced by one of its sub-schemas.
-        You can view the generated schema in the debug logs."""
+        Creates one tool per runnable task named `kestra_task_<taskId>`. Properties you set stay fixed; set a required property to `...` to force the agent to supply it, and unset optionals may be filled by the agent. `anyOf` schemas are flattened to a single branch because many models do not support `anyOf`; the generated schema appears in debug logs."""
 )
 public class KestraTask extends ToolProvider {
     // This placeholder would be used in the flow definition to denote a property that the LLM must set.

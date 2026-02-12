@@ -31,7 +31,8 @@ import java.util.List;
 @AllArgsConstructor
 @JsonDeserialize
 @Schema(
-    title = "Google VertexAI Model Provider"
+    title = "Use Google Vertex AI models",
+    description = "Calls Vertex AI Gemini chat, embeddings, or images using project, location, and endpoint settings. Requires GCP credentials; ensure response formats are supported by the selected model/region."
 )
 @Plugin(
     examples = {
