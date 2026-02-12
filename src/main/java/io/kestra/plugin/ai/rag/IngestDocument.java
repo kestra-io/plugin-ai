@@ -171,7 +171,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
         List<Document> batch = new ArrayList<>(rBulkSize);
 
-        Counters acc = new Counters();
+        Counters counters = new Counters();
 
         String path = runContext.render(fromPath).as(String.class).orElse(null);
         if (path != null) {
@@ -181,8 +181,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             for (Document doc : docs) {
                 batch.add(doc);
                 if (batch.size() >= rBulkSize) {
-                    BatchResult result = flushBatch(batch, ingestor);
-                    acc.add(result);
+                    flushBatch(batch, ingestor, counters);
                 }
             }
         }
@@ -198,8 +197,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
             batch.add(doc);
             if (batch.size() >= rBulkSize) {
-                BatchResult result = flushBatch(batch, ingestor);
-                acc.add(result);
+                flushBatch(batch, ingestor, counters);
             }
         }
 
@@ -210,8 +208,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             }
 
             if (batch.size() >= rBulkSize) {
-                BatchResult result = flushBatch(batch, ingestor);
-                acc.add(result);
+                flushBatch(batch, ingestor, counters);
             }
         }
 
@@ -219,71 +216,57 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             batch.add(UrlDocumentLoader.load(url, new TextDocumentParser()));
 
             if (batch.size() >= rBulkSize) {
-                BatchResult result = flushBatch(batch, ingestor);
-                acc.add(result);
+                flushBatch(batch, ingestor, counters);
             }
         }
 
         if (!batch.isEmpty()) {
-            BatchResult result = flushBatch(batch, ingestor);
-            acc.add(result);
+            flushBatch(batch, ingestor, counters);
         }
 
-        runContext.metric(Counter.of("indexed.documents", acc.documents));
+        runContext.metric(Counter.of("indexed.documents", counters.documents));
 
-        if (acc.input > 0) {
-            runContext.metric(Counter.of("input.token.count", acc.input));
+        if (counters.input > 0) {
+            runContext.metric(Counter.of("input.token.count", counters.input));
         }
-        if (acc.output > 0) {
-            runContext.metric(Counter.of("output.token.count", acc.output));
+        if (counters.output > 0) {
+            runContext.metric(Counter.of("output.token.count", counters.output));
         }
-        if (acc.total > 0) {
-            runContext.metric(Counter.of("total.token.count", acc.total));
+        if (counters.total > 0) {
+            runContext.metric(Counter.of("total.token.count", counters.total));
         }
 
         return Output.builder()
-            .ingestedDocuments(acc.documents)
+            .ingestedDocuments(counters.documents)
             .embeddingStoreOutputs(embeddings.outputs(runContext))
-            .inputTokenCount(acc.input == 0 ? null : acc.input)
-            .outputTokenCount(acc.output == 0 ? null : acc.output)
-            .totalTokenCount(acc.total == 0 ? null : acc.total)
+            .inputTokenCount(counters.input == 0 ? null : counters.input)
+            .outputTokenCount(counters.output == 0 ? null : counters.output)
+            .totalTokenCount(counters.total == 0 ? null : counters.total)
             .build();
     }
 
-    private BatchResult flushBatch(List<Document> batch, EmbeddingStoreIngestor ingestor) {
-        int size = batch.size();
-        if (size == 0) {
-            return new BatchResult(0, 0, 0, 0);
+    private void flushBatch(List<Document> batch, EmbeddingStoreIngestor ingestor, Counters counters) {
+        if (batch.isEmpty()) {
+            return;
         }
 
+        int size = batch.size();
         IngestionResult result = ingestor.ingest(batch);
         batch.clear();
 
-        int input = 0;
-        int output = 0;
-        int total = 0;
+        counters.documents += size;
 
         var usage = result.tokenUsage();
         if (usage != null) {
-            input = usage.inputTokenCount() != null ? usage.inputTokenCount() : 0;
-            output = usage.outputTokenCount() != null ? usage.outputTokenCount() : 0;
-            total = usage.totalTokenCount() != null ? usage.totalTokenCount() : 0;
-        }
-
-        return new BatchResult(size, input, output, total);
-    }
-
-    private static class BatchResult {
-        final int documents;
-        final int input;
-        final int output;
-        final int total;
-
-        BatchResult(int documents, int input, int output, int total) {
-            this.documents = documents;
-            this.input = input;
-            this.output = output;
-            this.total = total;
+            if (usage.inputTokenCount() != null) {
+                counters.input += usage.inputTokenCount();
+            }
+            if (usage.outputTokenCount() != null) {
+                counters.output += usage.outputTokenCount();
+            }
+            if (usage.totalTokenCount() != null) {
+                counters.total += usage.totalTokenCount();
+            }
         }
     }
 
@@ -292,13 +275,6 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         int input;
         int output;
         int total;
-
-        void add(BatchResult r) {
-            this.documents += r.documents;
-            this.input += r.input;
-            this.output += r.output;
-            this.total += r.total;
-        }
     }
 
     private dev.langchain4j.data.document.DocumentSplitter from(DocumentSplitter splitter) {
