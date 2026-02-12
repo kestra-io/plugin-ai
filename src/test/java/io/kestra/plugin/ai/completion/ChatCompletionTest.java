@@ -1130,7 +1130,7 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
-    void testChatCompletionOpenRouter_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
+    void testChatCompletionOpenRouter_givenInvalidApiKey_shouldThrowAuthenticationException() {
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", "OPENROUTER_API_KEY",
             "modelName", "deepseek/deepseek-r1:free",
@@ -1153,13 +1153,17 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        // Assert RuntimeException and error message
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            ChatCompletion.Output output = task.run(runContext);
-        }, "status code: 401");
+        // OpenRouter can return either a direct 401 or an upstream Clerk auth failure (code 502).
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> task.run(runContext));
 
-        // Verify error message contains authentication error details
-        assertThat(exception.getMessage(), containsString("401"));
+        assertThat(exception.getMessage(), anyOf(
+            containsString("401"),
+            containsString("\"code\":502")
+        ));
+        assertThat(exception.getMessage(), anyOf(
+            containsString("Unauthorized"),
+            containsString("Failed to authenticate request with Clerk")
+        ));
     }
 
     @Test
