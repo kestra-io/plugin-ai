@@ -1,6 +1,5 @@
 package io.kestra.plugin.ai.rag;
 
-import co.elastic.clients.elasticsearch.nodes.IngestStats;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
@@ -150,6 +149,8 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
     @Override
     public Output run(RunContext runContext) throws Exception {
+        String rFromPath = runContext.render(fromPath).as(String.class).orElse(null);
+        int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
 
         var embeddingModel = provider.embeddingModel(runContext);
         var embeddingStore = embeddings.embeddingStore(
@@ -167,15 +168,13 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         }
 
         EmbeddingStoreIngestor ingestor = builder.build();
-        int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
 
         List<Document> batch = new ArrayList<>(rBulkSize);
 
         Counters counters = new Counters();
 
-        String path = runContext.render(fromPath).as(String.class).orElse(null);
-        if (path != null) {
-            Path finalPath = runContext.workingDir().resolve(Path.of(path));
+        if (rFromPath != null) {
+            Path finalPath = runContext.workingDir().resolve(Path.of(rFromPath));
             List<Document> docs = FileSystemDocumentLoader.loadDocumentsRecursively(finalPath);
 
             for (Document doc : docs) {
@@ -187,8 +186,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         }
 
         for (InlineDocument inlineDocument : ListUtils.emptyOnNull(fromDocuments)) {
-            Map<String, Object> metadataMap =
-                runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
+            Map<String, Object> metadataMap = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
 
             Document doc = Document.document(
                 runContext.render(inlineDocument.content).as(String.class).orElseThrow(),
