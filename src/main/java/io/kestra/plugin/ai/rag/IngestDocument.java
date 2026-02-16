@@ -33,8 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static io.kestra.core.utils.Rethrow.throwConsumer;
-
 @SuperBuilder
 @ToString
 @EqualsAndHashCode
@@ -151,88 +149,130 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        List<Document> documents = new ArrayList<>();
-
-        runContext.render(fromPath).as(String.class).ifPresent(path -> {
-            // we restrict to documents on the working directory*
-            // resolve protects from path traversal (CWE-22), see: https://cwe.mitre.org/data/definitions/22.html
-            Path finalPath = runContext.workingDir().resolve(Path.of(path));
-            documents.addAll(FileSystemDocumentLoader.loadDocumentsRecursively(finalPath));
-        });
-
-        ListUtils.emptyOnNull(fromDocuments).forEach(throwConsumer(inlineDocument -> {
-            Map<String, Object> metadata = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
-            documents.add(Document.document(runContext.render(inlineDocument.content).as(String.class).orElseThrow(), Metadata.from(metadata)));
-        }));
-
-        runContext.render(fromInternalURIs).asList(String.class).forEach(throwConsumer(uri -> {
-            try (InputStream file = runContext.storage().getFile(URI.create(uri))) {
-                byte[] bytes = file.readAllBytes();
-                documents.add(Document.from(new String(bytes)));
-            }
-        }));
-
-        runContext.render(fromExternalURLs).asList(String.class).forEach(throwConsumer(url -> {
-            documents.add(UrlDocumentLoader.load(url, new TextDocumentParser()));
-        }));
-
-        if (metadata != null) {
-            Map<String, String> metadataMap = runContext.render(metadata).asMap(String.class, Object.class);
-            documents.forEach(doc -> metadataMap.forEach((k, v) -> doc.metadata().put(k, v)));
-        }
+        String rFromPath = runContext.render(fromPath).as(String.class).orElse(null);
+        int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
 
         var embeddingModel = provider.embeddingModel(runContext);
+        var embeddingStore = embeddings.embeddingStore(
+            runContext,
+            embeddingModel.dimension(),
+            runContext.render(drop).as(Boolean.class).orElseThrow()
+        );
+
         var builder = EmbeddingStoreIngestor.builder()
             .embeddingModel(embeddingModel)
-            .embeddingStore(embeddings.embeddingStore(runContext, embeddingModel.dimension(), runContext.render(drop).as(Boolean.class).orElseThrow()));
+            .embeddingStore(embeddingStore);
 
         if (documentSplitter != null) {
             builder.documentSplitter(from(documentSplitter));
         }
 
         EmbeddingStoreIngestor ingestor = builder.build();
-        int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
 
-        Integer inputTokenCount = null;
-        Integer outputTokenCount = null;
-        Integer totalTokenCount = null;
+        List<Document> batch = new ArrayList<>(rBulkSize);
 
-        for (int i = 0; i < documents.size(); i += rBulkSize) {
-            List<Document> batch = documents.subList(i, Math.min(i + rBulkSize, documents.size()));
-            IngestionResult result = ingestor.ingest(batch);
+        Counters counters = new Counters();
 
-            if (result.tokenUsage() != null) {
-                if (result.tokenUsage().inputTokenCount() != null) {
-                    inputTokenCount = (inputTokenCount == null ? 0 : inputTokenCount) + result.tokenUsage().inputTokenCount();
-                }
-                if (result.tokenUsage().outputTokenCount() != null) {
-                    outputTokenCount = (outputTokenCount == null ? 0 : outputTokenCount) + result.tokenUsage().outputTokenCount();
-                }
-                if (result.tokenUsage().totalTokenCount() != null) {
-                    totalTokenCount = (totalTokenCount == null ? 0 : totalTokenCount) + result.tokenUsage().totalTokenCount();
+        if (rFromPath != null) {
+            Path finalPath = runContext.workingDir().resolve(Path.of(rFromPath));
+            List<Document> docs = FileSystemDocumentLoader.loadDocumentsRecursively(finalPath);
+
+            for (Document doc : docs) {
+                batch.add(doc);
+                if (batch.size() >= rBulkSize) {
+                    flushBatch(batch, ingestor, counters);
                 }
             }
         }
 
-        runContext.metric(Counter.of("indexed.documents", documents.size()));
-        if (inputTokenCount != null) {
-            runContext.metric(Counter.of("input.token.count", inputTokenCount));
-        }
-        if (outputTokenCount != null) {
-            runContext.metric(Counter.of("output.token.count", outputTokenCount));
-        }
-        if (totalTokenCount != null) {
-            runContext.metric(Counter.of("total.token.count", totalTokenCount));
+        for (InlineDocument inlineDocument : ListUtils.emptyOnNull(fromDocuments)) {
+            Map<String, Object> metadataMap = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
+
+            Document doc = Document.document(
+                runContext.render(inlineDocument.content).as(String.class).orElseThrow(),
+                Metadata.from(metadataMap)
+            );
+
+            batch.add(doc);
+            if (batch.size() >= rBulkSize) {
+                flushBatch(batch, ingestor, counters);
+            }
         }
 
-        var output = Output.builder()
-            .ingestedDocuments(documents.size())
+        for (String uri : runContext.render(fromInternalURIs).asList(String.class)) {
+            try (InputStream file = runContext.storage().getFile(URI.create(uri))) {
+                byte[] bytes = file.readAllBytes();
+                batch.add(Document.from(new String(bytes)));
+            }
+
+            if (batch.size() >= rBulkSize) {
+                flushBatch(batch, ingestor, counters);
+            }
+        }
+
+        for (String url : runContext.render(fromExternalURLs).asList(String.class)) {
+            batch.add(UrlDocumentLoader.load(url, new TextDocumentParser()));
+
+            if (batch.size() >= rBulkSize) {
+                flushBatch(batch, ingestor, counters);
+            }
+        }
+
+        if (!batch.isEmpty()) {
+            flushBatch(batch, ingestor, counters);
+        }
+
+        runContext.metric(Counter.of("indexed.documents", counters.documents));
+
+        if (counters.input > 0) {
+            runContext.metric(Counter.of("input.token.count", counters.input));
+        }
+        if (counters.output > 0) {
+            runContext.metric(Counter.of("output.token.count", counters.output));
+        }
+        if (counters.total > 0) {
+            runContext.metric(Counter.of("total.token.count", counters.total));
+        }
+
+        return Output.builder()
+            .ingestedDocuments(counters.documents)
             .embeddingStoreOutputs(embeddings.outputs(runContext))
-            .inputTokenCount(inputTokenCount)
-            .outputTokenCount(outputTokenCount)
-            .totalTokenCount(totalTokenCount);
+            .inputTokenCount(counters.input == 0 ? null : counters.input)
+            .outputTokenCount(counters.output == 0 ? null : counters.output)
+            .totalTokenCount(counters.total == 0 ? null : counters.total)
+            .build();
+    }
 
-        return output.build();
+    private void flushBatch(List<Document> batch, EmbeddingStoreIngestor ingestor, Counters counters) {
+        if (batch.isEmpty()) {
+            return;
+        }
+
+        int size = batch.size();
+        IngestionResult result = ingestor.ingest(batch);
+        batch.clear();
+
+        counters.documents += size;
+
+        var usage = result.tokenUsage();
+        if (usage != null) {
+            if (usage.inputTokenCount() != null) {
+                counters.input += usage.inputTokenCount();
+            }
+            if (usage.outputTokenCount() != null) {
+                counters.output += usage.outputTokenCount();
+            }
+            if (usage.totalTokenCount() != null) {
+                counters.total += usage.totalTokenCount();
+            }
+        }
+    }
+
+    private static class Counters {
+        int documents;
+        int input;
+        int output;
+        int total;
     }
 
     private dev.langchain4j.data.document.DocumentSplitter from(DocumentSplitter splitter) {
@@ -274,7 +314,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         )
         private Type splitter = Type.RECURSIVE;
 
-    @NotNull
+        @NotNull
         @Schema(title = "Maximum segment size (characters)")
         private Integer maxSegmentSizeInChars;
 
