@@ -84,7 +84,7 @@ public class Redis extends EmbeddingStoreProvider {
         );
 
         var store = RedisEmbeddingStore.builder()
-            .unifiedJedis(jedis)
+            .jedisPooled(jedis)
             .indexName(rIndexName)
             .dimension(dimension)
             .build();
