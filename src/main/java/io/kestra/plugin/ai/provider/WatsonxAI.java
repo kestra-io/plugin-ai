@@ -73,7 +73,7 @@ public class WatsonxAI extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         return WatsonxChatModel.builder()
-            .url(runContext.render(this.baseUrl).as(String.class).orElse(null))
+            .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse(null))
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .projectId(runContext.render(this.projectId).as(String.class).orElseThrow())
             .modelName(runContext.render(this.getModelName()).as(String.class).orElse("ibm/granite-3-3-8b-instruct"))
@@ -90,7 +90,7 @@ public class WatsonxAI extends ModelProvider {
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return WatsonxEmbeddingModel.builder()
-            .url(runContext.render(this.baseUrl).as(String.class).orElse(null))
+            .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse(null))
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .projectId(runContext.render(this.projectId).as(String.class).orElseThrow())
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
