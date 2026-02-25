@@ -61,7 +61,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         systemMessage: Summarize the user message, then translate it into French using the provided tool.
                         prompt: "{{inputs.prompt}}"
                         tools:
@@ -71,7 +71,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                             provider:
                               type: io.kestra.plugin.ai.provider.GoogleGemini
                               modelName: gemini-2.5-flash-lite
-                              apiKey: "{{ kv('GEMINI_API_KEY') }}\""""
+                              apiKey: "{{ secret('GEMINI_API_KEY') }}\""""
             }
         ),
     }

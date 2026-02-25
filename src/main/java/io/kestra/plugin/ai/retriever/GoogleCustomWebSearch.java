@@ -43,11 +43,11 @@ import lombok.experimental.SuperBuilder;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.GoogleCustomWebSearch
-                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
+                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
                     prompt: What is the latest release of Kestra?
                 """
         )

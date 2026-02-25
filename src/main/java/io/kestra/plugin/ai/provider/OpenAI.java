@@ -38,7 +38,7 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
                       modelName: gpt-5-mini
                     messages:
                       - type: SYSTEM

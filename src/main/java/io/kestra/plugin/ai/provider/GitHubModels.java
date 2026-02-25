@@ -53,7 +53,7 @@ import java.util.List;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.GitHubModels
-                          gitHubToken: "{{ kv('GITHUB_TOKEN') }}"
+                          gitHubToken: "{{ secret('GITHUB_TOKEN') }}"
                           modelName: gpt-4o-mini
                         messages:
                           - type: SYSTEM

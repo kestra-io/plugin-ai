@@ -79,7 +79,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
@@ -160,7 +160,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlow"""
             }

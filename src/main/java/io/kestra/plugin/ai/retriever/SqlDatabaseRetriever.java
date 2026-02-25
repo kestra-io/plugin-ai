@@ -50,13 +50,13 @@ import javax.sql.DataSource;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.0-flash
-                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.SqlDatabaseRetriever
                         databaseType: POSTGRESQL
                         jdbcUrl: "jdbc:postgresql://localhost:5432/mydb"
-                        username: "{{ kv('DB_USER') }}"
-                        password: "{{ kv('DB_PASSWORD') }}"
+                        username: "{{ secret('DB_USER') }}"
+                        password: "{{ secret('DB_PASSWORD') }}"
                     prompt: "What are the top 5 customers by revenue?"
                 """
         )

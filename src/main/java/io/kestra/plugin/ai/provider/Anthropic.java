@@ -51,7 +51,7 @@ import java.util.Objects;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.Anthropic
-                      apiKey: "{{ kv('ANTHROPIC_API_KEY') }}"
+                      apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
                       modelName: claude-3-haiku-20240307
                       thinkingEnabled: true
                       thinkingBudgetTokens: 1024

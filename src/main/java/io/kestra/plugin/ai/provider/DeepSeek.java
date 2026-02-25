@@ -37,7 +37,7 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.DeepSeek
-                      apiKey: "{{ kv('DEEPSEEK_API_KEY') }}"
+                      apiKey: "{{ secret('DEEPSEEK_API_KEY') }}"
                       modelName: deepseek-chat
                     messages:
                       - type: SYSTEM

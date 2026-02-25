@@ -118,7 +118,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       provider:
                         type: io.kestra.plugin.ai.provider.GoogleGemini
                         modelName: gemini-2.5-flash
-                        apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                        apiKey: "{{ secret('GEMINI_API_KEY') }}"
                 """
         ),
         @Example(
@@ -140,7 +140,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
                       modelName: gpt-5-nano
                     tools:
                       - type: io.kestra.plugin.ai.tool.DockerMcpClient
@@ -169,7 +169,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     values:
                       provider:
                         type: io.kestra.plugin.ai.provider.OpenAI
-                        apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                        apiKey: "{{ secret('OPENAI_API_KEY') }}"
                         modelName: gpt-5-mini
                       memory:
                         type: io.kestra.plugin.ai.memory.KestraKVStore
@@ -198,10 +198,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                 """
         ),
         @Example(
@@ -224,7 +224,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.MistralAI
-                      apiKey: "{{ kv('MISTRAL_API_KEY') }}"
+                      apiKey: "{{ secret('MISTRAL_API_KEY') }}"
                       modelName: open-mistral-7b
 
                     systemMessage: |
@@ -276,7 +276,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     prompt: "{{ inputs.prompt }}"
                     systemMessage: |
@@ -292,7 +292,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                         maxResults: 10
 
                     tools:
@@ -325,7 +325,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
 
                     systemMessage: |
@@ -341,7 +341,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                     tools:
                       - type: io.kestra.plugin.ai.tool.CodeExecution
-                        apiKey: "{{ kv('RAPID_API_KEY') }}"
+                        apiKey: "{{ secret('RAPID_API_KEY') }}"
                 """
         ),
         @Example(
@@ -368,7 +368,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
 
                     systemMessage: |
@@ -380,8 +380,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                     tools:
                       - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
-                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
+                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
                 """
         ),
         @Example(
@@ -405,7 +405,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
                       modelName: gpt-5-mini
 
                     systemMessage: |
@@ -451,7 +451,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
 
                     prompt: |
@@ -494,7 +494,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
 
                     systemMessage: |
@@ -538,7 +538,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
 
                     systemMessage: |
@@ -556,7 +556,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         sseUrl: https://mcp.apify.com/?actors=compass/crawler-google-places
                         timeout: PT3M
                         headers:
-                          Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}
+                          Authorization: Bearer {{ secret('APIFY_API_TOKEN') }}
                 """
         ),
         @Example(
@@ -581,7 +581,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
 
                     systemMessage: |
@@ -598,9 +598,9 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                     tools:
                       - type: io.kestra.plugin.ai.tool.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                       - type: io.kestra.plugin.ai.tool.CodeExecution
-                        apiKey: "{{ kv('RAPID_API_KEY') }}"
+                        apiKey: "{{ secret('RAPID_API_KEY') }}"
                 """
         ),
     },

@@ -56,8 +56,8 @@ import java.util.List;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.AmazonBedrock
-                      accessKeyId: "{{ kv('AWS_ACCESS_KEY') }}"
-                      secretAccessKey: "{{ kv('AWS_SECRET_KEY') }}"
+                      accessKeyId: "{{ secret('AWS_ACCESS_KEY') }}"
+                      secretAccessKey: "{{ secret('AWS_SECRET_KEY') }}"
                       modelName: anthropic.claude-3-sonnet-20240229-v1:0
                       thinkingBudgetTokens: 1024
                     messages:

@@ -40,13 +40,13 @@ import lombok.experimental.SuperBuilder;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.PGVector
                       host: localhost
                       port: 5432
-                      user: "{{ kv('POSTGRES_USER') }}"
-                      password: "{{ kv('POSTGRES_PASSWORD') }}"
+                      user: "{{ secret('POSTGRES_USER') }}"
+                      password: "{{ secret('POSTGRES_PASSWORD') }}"
                       database: postgres
                       table: embeddings
                     fromExternalURLs:

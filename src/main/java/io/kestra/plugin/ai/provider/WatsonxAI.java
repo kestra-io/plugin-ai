@@ -48,8 +48,8 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.WatsonxAI
-                      apiKey: "{{ kv('WATSONX_API_KEY') }}"
-                      projectId: "{{ kv('WATSONX_PROJECT_ID') }}"
+                      apiKey: "{{ secret('WATSONX_API_KEY') }}"
+                      projectId: "{{ secret('WATSONX_PROJECT_ID') }}"
                       modelName: ibm/granite-3-3-8b-instruct
                       baseUrl : "https://api.eu-de.dataplatform.cloud.ibm.com/wx"
                     messages:

@@ -54,9 +54,9 @@ import java.io.IOException;
                         type: io.kestra.plugin.ai.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.OciGenAI
-                          region: "{{ kv('OCI_GENAI_MODEL_REGION_PROPERTY') }}"
-                          compartmentId: "{{ kv('OCI_GENAI_COMPARTMENT_ID_PROPERTY') }}"
-                          authProvider: "{{ kv('OCI_GENAI_CONFIG_PROFILE_PROPERTY') }}"
+                          region: "{{ secret('OCI_GENAI_MODEL_REGION_PROPERTY') }}"
+                          compartmentId: "{{ secret('OCI_GENAI_COMPARTMENT_ID_PROPERTY') }}"
+                          authProvider: "{{ secret('OCI_GENAI_CONFIG_PROFILE_PROPERTY') }}"
                           modelName: oracle.chat.gpt-3.5
                         messages:
                           - type: SYSTEM

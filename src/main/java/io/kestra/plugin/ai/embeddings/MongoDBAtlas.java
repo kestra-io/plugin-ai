@@ -53,13 +53,13 @@ import java.util.stream.Collectors;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.MongoDBAtlas
-                      username: "{{ kv('MONGODB_ATLAS_USERNAME') }}"
-                      password: "{{ kv('MONGODB_ATLAS_PASSWORD') }}"
-                      host: "{{ kv('MONGODB_ATLAS_HOST') }}"
-                      database: "{{ kv('MONGODB_ATLAS_DATABASE') }}"
+                      username: "{{ secret('MONGODB_ATLAS_USERNAME') }}"
+                      password: "{{ secret('MONGODB_ATLAS_PASSWORD') }}"
+                      host: "{{ secret('MONGODB_ATLAS_HOST') }}"
+                      database: "{{ secret('MONGODB_ATLAS_DATABASE') }}"
                       collectionName: embeddings
                       indexName: embeddings
                     fromExternalURLs:

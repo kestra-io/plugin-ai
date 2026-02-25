@@ -50,8 +50,8 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.WorkersAI
-                      accountId: "{{ kv('WORKERS_AI_ACCOUNT_ID') }}"
-                      apiKey: "{{ kv('WORKERS_AI_API_KEY') }}"
+                      accountId: "{{ secret('WORKERS_AI_ACCOUNT_ID') }}"
+                      apiKey: "{{ secret('WORKERS_AI_API_KEY') }}"
                       modelName: @cf/meta/llama-2-7b-chat-fp16
                     messages:
                       - type: SYSTEM

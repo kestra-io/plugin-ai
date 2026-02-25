@@ -47,12 +47,12 @@ import java.util.List;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.MariaDB
-                      username: "{{ kv('MARIADB_USERNAME') }}"
-                      password: "{{ kv('MARIADB_PASSWORD') }}"
-                      databaseUrl: "{{ kv('MARIADB_DATABASE_URL') }}"
+                      username: "{{ secret('MARIADB_USERNAME') }}"
+                      password: "{{ secret('MARIADB_PASSWORD') }}"
+                      databaseUrl: "{{ secret('MARIADB_DATABASE_URL') }}"
                       tableName: embeddings
                       fieldName: id
                     fromExternalURLs:

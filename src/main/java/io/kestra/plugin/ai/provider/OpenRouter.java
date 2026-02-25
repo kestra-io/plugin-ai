@@ -52,7 +52,7 @@ import java.util.List;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.OpenRouter
-                          apiKey: "{{ kv('OPENROUTER_API_KEY') }}"
+                          apiKey: "{{ secret('OPENROUTER_API_KEY') }}"
                           baseUrl: https://openrouter.ai/api/v1
                           modelName: x-ai/grok-beta
                         messages:

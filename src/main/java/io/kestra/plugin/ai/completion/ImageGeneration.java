@@ -56,7 +56,7 @@ import org.slf4j.Logger;
                       Minimal readable text only in tiny bubbles/notes; no large paragraphs of text.
                     provider:
                       type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
                       modelName: dall-e-3
                 """
             }
