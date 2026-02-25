@@ -1153,7 +1153,10 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        // OpenRouter can return either a direct 401 or an upstream Clerk auth failure (code 502).
+        // OpenRouter can return either:
+        // - a direct 401 Unauthorized
+        // - a 401 "Missing Authentication header"
+        // - an upstream Clerk auth failure (code 502)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> task.run(runContext));
 
         assertThat(exception.getMessage(), anyOf(
@@ -1162,6 +1165,7 @@ class ChatCompletionTest extends ContainerTest {
         ));
         assertThat(exception.getMessage(), anyOf(
             containsString("Unauthorized"),
+            containsString("Missing Authentication header"),
             containsString("Failed to authenticate request with Clerk")
         ));
     }
