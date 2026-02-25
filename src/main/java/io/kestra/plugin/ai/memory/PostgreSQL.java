@@ -48,7 +48,7 @@ import java.time.Instant;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     memory:
                       type: io.kestra.plugin.ai.memory.PostgreSQL
                       host: localhost

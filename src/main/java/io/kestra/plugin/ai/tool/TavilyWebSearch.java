@@ -47,10 +47,10 @@ import java.util.Map;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                 """
             }
         ),

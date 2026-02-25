@@ -42,10 +42,10 @@ import java.io.IOException;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Pinecone
-                      apiKey: "{{ kv('PINECONE_API_KEY') }}"
+                      apiKey: "{{ secret('PINECONE_API_KEY') }}"
                       cloud: AWS
                       region: us-east-1
                       index: embeddings

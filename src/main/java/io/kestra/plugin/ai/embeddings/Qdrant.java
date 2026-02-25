@@ -41,10 +41,10 @@ import lombok.experimental.SuperBuilder;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Qdrant
-                      apiKey: "{{ kv('QDRANT_API_KEY') }}"
+                      apiKey: "{{ secret('QDRANT_API_KEY') }}"
                       host: localhost
                       port: 6334
                       collectionName: embeddings

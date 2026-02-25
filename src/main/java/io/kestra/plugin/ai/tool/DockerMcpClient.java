@@ -46,7 +46,7 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     prompt: "{{ inputs.prompt }}"
                     tools:
@@ -72,7 +72,7 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     prompt: "{{ inputs.prompt }}"
                     tools:

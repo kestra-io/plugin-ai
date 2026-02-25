@@ -37,7 +37,7 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.HuggingFace
-                      apiKey: "{{ kv('HUGGING_FACE_API_KEY') }}"
+                      apiKey: "{{ secret('HUGGING_FACE_API_KEY') }}"
                       modelName: HuggingFaceTB/SmolLM3-3B:hf-inference
                     messages:
                       - type: SYSTEM

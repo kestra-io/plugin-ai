@@ -64,7 +64,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     drop: true
@@ -97,7 +97,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 pluginDefaults:
                   - type: io.kestra.plugin.ai.provider.GoogleGemini
                     values:
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash"""
         ),
         @Example(
@@ -113,10 +113,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                     systemMessage: You are a helpful assistant that can answer questions about Kestra.
                     prompt: What is the latest release of Kestra?"""
         ),
@@ -169,7 +169,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 pluginDefaults:
                   - type: io.kestra.plugin.ai.provider.GoogleGemini
                     values:
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash"""
         ),
         @Example(
@@ -187,12 +187,12 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.rag.ChatCompletion
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.MistralAI
-                      apiKey: "{{ kv('MISTRAL_API_KEY') }}"
+                      apiKey: "{{ secret('MISTRAL_API_KEY') }}"
                       modelName: open-mistral-7b
 
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        apiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                         maxResults: 8
 
                     chatConfiguration:

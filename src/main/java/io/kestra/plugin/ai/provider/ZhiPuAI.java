@@ -51,7 +51,7 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.ZhiPuAI
-                      apiKey: "{{ kv('ZHIPU_API_KEY') }}"
+                      apiKey: "{{ secret('ZHIPU_API_KEY') }}"
                       modelName: glm-4.5-flash
                     messages:
                       - type: SYSTEM

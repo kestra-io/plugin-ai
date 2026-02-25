@@ -57,11 +57,11 @@ import java.util.Optional;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
@@ -74,11 +74,11 @@ import java.util.Optional;
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:

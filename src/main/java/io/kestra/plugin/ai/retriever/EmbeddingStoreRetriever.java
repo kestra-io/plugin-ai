@@ -46,7 +46,7 @@ import java.io.IOException;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      googleApiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     drop: true
@@ -59,7 +59,7 @@ import java.io.IOException;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.0-flash
-                      googleApiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever
                         embeddings:
@@ -67,7 +67,7 @@ import java.io.IOException;
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-embedding-exp-03-07
-                          googleApiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                         maxResults: 3
                         minScore: 0.0
                     prompt: What is the capital of France and how many people live there?
@@ -85,16 +85,16 @@ import java.io.IOException;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.0-flash
-                      googleApiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever
                         embeddings:
                           type: io.kestra.plugin.ai.embeddings.Pinecone
-                          pineconeApiKey: "{{ kv('PINECONE_API_KEY') }}"
+                          pineconeApiKey: "{{ secret('PINECONE_API_KEY') }}"
                           index: technical-docs
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.OpenAI
-                          googleApiKey: "{{ kv('OPENAI_API_KEY') }}"
+                          googleApiKey: "{{ secret('OPENAI_API_KEY') }}"
                           modelName: text-embedding-3-small
                       - type: io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever
                         embeddings:
@@ -105,9 +105,9 @@ import java.io.IOException;
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-embedding-exp-03-07
-                          googleApiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        tavilyApiKey: "{{ kv('TAVILY_API_KEY') }}"
+                        tavilyApiKey: "{{ secret('TAVILY_API_KEY') }}"
                     prompt: What are the latest trends in data orchestration?
                 """
         )

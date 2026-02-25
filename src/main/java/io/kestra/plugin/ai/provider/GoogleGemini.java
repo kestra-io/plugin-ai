@@ -55,7 +55,7 @@ import java.util.List;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                           modelName: gemini-2.5-flash
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024
@@ -85,10 +85,10 @@ import java.util.List;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                           modelName: gemini-2.5-flash
-                          clientPem: "{{ kv('CLIENT_PEM') }}"
-                          caPem: "{{ kv('CA_PEM') }}"
+                          clientPem: "{{ secret('CLIENT_PEM') }}"
+                          caPem: "{{ secret('CA_PEM') }}"
                           baseUrl: "https://internal.gemini.company.com/endpoint"
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024

@@ -45,13 +45,13 @@ import java.util.Map;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.StreamableHttpMcpClient
                         url: https://mcp.apify.com/?actors=compass/crawler-google-places
                         timeout: PT5M
                         headers:
-                          Authorization: Bearer {{ kv('APIFY_API_TOKEN') }}"""
+                          Authorization: Bearer {{ secret('APIFY_API_TOKEN') }}"""
             }
         ),
     }

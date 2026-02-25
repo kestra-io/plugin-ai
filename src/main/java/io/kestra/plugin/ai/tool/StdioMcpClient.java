@@ -44,7 +44,7 @@ import java.util.Map;
                     prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     tools:
                       - type: io.kestra.plugin.ai.tool.StdioMcpClient

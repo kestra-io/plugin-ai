@@ -70,7 +70,7 @@ import java.util.List;
                         systemMessage: You extract structured data in JSON format.
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                           modelName: gemini-2.5-flash
                     """
             }
@@ -102,7 +102,7 @@ import java.util.List;
                         systemMessage: You are a precise JSON data extraction assistant.
                         provider:
                           type: io.kestra.plugin.ai.provider.OpenAI
-                          apiKey: "{{ kv('OPENAI_API_KEY') }}"
+                          apiKey: "{{ secret('OPENAI_API_KEY') }}"
                           modelName: gpt-5-mini
                     """
             }

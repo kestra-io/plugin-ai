@@ -42,10 +42,10 @@ import java.util.List;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Weaviate
-                      apiKey: "{{ kv('WEAVIATE_API_KEY') }}"   # omit for local/no-auth
+                      apiKey: "{{ secret('WEAVIATE_API_KEY') }}"   # omit for local/no-auth
                       scheme: https                                 # http | https
                       host: your-cluster-id.weaviate.network        # no protocol
                       # port: 443                                   # optional; usually omit

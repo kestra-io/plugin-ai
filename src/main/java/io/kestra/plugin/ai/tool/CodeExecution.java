@@ -37,12 +37,12 @@ import java.util.Map;
                     type: io.kestra.plugin.ai.agent.AIAgent
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     prompt: What is the square root of 49506838032859?
                     tools:
                       - type: io.kestra.plugin.ai.tool.CodeExecution
-                        apiKey: "{{ kv('RAPID_API_KEY') }}"
+                        apiKey: "{{ secret('RAPID_API_KEY') }}"
                 """
         ),
     }

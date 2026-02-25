@@ -63,7 +63,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     messages:
                       - type: SYSTEM
@@ -90,7 +90,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ kv('GOOGLE_API_KEY') }}"
+                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                       modelName: gemini-2.5-flash
                     messages:
                       - type: SYSTEM
@@ -99,8 +99,8 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                         content: "{{inputs.prompt}}"
                     tools:
                       - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
-                        apiKey: "{{ kv('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ kv('GOOGLE_SEARCH_CSI') }}"
+                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
+                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
                 """
             }
         ),
@@ -125,7 +125,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     configuration:
                       responseFormat:
                         type: JSON

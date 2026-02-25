@@ -51,7 +51,7 @@ import lombok.experimental.SuperBuilder;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.DashScope
-                          apiKey: "{{ kv('DASHSCOPE_API_KEY') }}"
+                          apiKey: "{{ secret('DASHSCOPE_API_KEY') }}"
                           modelName: qwen-plus
                         messages:
                           - type: SYSTEM

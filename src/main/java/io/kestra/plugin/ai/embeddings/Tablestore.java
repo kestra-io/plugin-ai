@@ -43,13 +43,13 @@ import java.util.List;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Tablestore
-                      endpoint:  "{{ kv('TABLESTORE_ENDPOINT') }}"
-                      instanceName:  "{{ kv('TABLESTORE_INSTANCE_NAME') }}"
-                      accessKeyId:  "{{ kv('TABLESTORE_ACCESS_KEY_ID') }}"
-                      accessKeySecret:  "{{ kv('TABLESTORE_ACCESS_KEY_SECRET') }}"
+                      endpoint:  "{{ secret('TABLESTORE_ENDPOINT') }}"
+                      instanceName:  "{{ secret('TABLESTORE_INSTANCE_NAME') }}"
+                      accessKeyId:  "{{ secret('TABLESTORE_ACCESS_KEY_ID') }}"
+                      accessKeySecret:  "{{ secret('TABLESTORE_ACCESS_KEY_SECRET') }}"
                     fromExternalURLs:
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """

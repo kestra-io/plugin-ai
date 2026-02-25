@@ -44,14 +44,14 @@ import java.io.IOException;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-exp-03-07
-                      apiKey: "{{ kv('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Milvus
                       # Use either `uri` or `host`/`port`:
                       # For gRPC (typical): milvus://localhost:19530
                       # For HTTP: http://localhost:9091
                       uri: "http://localhost:19200"
-                      token: "{{ kv('MILVUS_TOKEN') }}"  # omit if auth is disabled
+                      token: "{{ secret('MILVUS_TOKEN') }}"  # omit if auth is disabled
                       collectionName: embeddings
                     fromExternalURLs:
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md

@@ -51,7 +51,7 @@ import java.util.List;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.MistralAI
-                          apiKey: "{{ kv('MISTRAL_API_KEY') }}"
+                          apiKey: "{{ secret('MISTRAL_API_KEY') }}"
                           modelName: mistral:7b
                         messages:
                           - type: SYSTEM
