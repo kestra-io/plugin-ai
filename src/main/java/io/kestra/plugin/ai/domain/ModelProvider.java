@@ -14,6 +14,7 @@ import io.kestra.core.plugins.serdes.PluginDeserializer;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -67,6 +68,13 @@ public abstract class ModelProvider extends AdditionalPlugin {
         description = "CA certificate as text, used to verify SSL/TLS connections when using custom endpoints."
     )
     private Property<String> caPem;
+
+    @Schema(
+        title = "Enable strict JSON schema mode",
+        description = "When true, providers that support it enforce strict JSON schema output when `responseFormat.type` is `JSON`."
+    )
+    @Builder.Default
+    private Property<Boolean> enableStrictJson = Property.ofValue(false);
 
     public abstract ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException;
 

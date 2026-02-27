@@ -66,6 +66,10 @@ public final class JsonObjectSchemaTranslator {
 
     @SuppressWarnings("unchecked")
     private static JsonSchemaElement mapSchema(Map<String, Object> schema) {
+        if (schema == null) {
+            return new JsonStringSchema();
+        }
+
         var type = (String) schema.get("type");
         var title = (String) schema.get("title");
         var _enum = (List<String>) schema.get("enum");
@@ -94,9 +98,16 @@ public final class JsonObjectSchemaTranslator {
             case "integer" -> JsonIntegerSchema.builder().description(title).build();
             case "boolean" -> JsonBooleanSchema.builder().description(title).build();
             case "null" -> new JsonNullSchema();
-            case "object" -> JsonObjectSchema.builder().description(title).build();
+            case "object" -> JsonObjectSchema.builder()
+                .description(title)
+                .required((List<String>) schema.get("required"))
+                .addProperties(mapProperties((Map<String, Object>) schema.get("properties")))
+                .build();
             case "array" ->
-                JsonArraySchema.builder().description(title).items(mapSchema((Map<String, Object>) schema.get("items"))).build();
+                JsonArraySchema.builder()
+                    .description(title)
+                    .items(mapSchema((Map<String, Object>) schema.get("items")))
+                    .build();
             // it should not happen, but in this case we use String as it's the most proficient type for an LLM
             case null -> new JsonStringSchema();
             // we coalesce other types to String for now...
@@ -107,19 +118,31 @@ public final class JsonObjectSchemaTranslator {
     private static Map<String, JsonSchemaElement> replaceDefinitions(Map<String, JsonSchemaElement> properties, Map<String, JsonSchemaElement> definitions) {
         return properties.entrySet().stream()
             .map(entry -> {
-                JsonSchemaElement schema = switch (entry.getValue()) {
-                    case JsonReferenceSchema jsonReferenceSchema ->
-                        definitions.getOrDefault(jsonReferenceSchema.reference(),
-                            JsonObjectSchema.builder().description(jsonReferenceSchema.description()).build());
-                    case JsonObjectSchema jsonObjectSchema -> JsonObjectSchema.builder()
-                        .description(jsonObjectSchema.description())
-                        .required(jsonObjectSchema.required()).
-                        addProperties(replaceDefinitions(jsonObjectSchema.properties(), definitions))
-                        .build();
-                    default -> entry.getValue();
-                };
+                JsonSchemaElement schema = replaceDefinitions(entry.getValue(), definitions);
                 return Map.entry(entry.getKey(), schema);
             })
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    private static JsonSchemaElement replaceDefinitions(JsonSchemaElement schema, Map<String, JsonSchemaElement> definitions) {
+        if (schema == null) {
+            return null;
+        }
+
+        return switch (schema) {
+            case JsonReferenceSchema jsonReferenceSchema ->
+                definitions.getOrDefault(jsonReferenceSchema.reference(),
+                    JsonObjectSchema.builder().description(jsonReferenceSchema.description()).build());
+            case JsonObjectSchema jsonObjectSchema -> JsonObjectSchema.builder()
+                .description(jsonObjectSchema.description())
+                .required(jsonObjectSchema.required())
+                .addProperties(replaceDefinitions(jsonObjectSchema.properties(), definitions))
+                .build();
+            case JsonArraySchema jsonArraySchema -> JsonArraySchema.builder()
+                .description(jsonArraySchema.description())
+                .items(replaceDefinitions(jsonArraySchema.items(), definitions))
+                .build();
+            default -> schema;
+        };
     }
 }

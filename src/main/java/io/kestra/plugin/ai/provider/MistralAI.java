@@ -3,6 +3,8 @@ package io.kestra.plugin.ai.provider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
@@ -22,6 +24,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.util.List;
+
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
 @Getter
 @SuperBuilder
@@ -76,6 +80,7 @@ public class MistralAI extends ModelProvider {
             throw new IllegalArgumentException("Mistral models do not support setting the topK parameter.");
         }
 
+        ResponseFormat responseFormat = configuration.computeResponseFormat(runContext);
         MistralAiChatModel.MistralAiChatModelBuilder chatModelBuilder = MistralAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -86,9 +91,14 @@ public class MistralAI extends ModelProvider {
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
-            .responseFormat(configuration.computeResponseFormat(runContext))
+            .responseFormat(responseFormat)
             .listeners(List.of(new TimingChatModelListener()))
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        if (responseFormat.type() == ResponseFormatType.JSON
+            && runContext.render(getEnableStrictJson()).as(Boolean.class).orElse(false)) {
+            chatModelBuilder.supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
+        }
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
         if (httpClientBuilder != null) {
