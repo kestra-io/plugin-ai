@@ -108,6 +108,10 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-agentic-a2a"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
+
+    implementation "io.opentelemetry:opentelemetry-api"
+    implementation "io.opentelemetry:opentelemetry-sdk"
+    implementation "io.opentelemetry:opentelemetry-exporter-otlp"
 }
 
 
