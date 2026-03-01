@@ -31,6 +31,7 @@ import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.time.Duration;
 
 @SuperBuilder
 @ToString
@@ -190,7 +191,8 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
             ))
             .build();
 
-        ChatModel model = this.provider.chatModel(runContext, configuration);
+        Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
+        ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
 
         ChatResponse answer = model.chat(chatRequest);
         logger.debug("Generated Structured Extraction: {}", answer.aiMessage().text());

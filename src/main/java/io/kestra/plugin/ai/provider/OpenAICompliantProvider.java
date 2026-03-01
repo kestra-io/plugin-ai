@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -38,6 +39,11 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120));
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("OpenAI models do not support setting the topK parameter.");
         }
@@ -56,6 +62,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
             .responseFormat(responseFormat)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
+            .timeout(timeout)
             .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
         if (responseFormat.type() == ResponseFormatType.JSON

@@ -31,6 +31,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -670,13 +671,14 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
         Map<String, Object> additionalVariables = outputFiles != null ? Map.of(ScriptService.VAR_WORKING_DIR, runContext.workingDir().path(true).toString()) : Collections.emptyMap();
         String rPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
+        Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
 
         var logger = runContext.logger();
 
         try {
             AiServices<Agent> agent = AiServices.builder(Agent.class)
-                .chatModel(provider.chatModel(runContext, configuration))
+                .chatModel(provider.chatModel(runContext, configuration, taskTimeout))
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
                 .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))

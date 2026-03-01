@@ -2,7 +2,9 @@ group: io.kestra.plugin.ai.completion
 name: "completion"
 title: "Completion"
 description: "Tasks that call LLMs for chat, classification, image generation, and JSON-structured extraction, with optional tools, memory, and provider flexibility."
-body: ""
+body: |
+  For OpenAI-compatible and Mistral chat providers, model requests inherit the task-level `timeout`.
+  If no task timeout is configured, the chat model timeout defaults to `PT120S` (120 seconds).
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"

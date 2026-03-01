@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -76,6 +77,11 @@ public class MistralAI extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120));
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("Mistral models do not support setting the topK parameter.");
         }
@@ -93,6 +99,7 @@ public class MistralAI extends ModelProvider {
             .logger(runContext.logger())
             .responseFormat(responseFormat)
             .listeners(List.of(new TimingChatModelListener()))
+            .timeout(timeout)
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
         if (responseFormat.type() == ResponseFormatType.JSON

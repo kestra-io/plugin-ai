@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
 
 @SuperBuilder
 @ToString
@@ -128,7 +129,8 @@ public class Classification extends Task implements RunnableTask<Classification.
         chatMessages.add(SystemMessage.systemMessage(rSystemMessage));
         chatMessages.add(UserMessage.userMessage(rPrompt));
 
-        ChatModel model = this.provider.chatModel(runContext, configuration);
+        Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
+        ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
         ChatResponse response = model.chat(chatMessages);
 
         logger.debug("Generated Classification: {}", response.aiMessage().text());
