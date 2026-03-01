@@ -96,7 +96,7 @@ public class MistralAI extends ModelProvider {
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
         if (responseFormat.type() == ResponseFormatType.JSON
-            && runContext.render(getEnableStrictJson()).as(Boolean.class).orElse(false)) {
+            && configuration.computeStrictJsonMode(runContext)) {
             chatModelBuilder.supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
         }
 

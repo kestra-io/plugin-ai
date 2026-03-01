@@ -104,6 +104,14 @@ public class ChatConfiguration {
         return responseFormat.to(runContext);
     }
 
+    public boolean computeStrictJsonMode(RunContext runContext) throws IllegalVariableEvaluationException {
+        if (responseFormat == null) {
+            return false;
+        }
+
+        return responseFormat.strictJsonMode(runContext);
+    }
+
     public static ChatConfiguration empty() {
         return ChatConfiguration.builder().build();
     }
@@ -159,10 +167,20 @@ public class ChatConfiguration {
         )
         private Property<String> jsonSchemaDescription;
 
+        @Schema(
+            title = "Enable strict JSON schema mode",
+            description = "When true, providers that support it enforce strict JSON schema output when `type` is `JSON`."
+        )
+        @Builder.Default
+        private Property<Boolean> strictJsonMode = Property.ofValue(false);
+
         dev.langchain4j.model.chat.request.ResponseFormat to(RunContext runContext) throws IllegalVariableEvaluationException {
             var responseFormatType = runContext.render(type).as(ResponseFormatType.class).orElse(ResponseFormatType.TEXT);
             if (responseFormatType == ResponseFormatType.TEXT && jsonSchema != null) {
                 throw new IllegalArgumentException("`jsonSchema` property is only allowed when `type` is `JSON`");
+            }
+            if (responseFormatType == ResponseFormatType.TEXT && runContext.render(strictJsonMode).as(Boolean.class).orElse(false)) {
+                throw new IllegalArgumentException("`strictJsonMode` property is only allowed when `type` is `JSON`");
             }
 
             JsonSchema langchain4jJsonSchema = null;
@@ -174,6 +192,10 @@ public class ChatConfiguration {
                 .type(runContext.render(type).as(ResponseFormatType.class).orElse(ResponseFormatType.TEXT))
                 .jsonSchema(langchain4jJsonSchema)
                 .build();
+        }
+
+        boolean strictJsonMode(RunContext runContext) throws IllegalVariableEvaluationException {
+            return runContext.render(strictJsonMode).as(Boolean.class).orElse(false);
         }
     }
 }

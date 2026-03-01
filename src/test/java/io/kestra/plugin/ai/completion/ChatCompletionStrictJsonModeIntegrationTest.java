@@ -66,13 +66,13 @@ class ChatCompletionStrictJsonModeIntegrationTest {
                         ),
                         "required", List.of("people")
                     )))
+                    .strictJsonMode(Property.ofValue(true))
                     .build())
                 .build())
             .provider(OpenAI.builder()
                 .type(OpenAI.class.getName())
                 .apiKey(Property.ofExpression("{{ apiKey }}"))
                 .modelName(Property.ofExpression("{{ modelName }}"))
-                .enableStrictJson(Property.ofValue(true))
                 .build())
             .build();
 
