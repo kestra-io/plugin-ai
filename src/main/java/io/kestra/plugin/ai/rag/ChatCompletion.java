@@ -32,6 +32,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
@@ -315,10 +316,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Override
     public Output run(RunContext runContext) throws Exception {
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
+        Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
 
         try {
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatProvider.chatModel(runContext, chatConfiguration))
+                .chatModel(chatProvider.chatModel(runContext, chatConfiguration, taskTimeout))
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))

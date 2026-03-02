@@ -3,6 +3,8 @@ package io.kestra.plugin.ai.provider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -20,7 +22,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Duration;
 import java.util.List;
+
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
 @Getter
 @SuperBuilder
@@ -34,10 +39,16 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120));
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("OpenAI models do not support setting the topK parameter.");
         }
 
+        ResponseFormat responseFormat = configuration.computeResponseFormat(runContext);
         OpenAiChatModel.OpenAiChatModelBuilder chatModelBuilder = OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
@@ -48,10 +59,18 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
-            .responseFormat(configuration.computeResponseFormat(runContext))
+            .responseFormat(responseFormat)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(List.of(new TimingChatModelListener()))
+            .timeout(timeout)
             .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        if (responseFormat.type() == ResponseFormatType.JSON
+            && configuration.computeStrictJsonMode(runContext)) {
+            chatModelBuilder
+                .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                .strictJsonSchema(true);
+        }
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
         if (httpClientBuilder != null) {

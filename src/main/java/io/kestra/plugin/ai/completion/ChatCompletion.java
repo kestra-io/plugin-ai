@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.List;
+import java.time.Duration;
 
 import static io.kestra.plugin.ai.domain.ChatMessageType.*;
 
@@ -204,8 +205,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             throw new IllegalArgumentException("The last message must be a user message");
         }
 
+        Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
+
         // Get the appropriate model from the factory
-        ChatModel model = this.provider.chatModel(runContext, configuration);
+        ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
 
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         try {

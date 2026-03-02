@@ -36,6 +36,7 @@ import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.time.Duration;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -45,7 +46,6 @@ import java.security.cert.CertificateFactory;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class ModelProvider extends AdditionalPlugin {
-
     @Schema(title = "Model name")
     @NotNull
     private Property<String> modelName;
@@ -69,6 +69,10 @@ public abstract class ModelProvider extends AdditionalPlugin {
     private Property<String> caPem;
 
     public abstract ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException;
+
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration);
+    }
 
     public abstract ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException;
 
