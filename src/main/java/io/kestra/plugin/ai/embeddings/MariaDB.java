@@ -119,7 +119,7 @@ public class MariaDB extends EmbeddingStoreProvider {
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
         List<String> rColumnDefinitions = runContext.render(columnDefinitions).asList(String.class);
         List<String> rIndexes = runContext.render(indexes).asList(String.class);
-        String rFieldName = runContext.render(this.databaseUrl).as(String.class).orElse(StringUtils.EMPTY);
+        String rFieldName = runContext.render(this.fieldName).as(String.class).orElse(StringUtils.EMPTY);
         MariaDbEmbeddingStore.Builder builder = MariaDbEmbeddingStore.builder()
             .url(runContext.render(this.databaseUrl).as(String.class).orElseThrow())
             .user(runContext.render(this.username).as(String.class).orElseThrow())
