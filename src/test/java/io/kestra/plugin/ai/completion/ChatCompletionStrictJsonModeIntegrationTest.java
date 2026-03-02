@@ -66,7 +66,7 @@ class ChatCompletionStrictJsonModeIntegrationTest {
                         ),
                         "required", List.of("people")
                     )))
-                    .strictJsonMode(Property.ofValue(true))
+                    .strictJson(Property.ofValue(true))
                     .build())
                 .build())
             .provider(OpenAI.builder()

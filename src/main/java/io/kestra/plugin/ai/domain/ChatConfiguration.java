@@ -172,14 +172,14 @@ public class ChatConfiguration {
             description = "When true, providers that support it enforce strict JSON schema output when `type` is `JSON`."
         )
         @Builder.Default
-        private Property<Boolean> strictJsonMode = Property.ofValue(false);
+        private Property<Boolean> strictJson = Property.ofValue(false);
 
         dev.langchain4j.model.chat.request.ResponseFormat to(RunContext runContext) throws IllegalVariableEvaluationException {
             var responseFormatType = runContext.render(type).as(ResponseFormatType.class).orElse(ResponseFormatType.TEXT);
             if (responseFormatType == ResponseFormatType.TEXT && jsonSchema != null) {
                 throw new IllegalArgumentException("`jsonSchema` property is only allowed when `type` is `JSON`");
             }
-            if (responseFormatType == ResponseFormatType.TEXT && runContext.render(strictJsonMode).as(Boolean.class).orElse(false)) {
+            if (responseFormatType == ResponseFormatType.TEXT && runContext.render(strictJson).as(Boolean.class).orElse(false)) {
                 throw new IllegalArgumentException("`strictJsonMode` property is only allowed when `type` is `JSON`");
             }
 
@@ -195,7 +195,7 @@ public class ChatConfiguration {
         }
 
         boolean strictJsonMode(RunContext runContext) throws IllegalVariableEvaluationException {
-            return runContext.render(strictJsonMode).as(Boolean.class).orElse(false);
+            return runContext.render(strictJson).as(Boolean.class).orElse(false);
         }
     }
 }
