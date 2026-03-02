@@ -15,6 +15,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +51,11 @@ class MariaDBTest extends ContainerTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
     void testMariaDbEmbeddingStore_shouldReturnEmbeddingStore() throws Exception {
+        String tableName = "embeddings_" + System.nanoTime();
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", GEMINI_API_KEY,
             "modelName", "gemini-embedding-exp-03-07",
-            "tableName", "embeddings",
+            "tableName", tableName,
             "flow", Map.of("id", "flow", "namespace", "namespace")
         ));
 
@@ -68,7 +72,8 @@ class MariaDBTest extends ContainerTest {
                     .username(Property.ofValue(mariaDBContainer.getUsername()))
                     .password(Property.ofValue(mariaDBContainer.getPassword()))
                     .databaseUrl(Property.ofValue(mariaDBContainer.getJdbcUrl()))
-                    .tableName(Property.ofValue("embeddings"))
+                    .tableName(Property.ofExpression("{{ tableName }}"))
+                    .fieldName(Property.ofValue("id"))
                     .createTable(Property.ofValue(true))
                     .build()
             )
@@ -83,10 +88,11 @@ class MariaDBTest extends ContainerTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
     void testMariaDbEmbeddingStore_givenMetaStoreConfig_shouldReturnEmbeddingStore() throws Exception {
+        String tableName = "embeddings_meta_" + System.nanoTime();
         RunContext runContext = runContextFactory.of(Map.of(
             "apiKey", GEMINI_API_KEY,
             "modelName", "gemini-embedding-exp-03-07",
-            "tableName", "embeddings",
+            "tableName", tableName,
             "flow", Map.of("id", "flow", "namespace", "namespace")
         ));
 
@@ -103,7 +109,7 @@ class MariaDBTest extends ContainerTest {
                     .username(Property.ofValue(mariaDBContainer.getUsername()))
                     .password(Property.ofValue(mariaDBContainer.getPassword()))
                     .databaseUrl(Property.ofValue(mariaDBContainer.getJdbcUrl()))
-                    .tableName(Property.ofValue("embeddinsgsTable"))
+                    .tableName(Property.ofExpression("{{ tableName }}"))
                     .fieldName(Property.ofValue("id"))
                     .createTable(Property.ofValue(true))
                     .columnDefinitions(Property.ofValue(Arrays.asList(
@@ -119,6 +125,25 @@ class MariaDBTest extends ContainerTest {
 
         IngestDocument.Output output = task.run(runContext);
         assertThat(output.getIngestedDocuments()).isEqualTo(1);
+        assertThat(getPrimaryKeyColumn(tableName)).isEqualTo("id");
+    }
 
+    private String getPrimaryKeyColumn(String tableName) throws Exception {
+        try (Connection connection = mariaDBContainer.createConnection("");
+             PreparedStatement statement = connection.prepareStatement(
+                 """
+                 SELECT COLUMN_NAME
+                 FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = ?
+                   AND COLUMN_KEY = 'PRI'
+                 """
+             )) {
+            statement.setString(1, tableName);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? resultSet.getString("COLUMN_NAME") : null;
+            }
+        }
     }
 }
