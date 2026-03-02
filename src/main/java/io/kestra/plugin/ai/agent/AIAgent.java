@@ -24,6 +24,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
+import io.kestra.plugin.ai.observability.AgentObservability;
+import io.kestra.plugin.ai.observability.OpenTelemetryLangfuseObservability;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -663,6 +665,13 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     )
     private MemoryProvider memory;
 
+    @Schema(
+        title = "Langfuse observability",
+        description = "OpenTelemetry export to Langfuse. Disabled by default; prompt/output/tool payload capture is opt-in."
+    )
+    @PluginProperty
+    private LangfuseObservability observability;
+
     private Property<List<String>> outputFiles;
 
     @Override
@@ -670,21 +679,26 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
         Map<String, Object> additionalVariables = outputFiles != null ? Map.of(ScriptService.VAR_WORKING_DIR, runContext.workingDir().path(true).toString()) : Collections.emptyMap();
         String rPrompt = runContext.render(prompt).as(String.class, additionalVariables).orElseThrow();
+        String rSystemMessage = runContext.render(systemMessage).as(String.class).orElse(null);
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
 
         var logger = runContext.logger();
+        AgentObservability agentObservability = OpenTelemetryLangfuseObservability.create(runContext, observability, this.getId(), provider, configuration);
+        agentObservability.onStart(rPrompt, rSystemMessage);
 
         try {
             AiServices<Agent> agent = AiServices.builder(Agent.class)
                 .chatModel(provider.chatModel(runContext, configuration))
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
                 .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
-                .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
+                .systemMessageProvider(throwFunction(memoryId -> rSystemMessage))
                 .toolArgumentsErrorHandler((error, context) -> {
+                    agentObservability.onToolArgumentsError(context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     logger.error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolArgumentsException(error);
                 })
                 .toolExecutionErrorHandler((error, context) -> {
+                    agentObservability.onToolExecutionError(context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     logger.error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolExecutionException(error);
                 });
@@ -711,11 +725,16 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             // send metrics for token usage
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
+            agentObservability.onCompletion(completion, tokenUsage);
 
             return AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
                 .outputFiles(gatherOutputFiles(runContext))
                 .build();
+        } catch (Exception e) {
+            agentObservability.onFailure(e);
+            throw e;
         } finally {
+            agentObservability.close();
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
