@@ -31,17 +31,15 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class OpenTelemetryLangfuseObservability implements AgentObservability {
     private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
     private static final String TRACE_NAME = "AIAgent";
     private static final String INSTRUMENTATION_SCOPE = "io.kestra.plugin.ai.agent.AIAgent";
+    private static final int W3C_TRACE_ID_LENGTH = 32;
+    private static final int W3C_TRACE_PARENT_PARTS = 4;
 
     private final RunContext runContext;
     private final String taskId;
@@ -345,6 +343,8 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
 
         String taskRunId = nestedLabel("taskrun", "id");
         putIfNotNull(metadata, "taskRunId", taskRunId);
+
+        putIfNotNull(metadata, "parentTraceId", runContext.getTraceParent());
 
         if (config.captureSystemMessage() && systemMessage != null) {
             metadata.put("systemMessage", sanitize(systemMessage));
