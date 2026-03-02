@@ -8,6 +8,7 @@ import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
@@ -18,6 +19,7 @@ import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 import jakarta.inject.Inject;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -25,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
 @KestraTest
 class AIAgentTest {
@@ -62,6 +66,86 @@ class AIAgentTest {
 
         var output = agent.run(runContext);
         assertThat(output.getTextOutput()).isNotNull();
+    }
+
+    @Test
+    void withLangfuseObservabilityDisabledByDefault() throws Exception {
+        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        try {
+            wireMock.start();
+            wireMock.stubFor(post(urlEqualTo("/api/public/otel/v1/traces")).willReturn(aResponse().withStatus(200)));
+
+            RunContext runContext = runContextFactory.of(Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            ));
+
+            var agent = AIAgent.builder()
+                .provider(OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+                )
+                .prompt(Property.ofValue("Explain Kestra in one sentence."))
+                .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .observability(LangfuseObservability.builder()
+                    .enabled(Property.ofValue(false))
+                    .endpoint(Property.ofValue(wireMock.baseUrl() + "/api/public/otel"))
+                    .publicKey(Property.ofValue("pk-lf-test"))
+                    .secretKey(Property.ofValue("sk-lf-test"))
+                    .build())
+                .build();
+
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            wireMock.verify(0, postRequestedFor(urlEqualTo("/api/public/otel/v1/traces")));
+        } finally {
+            wireMock.stop();
+        }
+    }
+
+    @Test
+    void withLangfuseObservabilityEnabled() throws Exception {
+        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        try {
+            wireMock.start();
+            wireMock.stubFor(post(urlEqualTo("/api/public/otel/v1/traces")).willReturn(aResponse().withStatus(200)));
+
+            RunContext runContext = runContextFactory.of(Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            ));
+
+            var agent = AIAgent.builder()
+                .provider(OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+                )
+                .prompt(Property.ofValue("Return exactly one short sentence about orchestration."))
+                .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .observability(LangfuseObservability.builder()
+                    .enabled(Property.ofValue(true))
+                    .endpoint(Property.ofValue(wireMock.baseUrl() + "/api/public/otel"))
+                    .publicKey(Property.ofValue("pk-lf-test"))
+                    .secretKey(Property.ofValue("sk-lf-test"))
+                    .build())
+                .build();
+
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+
+            wireMock.verify(postRequestedFor(urlEqualTo("/api/public/otel/v1/traces"))
+                .withHeader("Authorization", matching("Basic .*")));
+        } finally {
+            wireMock.stop();
+        }
     }
 
     @Test
