@@ -180,7 +180,7 @@ public class ChatConfiguration {
                 throw new IllegalArgumentException("`jsonSchema` property is only allowed when `type` is `JSON`");
             }
             if (responseFormatType == ResponseFormatType.TEXT && runContext.render(strictJson).as(Boolean.class).orElse(false)) {
-                throw new IllegalArgumentException("`strictJsonMode` property is only allowed when `type` is `JSON`");
+                throw new IllegalArgumentException("`strictJson` property is only allowed when `type` is `JSON`");
             }
 
             JsonSchema langchain4jJsonSchema = null;
