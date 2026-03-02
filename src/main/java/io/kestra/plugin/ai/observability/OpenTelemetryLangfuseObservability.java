@@ -7,12 +7,14 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.service.Result;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.DefaultRunContext;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
@@ -24,7 +26,6 @@ import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.resources.Resource;
-import io.opentelemetry.sdk.resources.ResourceBuilder;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
@@ -52,6 +53,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
     private final SdkTracerProvider tracerProvider;
     private final OpenTelemetrySdk openTelemetrySdk;
     private final Tracer tracer;
+    private final boolean sharedOpenTelemetry;
 
     private Span span;
 
@@ -62,7 +64,10 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         String modelName,
         ChatConfiguration chatConfiguration,
         ResolvedConfig config,
-        SpanExporter spanExporter
+        Tracer tracer,
+        SdkTracerProvider tracerProvider,
+        OpenTelemetrySdk openTelemetrySdk,
+        boolean sharedOpenTelemetry
     ) {
         this.runContext = runContext;
         this.taskId = taskId;
@@ -70,8 +75,22 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         this.modelName = modelName;
         this.chatConfiguration = chatConfiguration;
         this.config = config;
+        this.tracer = tracer;
+        this.tracerProvider = tracerProvider;
+        this.openTelemetrySdk = openTelemetrySdk;
+        this.sharedOpenTelemetry = sharedOpenTelemetry;
+    }
 
-        ResourceBuilder resourceBuilder = Resource.builder()
+    private static OpenTelemetryLangfuseObservability isolated(
+        RunContext runContext,
+        String taskId,
+        String providerType,
+        String modelName,
+        ChatConfiguration chatConfiguration,
+        ResolvedConfig config,
+        SpanExporter spanExporter
+    ) {
+        var resourceBuilder = Resource.builder()
             .put("service.name", config.serviceName());
 
         if (config.environment() != null) {
@@ -81,16 +100,54 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
             resourceBuilder.put("service.version", config.release());
         }
 
-        this.tracerProvider = SdkTracerProvider.builder()
+        var tracerProvider = SdkTracerProvider.builder()
             .setResource(Resource.getDefault().merge(resourceBuilder.build()))
             .addSpanProcessor(BatchSpanProcessor.builder(spanExporter).build())
             .build();
 
-        this.openTelemetrySdk = OpenTelemetrySdk.builder()
-            .setTracerProvider(this.tracerProvider)
+        var openTelemetrySdk = OpenTelemetrySdk.builder()
+            .setTracerProvider(tracerProvider)
             .build();
 
-        this.tracer = this.openTelemetrySdk.getTracer(INSTRUMENTATION_SCOPE);
+        var tracer = openTelemetrySdk.getTracer(INSTRUMENTATION_SCOPE);
+
+        return new OpenTelemetryLangfuseObservability(
+            runContext,
+            taskId,
+            providerType,
+            modelName,
+            chatConfiguration,
+            config,
+            tracer,
+            tracerProvider,
+            openTelemetrySdk,
+            false
+        );
+    }
+
+    private static OpenTelemetryLangfuseObservability shared(
+        RunContext runContext,
+        String taskId,
+        String providerType,
+        String modelName,
+        ChatConfiguration chatConfiguration,
+        ResolvedConfig config,
+        OpenTelemetry openTelemetry
+    ) {
+        var tracer = openTelemetry.getTracer(INSTRUMENTATION_SCOPE);
+
+        return new OpenTelemetryLangfuseObservability(
+            runContext,
+            taskId,
+            providerType,
+            modelName,
+            chatConfiguration,
+            config,
+            tracer,
+            null,
+            null,
+            true
+        );
     }
 
     public static AgentObservability create(
@@ -101,6 +158,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         ChatConfiguration chatConfiguration
     ) {
         try {
+            var sharedOpenTelemetry = resolveOpenTelemetryBean(runContext);
             ResolvedConfig resolvedConfig = ResolvedConfig.from(runContext, langfuse);
             if (!resolvedConfig.enabled()) {
                 return NoopAgentObservability.INSTANCE;
@@ -112,13 +170,30 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
                 modelName = runContext.render(provider.getModelName()).as(String.class).orElse(null);
             }
 
+            if (sharedOpenTelemetry != null && !resolvedConfig.hasExporterConfiguration()) {
+                runContext.logger().debug("Reusing existing OpenTelemetry bean for Langfuse observability.");
+                return shared(
+                    runContext,
+                    taskId,
+                    providerType,
+                    modelName,
+                    chatConfiguration,
+                    resolvedConfig,
+                    sharedOpenTelemetry
+                );
+            }
+
+            if (!resolvedConfig.hasExporterConfiguration()) {
+                throw new IllegalArgumentException("Langfuse endpoint, publicKey and secretKey are required when observability is enabled.");
+            }
+
             SpanExporter exporter = OtlpHttpSpanExporter.builder()
                 .setEndpoint(resolvedConfig.endpoint())
                 .addHeader("Authorization", basicAuth(resolvedConfig.publicKey(), resolvedConfig.secretKey()))
                 .setTimeout(resolvedConfig.exportTimeout())
                 .build();
 
-            return new OpenTelemetryLangfuseObservability(
+            return isolated(
                 runContext,
                 taskId,
                 providerType,
@@ -307,6 +382,14 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
             }
         }
 
+        if (sharedOpenTelemetry) {
+            return;
+        }
+
+        if (tracerProvider == null || openTelemetrySdk == null) {
+            return;
+        }
+
         waitFor("forceFlush", tracerProvider.forceFlush());
         waitFor("shutdown", tracerProvider.shutdown());
 
@@ -328,6 +411,20 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         }
     }
 
+    @SuppressWarnings("deprecation")
+    private static OpenTelemetry resolveOpenTelemetryBean(RunContext runContext) {
+        if (!(runContext instanceof DefaultRunContext defaultRunContext)) {
+            return null;
+        }
+
+        try {
+            return defaultRunContext.getApplicationContext().findBean(OpenTelemetry.class).orElse(null);
+        } catch (Exception e) {
+            runContext.logger().debug("Unable to resolve OpenTelemetry bean from run context", e);
+            return null;
+        }
+    }
+
     private Map<String, Object> traceMetadata(String systemMessage) {
         Map<String, Object> metadata = new LinkedHashMap<>();
 
@@ -345,6 +442,8 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
 
         String taskRunId = nestedLabel("taskrun", "id");
         putIfNotNull(metadata, "taskRunId", taskRunId);
+
+        putIfNotNull(metadata, "parentTraceId", runContext.getTraceParent());
 
         if (config.captureSystemMessage() && systemMessage != null) {
             metadata.put("systemMessage", sanitize(systemMessage));
@@ -450,6 +549,10 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         int maxPayloadChars,
         Duration exportTimeout
     ) {
+        private boolean hasExporterConfiguration() {
+            return !isBlank(endpoint) && !isBlank(publicKey) && !isBlank(secretKey);
+        }
+
         private static ResolvedConfig from(RunContext runContext, LangfuseObservability raw) throws IllegalVariableEvaluationException {
             if (raw == null) {
                 return disabled();
@@ -463,10 +566,6 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
             String endpoint = normalizeEndpoint(render(runContext, raw.getEndpoint(), String.class, null));
             String publicKey = render(runContext, raw.getPublicKey(), String.class, null);
             String secretKey = render(runContext, raw.getSecretKey(), String.class, null);
-
-            if (isBlank(endpoint) || isBlank(publicKey) || isBlank(secretKey)) {
-                throw new IllegalArgumentException("Langfuse endpoint, publicKey and secretKey are required when observability is enabled.");
-            }
 
             int maxPayloadChars = render(runContext, raw.getMaxPayloadChars(), Integer.class, 2000);
             if (maxPayloadChars <= 0) {
