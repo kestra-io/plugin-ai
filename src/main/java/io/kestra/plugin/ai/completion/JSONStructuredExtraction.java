@@ -1,7 +1,6 @@
 package io.kestra.plugin.ai.completion;
 
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -21,17 +20,19 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
-import java.util.List;
 import java.time.Duration;
+import java.util.List;
 
 @SuperBuilder
 @ToString
@@ -41,7 +42,7 @@ import java.time.Duration;
 @Schema(
     title = "Extract JSON fields from text",
     description = """
-        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given prompt. Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
+        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given input (`prompt` or `promptContentBlocks`). Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
 )
 @Plugin(
     examples = {
@@ -133,8 +134,15 @@ import java.time.Duration;
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
-    @Schema(title = "Text prompt", description = "The input text for structured JSON extraction.")
+    @Schema(title = "Text prompt", description = "Text input for structured JSON extraction. Use either `prompt` or `promptContentBlocks`.")
     private Property<String> prompt;
+
+    @Schema(
+        title = "Prompt content blocks",
+        description = "Multimodal input blocks for extraction (TEXT, IMAGE, PDF). Use either `prompt` or `promptContentBlocks`."
+    )
+    @Nullable
+    private Property<List<ChatMessage.ContentBlock>> promptContentBlocks;
 
     @Schema(title = "System message", description = "Optional system instruction for the model.")
     @Builder.Default
@@ -165,8 +173,9 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     public JSONStructuredExtraction.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow(() ->
-            new IllegalArgumentException("Prompt must be provided for structured extraction"));
+        String rPrompt = prompt == null ? null : runContext.render(prompt).as(String.class).orElse(null);
+        List<ChatMessage.ContentBlock> rPromptContentBlocks = promptContentBlocks == null ? null : runContext.render(promptContentBlocks).asList(ChatMessage.ContentBlock.class);
+        validatePromptInput(rPrompt, rPromptContentBlocks);
 
         String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
@@ -187,7 +196,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
                 .build())
             .messages(List.of(
                 SystemMessage.systemMessage(rSystemMessage),
-                UserMessage.userMessage(rPrompt)
+                CompletionInputContentUtils.toUserMessage(runContext, rPrompt, rPromptContentBlocks)
             ))
             .build();
 
@@ -229,5 +238,16 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         fields.forEach(schemaBuilder::addStringProperty);
         schemaBuilder.required(fields);
         return schemaBuilder.build();
+    }
+
+    private void validatePromptInput(String prompt, List<ChatMessage.ContentBlock> promptContentBlocks) {
+        boolean hasPrompt = prompt != null && !prompt.isBlank();
+        boolean hasPromptContentBlocks = promptContentBlocks != null && !promptContentBlocks.isEmpty();
+        if (hasPrompt && hasPromptContentBlocks) {
+            throw new IllegalArgumentException("JSONStructuredExtraction accepts either `prompt` or `promptContentBlocks`, but not both.");
+        }
+        if (!hasPrompt && !hasPromptContentBlocks) {
+            throw new IllegalArgumentException("JSONStructuredExtraction requires one input source: `prompt` or `promptContentBlocks`.");
+        }
     }
 }

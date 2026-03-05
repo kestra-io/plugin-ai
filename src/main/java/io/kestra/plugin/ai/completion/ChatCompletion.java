@@ -29,13 +29,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URLConnection;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 
@@ -128,7 +123,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                       modelName: gpt-4o-mini
                     messages:
                       - type: USER
-                        contents:
+                        contentBlocks:
                           - text: Summarize this document.
                           - type: PDF
                             uri: "{{ outputs.upload.uri }}"
@@ -196,11 +191,9 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
     aliases = {"io.kestra.plugin.langchain4j.ChatCompletion", "io.kestra.plugin.langchain4j.completion.ChatCompletion"}
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
-    private static final String PDF_MIME_TYPE = "application/pdf";
-
     @Schema(
         title = "Chat Messages",
-        description = "The list of chat messages for the current conversation. There can be only one system message, and the last message must be a user message"
+        description = "The list of chat messages for the current conversation. A `ChatMessage` can either be text (using `content`) or a multi-block multimodal message (using `contentBlocks`). There can be only one system message, and the last message must be a user message."
     )
     @NotNull
     protected Property<List<ChatMessage>> messages;
@@ -313,7 +306,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             converted.add(switch (message.type()) {
                 case SYSTEM -> SystemMessage.systemMessage(resolveTextOnlyMessage(message));
                 case AI -> AiMessage.aiMessage(resolveTextOnlyMessage(message));
-                case USER -> toUserMessage(runContext, message);
+                case USER -> CompletionInputContentUtils.toUserMessage(runContext, message.content(), message.contentBlocks());
             });
         }
         return converted;
@@ -342,94 +335,12 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         return builder.toString();
     }
 
-    private UserMessage toUserMessage(RunContext runContext, ChatMessage message) throws Exception {
-        List<ChatMessage.ContentBlock> blocks = resolveContents(message);
-        List<Content> contents = new ArrayList<>(blocks.size());
-
-        for (ChatMessage.ContentBlock block : blocks) {
-            contents.add(switch (block.effectiveType()) {
-                case TEXT -> toTextContent(block);
-                case IMAGE -> toImageContent(runContext, block);
-                case PDF -> toPdfContent(runContext, block);
-            });
-        }
-
-        if (contents.isEmpty()) {
-            throw new IllegalArgumentException("USER messages require at least one content block.");
-        }
-
-        return UserMessage.userMessage(contents);
-    }
-
-    private TextContent toTextContent(ChatMessage.ContentBlock block) {
-        if (block.text() == null || block.text().isBlank()) {
-            throw new IllegalArgumentException("TEXT content blocks require a non-empty `text` field.");
-        }
-        return TextContent.from(block.text());
-    }
-
-    private ImageContent toImageContent(RunContext runContext, ChatMessage.ContentBlock block) throws Exception {
-        if (block.uri() == null || block.uri().isBlank()) {
-            throw new IllegalArgumentException("IMAGE content blocks require `uri` pointing to a Kestra uploaded file.");
-        }
-
-        URI uri = parseUri(block.uri(), "IMAGE");
-        byte[] bytes = resolveKestraFileBytes(runContext, uri, "IMAGE");
-        String mediaType = resolveImageMediaType(bytes);
-        return ImageContent.from(Base64.getEncoder().encodeToString(bytes), mediaType);
-    }
-
-    private PdfFileContent toPdfContent(RunContext runContext, ChatMessage.ContentBlock block) throws Exception {
-        if (block.uri() == null || block.uri().isBlank()) {
-            throw new IllegalArgumentException("PDF content blocks require `uri` pointing to a Kestra uploaded file.");
-        }
-
-        URI uri = parseUri(block.uri(), "PDF");
-        byte[] bytes = resolveKestraFileBytes(runContext, uri, "PDF");
-        return PdfFileContent.from(Base64.getEncoder().encodeToString(bytes), PDF_MIME_TYPE);
-    }
-
     private List<ChatMessage.ContentBlock> resolveContents(ChatMessage message) {
         List<ChatMessage.ContentBlock> contents = message.effectiveContents();
         if (contents.isEmpty()) {
-            throw new IllegalArgumentException("Message type " + message.type() + " must define either `content` (legacy) or `contents`.");
+            throw new IllegalArgumentException("Message type " + message.type() + " must define either `content` (legacy) or `contentBlocks`.");
         }
         return contents;
-    }
-
-    private URI parseUri(String raw, String blockType) {
-        try {
-            return URI.create(raw);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid " + blockType + " uri: `" + raw + "`", e);
-        }
-    }
-
-    private byte[] resolveKestraFileBytes(RunContext runContext, URI uri, String blockType) throws Exception {
-        if (!"kestra".equalsIgnoreCase(uri.getScheme())) {
-            throw new IllegalArgumentException(blockType + " content supports only Kestra uploaded files (`kestra://...`).");
-        }
-
-        try (InputStream inputStream = runContext.storage().getFile(uri)) {
-            return inputStream.readAllBytes();
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to read " + blockType + " file from Kestra storage uri `" + uri + "`.", e);
-        }
-    }
-
-    private String resolveImageMediaType(byte[] bytes) throws Exception {
-        String mediaType;
-        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes)) {
-            mediaType = URLConnection.guessContentTypeFromStream(stream);
-        }
-
-        if (mediaType == null || mediaType.isBlank()) {
-            throw new IllegalArgumentException("Unable to detect IMAGE media type.");
-        }
-        if (!mediaType.startsWith("image/")) {
-            throw new IllegalArgumentException("Invalid IMAGE media type `" + mediaType + "`. It must start with `image/`.");
-        }
-        return mediaType;
     }
 
     @Override
