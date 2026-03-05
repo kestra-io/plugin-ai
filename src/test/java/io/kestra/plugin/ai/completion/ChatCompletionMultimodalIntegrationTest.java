@@ -76,7 +76,7 @@ class ChatCompletionMultimodalIntegrationTest {
             List.of(
                 ChatMessage.builder()
                     .type(ChatMessageType.USER)
-                    .contents(List.of(
+                    .contentBlocks(List.of(
                         ChatMessage.ContentBlock.builder()
                             .text("analyze these files")
                             .build(),
@@ -121,7 +121,7 @@ class ChatCompletionMultimodalIntegrationTest {
                 List.of(
                     ChatMessage.builder()
                         .type(ChatMessageType.USER)
-                        .contents(List.of(
+                        .contentBlocks(List.of(
                             ChatMessage.ContentBlock.builder()
                                 .type(ChatMessage.ContentBlock.Type.IMAGE)
                                 .uri("https://example.com/image.png")
@@ -145,7 +145,7 @@ class ChatCompletionMultimodalIntegrationTest {
                 List.of(
                     ChatMessage.builder()
                         .type(ChatMessageType.SYSTEM)
-                        .contents(List.of(
+                        .contentBlocks(List.of(
                             ChatMessage.ContentBlock.builder()
                                 .type(ChatMessage.ContentBlock.Type.PDF)
                                 .uri("kestra://tmp/dummy")
