@@ -29,9 +29,10 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.time.Duration;
 
 import static io.kestra.plugin.ai.domain.ChatMessageType.*;
 
@@ -106,6 +107,30 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
             }
         ),
         @Example(
+            title = "Chat completion with mixed text and PDF content",
+            full = true,
+            code = {
+                """
+                id: chat_completion_with_pdf
+                namespace: company.ai
+
+                tasks:
+                  - id: chat_completion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-4o-mini
+                    messages:
+                      - type: USER
+                        contentBlocks:
+                          - text: Summarize this document.
+                          - type: PDF
+                            uri: "{{ outputs.upload.uri }}"
+                """
+            }
+        ),
+        @Example(
             full = true,
             title = """
                 Extract structured outputs with a JSON schema.
@@ -166,10 +191,9 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
     aliases = {"io.kestra.plugin.langchain4j.ChatCompletion", "io.kestra.plugin.langchain4j.completion.ChatCompletion"}
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
-
     @Schema(
         title = "Chat Messages",
-        description = "The list of chat messages for the current conversation. There can be only one system message, and the last message must be a user message"
+        description = "The list of chat messages for the current conversation. A `ChatMessage` can either be text (using `content`) or a multi-block multimodal message (using `contentBlocks`). There can be only one system message, and the last message must be a user message."
     )
     @NotNull
     protected Property<List<ChatMessage>> messages;
@@ -195,7 +219,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
         // Render existing messages
         List<ChatMessage> renderedChatMessagesInput = runContext.render(messages).asList(ChatMessage.class);
-        List<dev.langchain4j.data.message.ChatMessage> chatMessages = convertMessages(renderedChatMessagesInput);
+        List<dev.langchain4j.data.message.ChatMessage> chatMessages = convertMessages(runContext, renderedChatMessagesInput);
 
         long nbSystemMessages = chatMessages.stream().filter(msg -> msg.type() == dev.langchain4j.data.message.ChatMessageType.SYSTEM).count();
         if (nbSystemMessages > 1) {
@@ -243,7 +267,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                     throw new ToolExecutionException(error);
                 })
                 .build();
-            Result<AiMessage> aiResponse = assistant.chat(((UserMessage)chatMessages.getLast()).singleText());
+            Result<AiMessage> aiResponse = assistant.chat(((UserMessage) chatMessages.getLast()).contents());
             logger.debug("AI Response: {}", aiResponse.content());
 
             // send metrics for token usage
@@ -273,17 +297,50 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     }
 
     interface Assistant {
-        Result<AiMessage> chat(@dev.langchain4j.service.UserMessage String chatMessage);
+        Result<AiMessage> chat(List<Content> chatMessage);
     }
 
-    private List<dev.langchain4j.data.message.ChatMessage> convertMessages(List<ChatMessage> messages) {
-        return messages.stream()
-            .map(dto -> switch (dto.type()) {
-                case SYSTEM -> SystemMessage.systemMessage(dto.content());
-                case AI ->  AiMessage.aiMessage(dto.content());
-                case USER ->  UserMessage.userMessage(dto.content());
-            })
-            .toList();
+    List<dev.langchain4j.data.message.ChatMessage> convertMessages(RunContext runContext, List<ChatMessage> messages) throws Exception {
+        List<dev.langchain4j.data.message.ChatMessage> converted = new ArrayList<>(messages.size());
+        for (ChatMessage message : messages) {
+            converted.add(switch (message.type()) {
+                case SYSTEM -> SystemMessage.systemMessage(resolveTextOnlyMessage(message));
+                case AI -> AiMessage.aiMessage(resolveTextOnlyMessage(message));
+                case USER -> CompletionInputContentUtils.toUserMessage(runContext, message.content(), message.contentBlocks());
+            });
+        }
+        return converted;
+    }
+
+    private String resolveTextOnlyMessage(ChatMessage message) {
+        List<ChatMessage.ContentBlock> blocks = resolveContents(message);
+        StringBuilder builder = new StringBuilder();
+
+        for (ChatMessage.ContentBlock block : blocks) {
+            if (block.effectiveType() != ChatMessage.ContentBlock.Type.TEXT) {
+                throw new IllegalArgumentException("Only TEXT content blocks are supported for " + message.type() + " messages.");
+            }
+            if (block.text() == null || block.text().isBlank()) {
+                throw new IllegalArgumentException("TEXT content blocks require a non-empty `text` field.");
+            }
+            if (!builder.isEmpty()) {
+                builder.append('\n');
+            }
+            builder.append(block.text());
+        }
+
+        if (builder.isEmpty()) {
+            throw new IllegalArgumentException("Message type " + message.type() + " requires non-empty text content.");
+        }
+        return builder.toString();
+    }
+
+    private List<ChatMessage.ContentBlock> resolveContents(ChatMessage message) {
+        List<ChatMessage.ContentBlock> contents = message.effectiveContents();
+        if (contents.isEmpty()) {
+            throw new IllegalArgumentException("Message type " + message.type() + " must define either `content` (legacy) or `contentBlocks`.");
+        }
+        return contents;
     }
 
     @Override
