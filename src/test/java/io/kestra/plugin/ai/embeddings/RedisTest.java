@@ -1,20 +1,23 @@
 package io.kestra.plugin.ai.embeddings;
 
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+
 import com.redis.testcontainers.RedisStackContainer;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.IngestDocument;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
 
-import java.util.List;
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
@@ -44,11 +47,13 @@ public class RedisTest extends ContainerTest {
 
     @Test
     void inlineDocuments() throws Exception {
-        var runContext = runContextFactory.of(Map.of(
-            "modelName", REDIS_MODEL,
-            "endpoint", ollamaEndpoint,
-            "flow", Map.of("id", "flow", "namespace", "namespace")
-        ));
+        var runContext = runContextFactory.of(
+            Map.of(
+                "modelName", REDIS_MODEL,
+                "endpoint", ollamaEndpoint,
+                "flow", Map.of("id", "flow", "namespace", "namespace")
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(

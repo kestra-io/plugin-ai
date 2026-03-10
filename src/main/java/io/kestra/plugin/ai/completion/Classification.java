@@ -1,10 +1,12 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -18,16 +20,16 @@ import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.time.Duration;
 
 @SuperBuilder
 @ToString
@@ -46,22 +48,22 @@ import java.time.Duration;
             full = true,
             code = {
                 """
-                id: text_categorization
-                namespace: company.ai
+                    id: text_categorization
+                    namespace: company.ai
 
-                tasks:
-                  - id: categorize
-                    type: io.kestra.plugin.ai.completion.Classification
-                    prompt: "Categorize the sentiment of: I love this product!"
-                    classes:
-                      - positive
-                      - negative
-                      - neutral
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                """
+                    tasks:
+                      - id: categorize
+                        type: io.kestra.plugin.ai.completion.Classification
+                        prompt: "Categorize the sentiment of: I love this product!"
+                        classes:
+                          - positive
+                          - negative
+                          - neutral
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                    """
             }
         )
     },
@@ -85,7 +87,7 @@ import java.time.Duration;
             description = "Large Language Model (LLM) total token count"
         )
     },
-    aliases = {"io.kestra.plugin.langchain4j.Classification", "io.kestra.plugin.langchain4j.completion.Classification"}
+    aliases = { "io.kestra.plugin.langchain4j.Classification", "io.kestra.plugin.langchain4j.completion.Classification" }
 )
 public class Classification extends Task implements RunnableTask<Classification.Output> {
 

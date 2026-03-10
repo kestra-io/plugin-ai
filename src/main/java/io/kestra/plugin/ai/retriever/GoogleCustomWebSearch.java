@@ -1,16 +1,18 @@
 package io.kestra.plugin.ai.retriever;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchEngine;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ContentRetrieverProvider;
+
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchEngine;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

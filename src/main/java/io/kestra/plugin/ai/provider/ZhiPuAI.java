@@ -1,12 +1,9 @@
 package io.kestra.plugin.ai.provider;
 
+import java.util.List;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.community.model.zhipu.ZhipuAiChatModel;
-import dev.langchain4j.community.model.zhipu.ZhipuAiEmbeddingModel;
-import dev.langchain4j.community.model.zhipu.ZhipuAiImageModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.image.ImageModel;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -14,10 +11,15 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
+
+import dev.langchain4j.community.model.zhipu.ZhipuAiChatModel;
+import dev.langchain4j.community.model.zhipu.ZhipuAiEmbeddingModel;
+import dev.langchain4j.community.model.zhipu.ZhipuAiImageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -70,7 +72,8 @@ public class ZhiPuAI extends ModelProvider {
     private Property<String> apiKey;
 
     @Schema(
-        title = "API base URL", description = "The base URL for ZhiPu API (defaults to https://open.bigmodel.cn/)")
+        title = "API base URL", description = "The base URL for ZhiPu API (defaults to https://open.bigmodel.cn/)"
+    )
     @NotNull
     @Builder.Default
     private Property<String> baseUrl = Property.ofValue(BASE_URL);

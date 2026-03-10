@@ -1,19 +1,20 @@
 package io.kestra.plugin.ai.domain;
 
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.util.Map;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.tool.internal.JsonObjectSchemaTranslator;
+
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.util.Map;
 
 @Getter
 @Builder
@@ -185,7 +186,8 @@ public class ChatConfiguration {
 
             JsonSchema langchain4jJsonSchema = null;
             if (jsonSchema != null) {
-                JsonObjectSchema jsonObjectSchema = JsonObjectSchemaTranslator.fromOpenAPISchema(runContext.render(jsonSchema).asMap(String.class, Object.class), runContext.render(jsonSchemaDescription).as(String.class).orElse(null));
+                JsonObjectSchema jsonObjectSchema = JsonObjectSchemaTranslator
+                    .fromOpenAPISchema(runContext.render(jsonSchema).asMap(String.class, Object.class), runContext.render(jsonSchemaDescription).as(String.class).orElse(null));
                 langchain4jJsonSchema = JsonSchema.builder().name("output").rootElement(jsonObjectSchema).build();
             }
             return dev.langchain4j.model.chat.request.ResponseFormat.builder()

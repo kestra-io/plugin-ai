@@ -1,6 +1,15 @@
 package io.kestra.plugin.ai.tool;
 
-import dev.langchain4j.model.output.FinishReason;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -10,16 +19,9 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.utility.DockerImageName;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
+import dev.langchain4j.model.output.FinishReason;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,29 +55,38 @@ class SseMcpClientTest {
 
     @Test
     void chat() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-            "mcpSseUrl", "http://localhost:" + mcpContainer.getMappedPort(3001) + "/sse"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "mcpSseUrl", "http://localhost:" + mcpContainer.getMappedPort(3001) + "/sse"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(List.of(
-                SseMcpClient.builder().sseUrl(Property.ofExpression("{{mcpSseUrl}}")).timeout(Property.ofValue(Duration.ofSeconds(60))).build())
+            .tools(
+                List.of(
+                    SseMcpClient.builder().sseUrl(Property.ofExpression("{{mcpSseUrl}}")).timeout(Property.ofValue(Duration.ofSeconds(60))).build()
+                )
             )
-            .messages(Property.ofValue(
-                List.of(ChatMessage.builder().type(ChatMessageType.USER).content("What is 5+12? Use the provided tool to answer and always assume that the tool is correct.").build()
-                )))
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER).content("What is 5+12? Use the provided tool to answer and always assume that the tool is correct.").build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);

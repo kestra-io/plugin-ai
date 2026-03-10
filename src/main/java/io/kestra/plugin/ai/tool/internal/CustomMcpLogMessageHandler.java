@@ -1,8 +1,9 @@
 package io.kestra.plugin.ai.tool.internal;
 
+import org.slf4j.Logger;
+
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
-import org.slf4j.Logger;
 
 public class CustomMcpLogMessageHandler implements McpLogMessageHandler {
 

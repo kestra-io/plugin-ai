@@ -1,16 +1,11 @@
 package io.kestra.plugin.ai.rag;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
-import dev.langchain4j.rag.RetrievalAugmentor;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.Result;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -24,16 +19,22 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.rag.query.router.QueryRouter;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.time.Duration;
-import java.util.stream.Collectors;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -324,12 +325,17 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
-                .toolArgumentsErrorHandler((error, context) -> {
-                    runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                .toolArgumentsErrorHandler((error, context) ->
+                {
+                    runContext.logger().error(
+                        "An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error
+                    );
                     throw new ToolArgumentsException(error);
                 })
-                .toolExecutionErrorHandler((error, context) -> {
-                    runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                .toolExecutionErrorHandler((error, context) ->
+                {
+                    runContext.logger()
+                        .error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolExecutionException(error);
                 });
 
@@ -373,16 +379,20 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             .map(throwFunction(provider -> provider.contentRetriever(runContext)))
             .collect(Collectors.toList());
 
-        Optional<ContentRetriever> contentRetriever = Optional.ofNullable(embeddings).map(throwFunction(
-            embeddings -> {
-                var embeddingModel = Optional.ofNullable(embeddingProvider).orElse(chatProvider).embeddingModel(runContext);
-                return EmbeddingStoreContentRetriever.builder()
-                    .embeddingModel(embeddingModel)
-                    .embeddingStore(embeddings.embeddingStore(runContext, embeddingModel.dimension(), false))
-                    .maxResults(contentRetrieverConfiguration.getMaxResults())
-                    .minScore(contentRetrieverConfiguration.getMinScore())
-                    .build();
-            }));
+        Optional<ContentRetriever> contentRetriever = Optional.ofNullable(embeddings).map(
+            throwFunction(
+                embeddings ->
+                {
+                    var embeddingModel = Optional.ofNullable(embeddingProvider).orElse(chatProvider).embeddingModel(runContext);
+                    return EmbeddingStoreContentRetriever.builder()
+                        .embeddingModel(embeddingModel)
+                        .embeddingStore(embeddings.embeddingStore(runContext, embeddingModel.dimension(), false))
+                        .maxResults(contentRetrieverConfiguration.getMaxResults())
+                        .minScore(contentRetrieverConfiguration.getMinScore())
+                        .build();
+                }
+            )
+        );
 
         if (toolContentRetrievers.isEmpty() && contentRetriever.isEmpty()) {
             throw new IllegalArgumentException("Either `embeddings` or `contentRetrievers` must be provided.");
@@ -405,7 +415,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Override
     public void kill() {
         if (this.tools != null) {
-            this.tools.forEach(tool -> {
+            this.tools.forEach(tool ->
+            {
                 try {
                     tool.kill();
                 } catch (Exception ignored) {

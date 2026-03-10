@@ -1,9 +1,11 @@
 package io.kestra.plugin.ai.provider;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,26 +27,26 @@ import lombok.experimental.SuperBuilder;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.HuggingFace
-                      apiKey: "{{ secret('HUGGING_FACE_API_KEY') }}"
-                      modelName: HuggingFaceTB/SmolLM3-3B:hf-inference
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.HuggingFace
+                          apiKey: "{{ secret('HUGGING_FACE_API_KEY') }}"
+                          modelName: HuggingFaceTB/SmolLM3-3B:hf-inference
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         )
     }

@@ -1,15 +1,17 @@
 package io.kestra.plugin.ai.embeddings;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.qdrant.QdrantEmbeddingStore;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.qdrant.QdrantEmbeddingStore;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -81,9 +83,11 @@ public class Qdrant extends EmbeddingStoreProvider {
 
         // dimension is useless since the given embedding dimension will be used inside Qdrant
 
-        var client = new QdrantClient(QdrantGrpcClient.newBuilder(renderedHost, renderedPort, false)
-            .withApiKey(renderedApiKey)
-            .build());
+        var client = new QdrantClient(
+            QdrantGrpcClient.newBuilder(renderedHost, renderedPort, false)
+                .withApiKey(renderedApiKey)
+                .build()
+        );
 
         var renderedCollectionName = runContext.render(collectionName).as(String.class).orElseThrow();
         var store = QdrantEmbeddingStore.builder()

@@ -1,13 +1,9 @@
 package io.kestra.plugin.ai.provider;
 
+import java.util.List;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.model.bedrock.BedrockChatModel;
-import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
-import dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel;
-import dev.langchain4j.model.bedrock.BedrockTitanEmbeddingModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.image.ImageModel;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -15,6 +11,14 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
+
+import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
+import dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel;
+import dev.langchain4j.model.bedrock.BedrockTitanEmbeddingModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -25,8 +29,6 @@ import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-
-import java.util.List;
 
 @Getter
 @SuperBuilder
@@ -44,28 +46,28 @@ import java.util.List;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.AmazonBedrock
-                      accessKeyId: "{{ secret('AWS_ACCESS_KEY') }}"
-                      secretAccessKey: "{{ secret('AWS_SECRET_KEY') }}"
-                      modelName: anthropic.claude-3-sonnet-20240229-v1:0
-                      thinkingBudgetTokens: 1024
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.AmazonBedrock
+                          accessKeyId: "{{ secret('AWS_ACCESS_KEY') }}"
+                          secretAccessKey: "{{ secret('AWS_SECRET_KEY') }}"
+                          modelName: anthropic.claude-3-sonnet-20240229-v1:0
+                          thinkingBudgetTokens: 1024
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         )
     },
@@ -106,14 +108,15 @@ public class AmazonBedrock extends ModelProvider {
                     .build()
             )
             .modelId(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
-                .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
-                .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
-                .responseFormat(configuration.computeResponseFormat(runContext))
-                .enableReasoning(thinkingBudgetTokens)
-                .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-                .build()
+            .defaultRequestParameters(
+                BedrockChatRequestParameters.builder()
+                    .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
+                    .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
+                    .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
+                    .responseFormat(configuration.computeResponseFormat(runContext))
+                    .enableReasoning(thinkingBudgetTokens)
+                    .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+                    .build()
             )
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))

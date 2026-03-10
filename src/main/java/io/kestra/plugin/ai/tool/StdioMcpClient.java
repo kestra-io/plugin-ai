@@ -1,13 +1,18 @@
 package io.kestra.plugin.ai.tool;
 
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+
+import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -15,9 +20,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.List;
-import java.util.Map;
 
 @Getter
 @SuperBuilder
@@ -30,26 +32,26 @@ import java.util.Map;
             full = true,
             code = {
                 """
-                id: mcp_client_stdio
-                namespace: company.ai
+                    id: mcp_client_stdio
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
-                    defaults: What is the current time in New York?
+                    inputs:
+                      - id: prompt
+                        type: STRING
+                        defaults: What is the current time in New York?
 
-                tasks:
-                  - id: agent
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    prompt: "{{ inputs.prompt }}"
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                    tools:
-                      - type: io.kestra.plugin.ai.tool.StdioMcpClient
-                        command: ["docker", "run", "--rm", "-i", "mcp/time"]
-                """
+                    tasks:
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        prompt: "{{ inputs.prompt }}"
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                        tools:
+                          - type: io.kestra.plugin.ai.tool.StdioMcpClient
+                            command: ["docker", "run", "--rm", "-i", "mcp/time"]
+                    """
             }
         ),
     },
@@ -73,7 +75,6 @@ public class StdioMcpClient extends AbstractMcpClient {
     @NotNull
     @Builder.Default
     private Property<Boolean> logEvents = Property.ofValue(false);
-
 
     @Override
     protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {

@@ -1,13 +1,14 @@
 package io.kestra.plugin.ai.provider;
 
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import org.apache.commons.lang3.time.StopWatch;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.lang3.time.StopWatch;
+
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 
 public class TimingChatModelListener implements ChatModelListener {
     private static final Map<Integer, StopWatch> TIMERS = new HashMap<>();

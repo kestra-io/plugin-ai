@@ -1,16 +1,10 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
+import java.time.Duration;
+import java.util.List;
+
+import org.slf4j.Logger;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -24,14 +18,22 @@ import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-
-import java.util.List;
-import java.time.Duration;
 
 @SuperBuilder
 @ToString
@@ -129,7 +131,7 @@ import java.time.Duration;
             description = "Large Language Model (LLM) total token count"
         )
     },
-    aliases = {"io.kestra.plugin.langchain4j.JSONStructuredExtraction", "io.kestra.plugin.langchain4j.completion.JSONStructuredExtraction"}
+    aliases = { "io.kestra.plugin.langchain4j.JSONStructuredExtraction", "io.kestra.plugin.langchain4j.completion.JSONStructuredExtraction" }
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
@@ -165,8 +167,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     public JSONStructuredExtraction.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow(() ->
-            new IllegalArgumentException("Prompt must be provided for structured extraction"));
+        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow(() -> new IllegalArgumentException("Prompt must be provided for structured extraction"));
 
         String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
@@ -175,20 +176,26 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
 
         ResponseFormat responseFormat = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
-            .jsonSchema(JsonSchema.builder()
-                .name(rSchemaName)
-                .rootElement(buildDynamicSchema(rJsonFields))
-                .build())
+            .jsonSchema(
+                JsonSchema.builder()
+                    .name(rSchemaName)
+                    .rootElement(buildDynamicSchema(rJsonFields))
+                    .build()
+            )
             .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-            .parameters(ChatRequestParameters.builder()
-                .responseFormat(responseFormat)
-                .build())
-            .messages(List.of(
-                SystemMessage.systemMessage(rSystemMessage),
-                UserMessage.userMessage(rPrompt)
-            ))
+            .parameters(
+                ChatRequestParameters.builder()
+                    .responseFormat(responseFormat)
+                    .build()
+            )
+            .messages(
+                List.of(
+                    SystemMessage.systemMessage(rSystemMessage),
+                    UserMessage.userMessage(rPrompt)
+                )
+            )
             .build();
 
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));

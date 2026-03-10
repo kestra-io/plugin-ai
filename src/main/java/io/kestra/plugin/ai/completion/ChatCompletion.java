@@ -1,13 +1,11 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.Result;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+
+import org.slf4j.Logger;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -22,16 +20,20 @@ import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
+
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-
-import java.util.Collections;
-import java.util.List;
-import java.time.Duration;
 
 import static io.kestra.plugin.ai.domain.ChatMessageType.*;
 
@@ -52,26 +54,26 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
             full = true,
             code = {
                 """
-                id: chat_completion
-                namespace: company.ai
+                    id: chat_completion
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                """
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                    """
             }
         ),
         @Example(
@@ -79,30 +81,30 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
             full = true,
             code = {
                 """
-                id: chat_completion_with_tools
-                namespace: company.ai
+                    id: chat_completion_with_tools
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
+                    inputs:
+                      - id: prompt
+                        type: STRING
 
-                tasks:
-                  - id: chat_completion_with_tools
-                    type: io.kestra.plugin.ai.completion.ChatCompletion
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GOOGLE_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                    messages:
-                      - type: SYSTEM
-                        content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
-                      - type: USER
-                        content: "{{inputs.prompt}}"
-                    tools:
-                      - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
-                        apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
-                        csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
-                """
+                    tasks:
+                      - id: chat_completion_with_tools
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
+                          - type: USER
+                            content: "{{inputs.prompt}}"
+                        tools:
+                          - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
+                            apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
+                            csi: "{{ secret('GOOGLE_SEARCH_CSI') }}"
+                    """
             }
         ),
         @Example(
@@ -163,7 +165,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
             description = "Large Language Model (LLM) total token count"
         )
     },
-    aliases = {"io.kestra.plugin.langchain4j.ChatCompletion", "io.kestra.plugin.langchain4j.completion.ChatCompletion"}
+    aliases = { "io.kestra.plugin.langchain4j.ChatCompletion", "io.kestra.plugin.langchain4j.completion.ChatCompletion" }
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
 
@@ -225,25 +227,30 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             // Generate AI response
             Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessageProvider(chatMemoryId ->
-                    chatMessages.stream()
+                .systemMessageProvider(
+                    chatMemoryId -> chatMessages.stream()
                         .filter(msg -> msg.type() == dev.langchain4j.data.message.ChatMessageType.SYSTEM)
-                        .map(msg -> ((SystemMessage)msg).text())
+                        .map(msg -> ((SystemMessage) msg).text())
                         .findAny()
                         .orElse(null)
                 )
                 .chatMemory(chatMemory)
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
-                .toolArgumentsErrorHandler((error, context) -> {
-                    runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                .toolArgumentsErrorHandler((error, context) ->
+                {
+                    runContext.logger().error(
+                        "An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error
+                    );
                     throw new ToolArgumentsException(error);
                 })
-                .toolExecutionErrorHandler((error, context) -> {
-                    runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                .toolExecutionErrorHandler((error, context) ->
+                {
+                    runContext.logger()
+                        .error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolExecutionException(error);
                 })
                 .build();
-            Result<AiMessage> aiResponse = assistant.chat(((UserMessage)chatMessages.getLast()).singleText());
+            Result<AiMessage> aiResponse = assistant.chat(((UserMessage) chatMessages.getLast()).singleText());
             logger.debug("AI Response: {}", aiResponse.content());
 
             // send metrics for token usage
@@ -280,8 +287,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         return messages.stream()
             .map(dto -> switch (dto.type()) {
                 case SYSTEM -> SystemMessage.systemMessage(dto.content());
-                case AI ->  AiMessage.aiMessage(dto.content());
-                case USER ->  UserMessage.userMessage(dto.content());
+                case AI -> AiMessage.aiMessage(dto.content());
+                case USER -> UserMessage.userMessage(dto.content());
             })
             .toList();
     }
@@ -289,7 +296,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Override
     public void kill() {
         if (this.tools != null) {
-            this.tools.forEach(tool -> {
+            this.tools.forEach(tool ->
+            {
                 try {
                     tool.kill();
                 } catch (Exception ignored) {

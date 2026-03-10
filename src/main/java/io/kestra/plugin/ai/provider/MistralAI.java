@@ -1,6 +1,18 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.List;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ModelProvider;
+
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -9,22 +21,12 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiEmbeddingModel;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.models.annotations.Example;
-import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.ChatConfiguration;
-import io.kestra.plugin.ai.domain.ModelProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.time.Duration;
-import java.util.List;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
@@ -102,8 +104,10 @@ public class MistralAI extends ModelProvider {
             .timeout(timeout)
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
-        if (responseFormat.type() == ResponseFormatType.JSON
-            && configuration.computeStrictJsonMode(runContext)) {
+        if (
+            responseFormat.type() == ResponseFormatType.JSON
+                && configuration.computeStrictJsonMode(runContext)
+        ) {
             chatModelBuilder.supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
         }
 

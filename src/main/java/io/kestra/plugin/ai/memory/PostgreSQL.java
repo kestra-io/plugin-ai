@@ -1,28 +1,30 @@
 package io.kestra.plugin.ai.memory;
 
+import java.io.IOException;
+import java.sql.*;
+import java.time.Duration;
+import java.time.Instant;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.data.message.ChatMessageDeserializer;
-import dev.langchain4j.data.message.ChatMessageSerializer;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.MemoryProvider;
+
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.io.IOException;
-import java.sql.*;
-import java.time.Duration;
-import java.time.Instant;
 
 @Getter
 @SuperBuilder
@@ -108,9 +110,11 @@ public class PostgreSQL extends MemoryProvider {
         try (Connection conn = connection(config)) {
             ensureTableExists(conn, config.tableName());
 
-            try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT memory_json, expires_at FROM " + config.tableName() + " WHERE memory_id = ?"
-            )) {
+            try (
+                PreparedStatement stmt = conn.prepareStatement(
+                    "SELECT memory_json, expires_at FROM " + config.tableName() + " WHERE memory_id = ?"
+                )
+            ) {
                 stmt.setString(1, key);
                 ResultSet rs = stmt.executeQuery();
 
@@ -138,7 +142,8 @@ public class PostgreSQL extends MemoryProvider {
 
     @Override
     public void close(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
-        if (chatMemory == null) return;
+        if (chatMemory == null)
+            return;
 
         var config = resolvedConfig(runContext);
         var key = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
@@ -153,12 +158,14 @@ public class PostgreSQL extends MemoryProvider {
                 String memoryJson = ChatMessageSerializer.messagesToJson(chatMemory.messages());
                 Instant expiresAt = Instant.now().plus(ttl);
 
-                try (PreparedStatement upsert = conn.prepareStatement(
-                    "INSERT INTO " + config.tableName() + " (memory_id, memory_json, expires_at) " +
-                        "VALUES (?, ?, ?) " +
-                        "ON CONFLICT (memory_id) " +
-                        "DO UPDATE SET memory_json = EXCLUDED.memory_json, expires_at = EXCLUDED.expires_at"
-                )) {
+                try (
+                    PreparedStatement upsert = conn.prepareStatement(
+                        "INSERT INTO " + config.tableName() + " (memory_id, memory_json, expires_at) " +
+                            "VALUES (?, ?, ?) " +
+                            "ON CONFLICT (memory_id) " +
+                            "DO UPDATE SET memory_json = EXCLUDED.memory_json, expires_at = EXCLUDED.expires_at"
+                    )
+                ) {
                     upsert.setString(1, key);
                     upsert.setString(2, memoryJson);
                     upsert.setTimestamp(3, Timestamp.from(expiresAt));
@@ -171,7 +178,7 @@ public class PostgreSQL extends MemoryProvider {
     }
 
     private record ResolvedConfig(String host, int port, String database, String user, String password,
-                                  String tableName, Drop drop) {
+        String tableName, Drop drop) {
     }
 
     private ResolvedConfig resolvedConfig(RunContext runContext) throws IllegalVariableEvaluationException {
@@ -207,9 +214,11 @@ public class PostgreSQL extends MemoryProvider {
     }
 
     private void deleteMemory(Connection conn, String key, String tableName) throws SQLException {
-        try (PreparedStatement stmt = conn.prepareStatement(
-            "DELETE FROM " + tableName + " WHERE memory_id = ?"
-        )) {
+        try (
+            PreparedStatement stmt = conn.prepareStatement(
+                "DELETE FROM " + tableName + " WHERE memory_id = ?"
+            )
+        ) {
             stmt.setString(1, key);
             stmt.executeUpdate();
         }

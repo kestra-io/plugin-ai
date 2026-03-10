@@ -1,5 +1,12 @@
 package io.kestra.plugin.ai.completion;
 
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -8,13 +15,8 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.List;
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -31,22 +33,25 @@ class ClassificationTest extends ContainerTest {
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
     void testClassificationGemini() throws Exception {
         // GIVEN
-        RunContext runContext = runContextFactory.of(Map.of(
-            "prompt", "Is 'This is a joke' a good joke?",
-            "classes", List.of("true", "false"),
-            "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-2.0-flash"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "prompt", "Is 'This is a joke' a good joke?",
+                "classes", List.of("true", "false"),
+                "apiKey", GEMINI_API_KEY,
+                "modelName", "gemini-2.0-flash"
+            )
+        );
 
         Classification task = Classification.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
             .systemMessage(Property.ofValue("You are a text classification assistant."))
             .classes(Property.ofExpression("{{ classes }}"))
-            .provider(GoogleGemini.builder()
-                .type(GoogleGemini.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .build()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build()
             )
             .build();
 
@@ -60,21 +65,24 @@ class ClassificationTest extends ContainerTest {
     @Test
     void testClassificationOllama() throws Exception {
         // GIVEN
-        RunContext runContext = runContextFactory.of(Map.of(
-            "prompt", "Is 'This is a joke' a good joke?",
-            "classes", List.of("true", "false"),
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "prompt", "Is 'This is a joke' a good joke?",
+                "classes", List.of("true", "false"),
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         Classification task = Classification.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
             .classes(Property.ofExpression("{{ classes }}"))
-            .provider(Ollama.builder()
-                .type(Ollama.class.getName())
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .endpoint(Property.ofExpression("{{ endpoint }}"))
-                .build()
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
             )
             .build();
 
@@ -89,24 +97,27 @@ class ClassificationTest extends ContainerTest {
     @Disabled("demo apikey has quotas")
     void testClassificationOpenAI() throws Exception {
         // GIVEN
-        RunContext runContext = runContextFactory.of(Map.of(
-            "prompt", "Is 'This is a joke' a good joke?",
-            "classes", List.of("true", "false"),
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "prompt", "Is 'This is a joke' a good joke?",
+                "classes", List.of("true", "false"),
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         Classification task = Classification.builder()
             .prompt(Property.ofExpression("{{ prompt }}"))
             .systemMessage(Property.ofValue("You are a text classification assistant."))
             .classes(Property.ofExpression("{{ classes }}"))
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             .build();
 

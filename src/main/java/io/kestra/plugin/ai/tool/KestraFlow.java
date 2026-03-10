@@ -1,16 +1,12 @@
 package io.kestra.plugin.ai.tool;
 
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.service.tool.ToolExecutor;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.Label;
 import io.kestra.core.models.annotations.Example;
@@ -32,6 +28,16 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.core.utils.MapUtils;
 import io.kestra.core.validations.NoSystemLabelValidation;
 import io.kestra.plugin.ai.domain.ToolProvider;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.service.tool.ToolExecutor;
 import io.micronaut.inject.qualifiers.Qualifiers;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -39,17 +45,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @Getter
 @SuperBuilder
 @NoArgsConstructor
 @Plugin(
-    examples =  {
+    examples = {
         @Example(
             title = "Call a Kestra flow as a tool, explicitly defining the flow ID and namespace in the tool definition",
             full = true,
@@ -208,7 +210,7 @@ public class KestraFlow extends ToolProvider {
     @Schema(
         title = "Labels that should be added to the flow's execution",
         description = "Any labels passed by the LLM will override those defined here.",
-        implementation = Object.class, oneOf = {List.class, Map.class}
+        implementation = Object.class, oneOf = { List.class, Map.class }
     )
     @PluginProperty(dynamic = true)
     @JsonSerialize(using = ListOrMapOfLabelSerializer.class)
@@ -250,20 +252,24 @@ public class KestraFlow extends ToolProvider {
         List<Label> rLabels = ListUtils.emptyOnNull(labels).stream().map(throwFunction(label -> new Label(runContext.render(label.key()), runContext.render(label.value())))).toList();
 
         var jsonSchema = JsonObjectSchema.builder()
-            .addProperty("labels", JsonArraySchema.builder().items(
-                        JsonObjectSchema.builder()
-                            .addStringProperty("key", "The label key.")
-                            .addStringProperty("value", "The label value.")
-                            .build()
-                    ).description("The list of labels.")
+            .addProperty(
+                "labels", JsonArraySchema.builder().items(
+                    JsonObjectSchema.builder()
+                        .addStringProperty("key", "The label key.")
+                        .addStringProperty("value", "The label value.")
+                        .build()
+                ).description("The list of labels.")
                     .build()
             )
-            .addProperty("scheduleDate", JsonStringSchema.builder()
-                .description("""
-                    The scheduled date of the flow. Use it only if the flow needs to be executed later and not immediately.
-                    It should be an ISO8601 formatted zoned date time."""
-                )
-                .build());
+            .addProperty(
+                "scheduleDate", JsonStringSchema.builder()
+                    .description(
+                        """
+                            The scheduled date of the flow. Use it only if the flow needs to be executed later and not immediately.
+                            It should be an ISO8601 formatted zoned date time."""
+                    )
+                    .build()
+            );
 
         if (hasDefinedFlow) {
             var rNamespace = runContext.render(this.namespace).as(String.class, additionalVariables).orElseThrow();
@@ -274,30 +280,33 @@ public class KestraFlow extends ToolProvider {
             var flowMetaStoreInterface = defaultRunContext.getApplicationContext().getBean(FlowMetaStoreInterface.class);
             var flowInfo = runContext.flowInfo();
             var flowInterface = flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), rNamespace, rFlowId, rRevision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
-                .orElseThrow(() -> new IllegalArgumentException("Unable to find flow at '"+ rFlowId + "' in namespace '" + rNamespace + "'"));
+                .orElseThrow(() -> new IllegalArgumentException("Unable to find flow at '" + rFlowId + "' in namespace '" + rNamespace + "'"));
 
             var rDescription = runContext.render(this.description).as(String.class, additionalVariables).orElse(flowInterface.getDescription());
             if (rDescription == null) {
                 throw new IllegalArgumentException(
-    "A description is required either in the tool's description property or in the flow description. "
-        + "Flow " + flowInterface.getNamespace() + "." + flowInterface.getId()
-        + " does not have a description, and the tool's description is empty."
-);
+                    "A description is required either in the tool's description property or in the flow description. "
+                        + "Flow " + flowInterface.getNamespace() + "." + flowInterface.getId()
+                        + " does not have a description, and the tool's description is empty."
+                );
             }
 
             jsonSchema.description(rDescription);
             if (!ListUtils.isEmpty(flowInterface.getInputs())) {
-                jsonSchema.addProperty("inputs", JsonArraySchema.builder().items(
-                            JsonObjectSchema.builder()
-                                .addStringProperty("id", "The input id.")
-                                .addStringProperty("value", "The input value.")
-                                .build()
-                        ).description("The list of inputs.")
+                jsonSchema.addProperty(
+                    "inputs", JsonArraySchema.builder().items(
+                        JsonObjectSchema.builder()
+                            .addStringProperty("id", "The input id.")
+                            .addStringProperty("value", "The input value.")
+                            .build()
+                    ).description("The list of inputs.")
                         .build()
                 );
                 // check if there are any mandatory inputs
-                if (flowInterface.getInputs().stream()
-                    .anyMatch(input -> input.getRequired() && input.getDefaults() == null && !rInputs.containsKey(input.getId()))) {
+                if (
+                    flowInterface.getInputs().stream()
+                        .anyMatch(input -> input.getRequired() && input.getDefaults() == null && !rInputs.containsKey(input.getId()))
+                ) {
                     jsonSchema.required("inputs");
                 }
             }
@@ -315,12 +324,13 @@ public class KestraFlow extends ToolProvider {
             jsonSchema.addProperty("namespace", JsonStringSchema.builder().build());
             jsonSchema.addProperty("flowId", JsonStringSchema.builder().build());
             jsonSchema.addProperty("revision", JsonNumberSchema.builder().build());
-            jsonSchema.addProperty("inputs", JsonArraySchema.builder().items(
-                        JsonObjectSchema.builder()
-                            .addStringProperty("id", "The input id.")
-                            .addStringProperty("value", "The input value.")
-                            .build()
-                    ).description("The list of inputs.")
+            jsonSchema.addProperty(
+                "inputs", JsonArraySchema.builder().items(
+                    JsonObjectSchema.builder()
+                        .addStringProperty("id", "The input id.")
+                        .addStringProperty("value", "The input value.")
+                        .build()
+                ).description("The list of inputs.")
                     .build()
             );
             jsonSchema.required("namespace", "flowId");
@@ -339,12 +349,12 @@ public class KestraFlow extends ToolProvider {
     static class KestraDefinedFlowToolExecutor extends AbstractKestraFlowToolExecutor {
         private final FlowInterface flowInterface;
 
-        KestraDefinedFlowToolExecutor(DefaultRunContext runContext, FlowInterface flowInterface, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
+        KestraDefinedFlowToolExecutor(DefaultRunContext runContext, FlowInterface flowInterface, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels,
+            List<Label> taskLabels) {
             super(runContext, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
 
             this.flowInterface = flowInterface;
         }
-
 
         @Override
         protected FlowInterface getFlow(Map<String, Object> parameters) {
@@ -402,7 +412,7 @@ public class KestraFlow extends ToolProvider {
 
                 var flowInterface = getFlow(flowParameters);
 
-                List<Label> newLabels =  inheritedLabels ? new ArrayList<>(filterLabels(executionLabels, flowInterface)) : new ArrayList<>(systemLabels(executionLabels));
+                List<Label> newLabels = inheritedLabels ? new ArrayList<>(filterLabels(executionLabels, flowInterface)) : new ArrayList<>(systemLabels(executionLabels));
                 newLabels.addAll(taskLabels);
 
                 // merge LLM provided labels with tool predefined one
@@ -415,13 +425,16 @@ public class KestraFlow extends ToolProvider {
 
                 // merge LLM provided inputs with tool predefined one
                 var inputs = (List<Map<String, Object>>) flowParameters.get("inputs");
-                var inputMap = ListUtils.emptyOnNull(inputs).stream().collect(Collectors.toMap(
-                    input -> (String) input.get("id"),
-                    input -> input.get("value")
-                ));
+                var inputMap = ListUtils.emptyOnNull(inputs).stream().collect(
+                    Collectors.toMap(
+                        input -> (String) input.get("id"),
+                        input -> input.get("value")
+                    )
+                );
                 var finalInputs = MapUtils.merge(predefinedInputs, inputMap);
                 // check mandatory inputs to fail the tool execution instead of triggering a flow that would fail anyway
-                ListUtils.emptyOnNull(flowInterface.getInputs()).forEach(input -> {
+                ListUtils.emptyOnNull(flowInterface.getInputs()).forEach(input ->
+                {
                     if (input.getRequired() && input.getDefaults() == null && !finalInputs.containsKey(input.getId())) {
                         throw new ToolArgumentsException("You need to provide an input with the id '" + input.getId() + "'.");
                     }

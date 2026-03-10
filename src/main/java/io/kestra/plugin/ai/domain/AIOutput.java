@@ -1,7 +1,22 @@
 package io.kestra.plugin.ai.domain;
 
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang3.time.StopWatch;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
-import dev.langchain4j.data.document.Document;
+
+import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.utils.ListUtils;
+import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.provider.TimingChatModelListener;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -9,24 +24,10 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.Result;
-import io.kestra.core.models.annotations.PluginProperty;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
-import io.kestra.core.utils.ListUtils;
-import io.kestra.plugin.ai.AIUtils;
-import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.lang3.time.StopWatch;
-
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -67,8 +68,8 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Schema(
         title = "Model's Thinking Output",
         description = """
-             Contains the model's internal reasoning or 'thinking' text, if the model supports it and 'returnThinking' is enabled.
-             This may include intermediate reasoning steps, such as chain-of-thought explanations. Null if thinking is not supported, not enabled, or not returned by the model."""
+            Contains the model's internal reasoning or 'thinking' text, if the model supports it and 'returnThinking' is enabled.
+            This may include intermediate reasoning steps, such as chain-of-thought explanations. Null if thinking is not supported, not enabled, or not returned by the model."""
     )
     private final String thinking;
 
@@ -76,24 +77,27 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     private final List<ContentSource> sources;
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
-    public static AIOutputBuilder<?,?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
+    public static AIOutputBuilder<?, ?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
         return AIOutput.builder()
             .textOutput(responseFormatType == ResponseFormatType.TEXT ? result.content().text() : null)
             .jsonOutput(responseFormatType == ResponseFormatType.JSON ? JacksonMapper.toMap(result.content().text()) : null)
             .tokenUsage(TokenUsage.from(result.tokenUsage()))
             .finishReason(result.finishReason())
-            .toolExecutions(ListUtils.emptyOnNull(result.toolExecutions()).stream()
-                .map(throwFunction(toolExecution -> ToolExecution.from(toolExecution)))
-                .toList()
+            .toolExecutions(
+                ListUtils.emptyOnNull(result.toolExecutions()).stream()
+                    .map(throwFunction(toolExecution -> ToolExecution.from(toolExecution)))
+                    .toList()
             )
-            .intermediateResponses(ListUtils.emptyOnNull(result.intermediateResponses()).stream()
-                .map(throwFunction(resp -> AIResponse.from(runContext, resp)))
-                .toList()
+            .intermediateResponses(
+                ListUtils.emptyOnNull(result.intermediateResponses()).stream()
+                    .map(throwFunction(resp -> AIResponse.from(runContext, resp)))
+                    .toList()
             )
             .thinking(result.content().thinking())
-            .sources(ListUtils.emptyOnNull(result.sources()).stream()
-                .map(throwFunction(ContentSource::from))
-                .toList()
+            .sources(
+                ListUtils.emptyOnNull(result.sources()).stream()
+                    .map(throwFunction(ContentSource::from))
+                    .toList()
             )
             .requestDuration(extractTiming(runContext, result.finalResponse().id()));
     }
@@ -178,7 +182,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
         private FinishReason finishReason;
 
         @Schema(title = "Tool execution requests")
-        private List<ToolExecutionRequest>  toolExecutionRequests;
+        private List<ToolExecutionRequest> toolExecutionRequests;
 
         @Schema(title = "Request duration in milliseconds")
         private Long requestDuration;
@@ -189,9 +193,11 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                 .completion(chatResponse.aiMessage().text())
                 .tokenUsage(TokenUsage.from(chatResponse.tokenUsage()))
                 .finishReason(chatResponse.finishReason())
-                .toolExecutionRequests(ListUtils.emptyOnNull(chatResponse.aiMessage().toolExecutionRequests()).stream()
-                    .map(throwFunction(req -> ToolExecutionRequest.from(req)))
-                    .toList())
+                .toolExecutionRequests(
+                    ListUtils.emptyOnNull(chatResponse.aiMessage().toolExecutionRequests()).stream()
+                        .map(throwFunction(req -> ToolExecutionRequest.from(req)))
+                        .toList()
+                )
                 .requestDuration(extractTiming(runContext, chatResponse.id()))
                 .build();
         }

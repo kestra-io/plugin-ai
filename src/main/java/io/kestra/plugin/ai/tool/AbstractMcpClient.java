@@ -1,23 +1,25 @@
 package io.kestra.plugin.ai.tool;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.ai.domain.ToolProvider;
+import io.kestra.plugin.ai.tool.internal.CustomMcpLogMessageHandler;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.service.tool.ToolExecutor;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.ai.domain.ToolProvider;
-import io.kestra.plugin.ai.tool.internal.CustomMcpLogMessageHandler;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Getter
 @SuperBuilder
@@ -38,10 +40,12 @@ abstract class AbstractMcpClient extends ToolProvider {
             .logHandler(new CustomMcpLogMessageHandler(runContext.logger()))
             .build();
 
-        return mcpClient.listTools().stream().collect(Collectors.toMap(
-            tool -> tool,
-            tool -> new McpToolExecutor(mcpClient)
-        ));
+        return mcpClient.listTools().stream().collect(
+            Collectors.toMap(
+                tool -> tool,
+                tool -> new McpToolExecutor(mcpClient)
+            )
+        );
     }
 
     @Override

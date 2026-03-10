@@ -1,5 +1,16 @@
 package io.kestra.plugin.ai.rag;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
@@ -13,17 +24,8 @@ import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.CodeExecution;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,10 +42,12 @@ class ChatCompletionTest extends ContainerTest {
 
     @Test
     void rag() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         var ingest = IngestDocument.builder()
             .provider(
@@ -82,12 +86,14 @@ class ChatCompletionTest extends ContainerTest {
     @EnabledIfEnvironmentVariable(named = "GOOGLE_CSI", matches = ".*")
     @Test
     void rag_givenGoogleCustomWebSearch() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "apikey", GOOGLE_API_KEY,
-            "csi", GOOGLE_CSI
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "apikey", GOOGLE_API_KEY,
+                "csi", GOOGLE_CSI
+            )
+        );
 
         var ingest = IngestDocument.builder()
             .provider(
@@ -114,10 +120,16 @@ class ChatCompletionTest extends ContainerTest {
             )
             .embeddings(KestraKVStore.builder().build())
             .prompt(Property.ofValue("How's the weather today?"))
-            .contentRetrievers(Property.ofValue(List.of(GoogleCustomWebSearch.builder()
-                .csi(Property.ofExpression("{{ csi }}"))
-                .apiKey(Property.ofExpression("{{ apikey }}"))
-                .build())))
+            .contentRetrievers(
+                Property.ofValue(
+                    List.of(
+                        GoogleCustomWebSearch.builder()
+                            .csi(Property.ofExpression("{{ csi }}"))
+                            .apiKey(Property.ofExpression("{{ apikey }}"))
+                            .build()
+                    )
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
@@ -129,11 +141,13 @@ class ChatCompletionTest extends ContainerTest {
     @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".*")
     @Test
     void rag_givenTavilyWebSearch() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "apikey", TAVILY_API_KEY
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "apikey", TAVILY_API_KEY
+            )
+        );
 
         var ingest = IngestDocument.builder()
             .provider(
@@ -160,9 +174,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .embeddings(KestraKVStore.builder().build())
             .prompt(Property.ofValue("How's the weather today?"))
-            .contentRetrievers(Property.ofValue(List.of(TavilyWebSearch.builder()
-                .apiKey(Property.ofExpression("{{ apikey }}"))
-                .build())))
+            .contentRetrievers(
+                Property.ofValue(
+                    List.of(
+                        TavilyWebSearch.builder()
+                            .apiKey(Property.ofExpression("{{ apikey }}"))
+                            .build()
+                    )
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
@@ -174,11 +194,13 @@ class ChatCompletionTest extends ContainerTest {
     @EnabledIfEnvironmentVariable(named = "RAPID_API_KEY", matches = ".*")
     @Test
     void tools_givenJudge0JavaScript() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "apikey", RAPID_API_KEY
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "apikey", RAPID_API_KEY
+            )
+        );
 
         var chat = ChatCompletion.builder()
             .chatProvider(
@@ -189,14 +211,18 @@ class ChatCompletionTest extends ContainerTest {
                     .build()
             )
             .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue(
-                "Use the JavaScript execution tool to evaluate `21*2`. Return only the number."
-            ))
-            .tools(List.of(
-                CodeExecution.builder()
-                    .apiKey(Property.ofExpression("{{ apikey }}"))
-                    .build()
-            ))
+            .prompt(
+                Property.ofValue(
+                    "Use the JavaScript execution tool to evaluate `21*2`. Return only the number."
+                )
+            )
+            .tools(
+                List.of(
+                    CodeExecution.builder()
+                        .apiKey(Property.ofExpression("{{ apikey }}"))
+                        .build()
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
@@ -207,14 +233,15 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getToolExecutions()).isNotEmpty();
     }
 
-
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
     @Test
     void testGeminiChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "gemini-2.0-flash",
-            "apiKey", GOOGLE_API_KEY
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "gemini-2.0-flash",
+                "apiKey", GOOGLE_API_KEY
+            )
+        );
 
         // First ingest some documents
         var ingest = IngestDocument.builder()
@@ -226,14 +253,16 @@ class ChatCompletionTest extends ContainerTest {
                     .build()
             )
             .embeddings(KestraKVStore.builder().build())
-            .fromDocuments(List.of(
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("Paris is the capital of France with a population of over 2.1 million people"))
-                    .build(),
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("The Eiffel Tower is the most famous landmark in Paris at 330 meters tall"))
-                    .build()
-            ))
+            .fromDocuments(
+                List.of(
+                    IngestDocument.InlineDocument.builder()
+                        .content(Property.ofValue("Paris is the capital of France with a population of over 2.1 million people"))
+                        .build(),
+                    IngestDocument.InlineDocument.builder()
+                        .content(Property.ofValue("The Eiffel Tower is the most famous landmark in Paris at 330 meters tall"))
+                        .build()
+                )
+            )
             .build();
 
         IngestDocument.Output ingestOutput = ingest.run(runContext);
@@ -282,20 +311,24 @@ class ChatCompletionTest extends ContainerTest {
             String password = postgres.getPassword();
 
             // Initialize schema and sample data
-            try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password);
-                 Statement stmt = conn.createStatement()) {
+            try (
+                Connection conn = DriverManager.getConnection(jdbcUrl, username, password);
+                Statement stmt = conn.createStatement()
+            ) {
                 stmt.execute("CREATE TABLE customers (id SERIAL PRIMARY KEY, name VARCHAR(255), city VARCHAR(255));");
                 stmt.execute("INSERT INTO customers (name, city) VALUES ('Alice', 'Paris'), ('Bob', 'Berlin');");
             }
 
-            RunContext runContext = runContextFactory.of("namespace", Map.of(
-                "jdbcUrl", jdbcUrl,
-                "username", username,
-                "password", password,
-                "apiKey", OPENAI_API_KEY,
-                "modelName", "gpt-4o-mini",
-                "baseUrl", "https://api.openai.com/v1"
-            ));
+            RunContext runContext = runContextFactory.of(
+                "namespace", Map.of(
+                    "jdbcUrl", jdbcUrl,
+                    "username", username,
+                    "password", password,
+                    "apiKey", OPENAI_API_KEY,
+                    "modelName", "gpt-4o-mini",
+                    "baseUrl", "https://api.openai.com/v1"
+                )
+            );
 
             var sqlRetriever = io.kestra.plugin.ai.retriever.SqlDatabaseRetriever.builder()
                 .databaseType(Property.ofValue(io.kestra.plugin.ai.retriever.SqlDatabaseRetriever.DatabaseType.POSTGRESQL))

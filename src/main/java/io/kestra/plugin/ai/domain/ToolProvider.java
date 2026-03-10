@@ -1,22 +1,23 @@
 package io.kestra.plugin.ai.domain;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.service.tool.DefaultToolExecutor;
-import dev.langchain4j.service.tool.ToolExecutor;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.plugins.AdditionalPlugin;
 import io.kestra.core.plugins.serdes.PluginDeserializer;
 import io.kestra.core.runners.RunContext;
+
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolExecutor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -45,13 +46,14 @@ public abstract class ToolProvider extends AdditionalPlugin {
         for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {
                 ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                tools.put(toolSpecification, DefaultToolExecutor.builder()
-                    .object(objectWithTool)
-                    .originalMethod(method)
-                    .methodToInvoke(method)
-                    .propagateToolExecutionExceptions(true)
-                    .wrapToolArgumentsExceptions(true)
-                    .build()
+                tools.put(
+                    toolSpecification, DefaultToolExecutor.builder()
+                        .object(objectWithTool)
+                        .originalMethod(method)
+                        .methodToInvoke(method)
+                        .propagateToolExecutionExceptions(true)
+                        .wrapToolArgumentsExceptions(true)
+                        .build()
                 );
             }
         }

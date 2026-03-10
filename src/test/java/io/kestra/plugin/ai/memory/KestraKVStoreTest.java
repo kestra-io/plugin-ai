@@ -1,5 +1,9 @@
 package io.kestra.plugin.ai.memory;
 
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
@@ -9,10 +13,8 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
 
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,11 +25,13 @@ class KestraKVStoreTest extends ContainerTest {
 
     @Test
     void testMemory() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
+            )
+        );
 
         var rag = ChatCompletion.builder()
             .chatProvider(

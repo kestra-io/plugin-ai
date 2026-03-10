@@ -1,26 +1,28 @@
 package io.kestra.plugin.ai.embeddings;
 
-import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContextFactory;
-import io.kestra.plugin.ai.ContainerTest;
-import io.kestra.plugin.ai.provider.Ollama;
-import io.kestra.plugin.ai.rag.IngestDocument;
-import io.qdrant.client.QdrantClient;
-import io.qdrant.client.QdrantGrpcClient;
-import io.qdrant.client.grpc.Collections;
-import jakarta.inject.Inject;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
+import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.provider.Ollama;
+import io.kestra.plugin.ai.rag.IngestDocument;
+
+import io.qdrant.client.QdrantClient;
+import io.qdrant.client.QdrantGrpcClient;
+import io.qdrant.client.grpc.Collections;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,11 +72,13 @@ class QdrantTest extends ContainerTest {
 
     @Test
     void inlineDocuments() throws Exception {
-        var runContext = runContextFactory.of(Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "flow", Map.of("id", "flow", "namespace", "namespace")
-        ));
+        var runContext = runContextFactory.of(
+            Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "flow", Map.of("id", "flow", "namespace", "namespace")
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(

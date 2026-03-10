@@ -1,13 +1,10 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.List;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.googleai.GeminiThinkingConfig;
-import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
-import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-import dev.langchain4j.model.image.ImageModel;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -15,6 +12,14 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
+
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.googleai.GeminiThinkingConfig;
+import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -22,9 +27,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.time.Duration;
-import java.util.List;
 
 @Getter
 @SuperBuilder
@@ -180,7 +182,10 @@ public class GoogleGemini extends ModelProvider {
     @Getter
     @Builder
     private static class EmbeddingModelConfiguration {
-        @Schema(title = "The headline or name of the document (passed to the model as metadata).", description = "If set, this help improving retrieval quality by providing context for a document.")
+        @Schema(
+            title = "The headline or name of the document (passed to the model as metadata).",
+            description = "If set, this help improving retrieval quality by providing context for a document."
+        )
         private Property<String> titleMetadataKey;
 
         @Schema(title = "Used to convey intended downstream application to help the model produce better embeddings.")

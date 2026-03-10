@@ -1,11 +1,12 @@
 package io.kestra.plugin.ai.tool.internal;
 
-import dev.langchain4j.model.chat.request.json.*;
-import io.kestra.core.utils.MapUtils;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import io.kestra.core.utils.MapUtils;
+
+import dev.langchain4j.model.chat.request.json.*;
 
 public final class JsonObjectSchemaTranslator {
     private JsonObjectSchemaTranslator() {
@@ -31,7 +32,8 @@ public final class JsonObjectSchemaTranslator {
     @SuppressWarnings("unchecked")
     private static Map<String, JsonSchemaElement> mapDefinitions(Map<String, Object> definitionSchemas) {
         return MapUtils.emptyOnNull(definitionSchemas).entrySet().stream()
-            .map(entry -> {
+            .map(entry ->
+            {
                 var schema = (Map<String, Object>) entry.getValue();
                 var jsonSchemaElement = fromOpenAPISchema(schema, null);
                 return Map.entry(
@@ -39,17 +41,20 @@ public final class JsonObjectSchemaTranslator {
                     jsonSchemaElement
                 );
             })
-            .collect(Collectors.toMap(
-                entry -> entry.getKey(),
-                entry -> entry.getValue()
-            ));
+            .collect(
+                Collectors.toMap(
+                    entry -> entry.getKey(),
+                    entry -> entry.getValue()
+                )
+            );
     }
 
     @SuppressWarnings("unchecked")
     private static Map<String, JsonSchemaElement> mapProperties(Map<String, Object> properties) {
         return MapUtils.emptyOnNull(properties).entrySet().stream()
             .filter(prop -> !prop.getKey().equals("type"))
-            .map(entry -> {
+            .map(entry ->
+            {
                 var schema = (Map<String, Object>) entry.getValue();
                 var jsonSchemaElement = mapSchema(schema);
                 return Map.entry(
@@ -58,10 +63,12 @@ public final class JsonObjectSchemaTranslator {
                 );
             })
             .filter(entry -> !(entry.getValue() instanceof JsonNullSchema))
-            .collect(Collectors.toMap(
-                entry -> entry.getKey(),
-                entry -> entry.getValue()
-            ));
+            .collect(
+                Collectors.toMap(
+                    entry -> entry.getKey(),
+                    entry -> entry.getValue()
+                )
+            );
     }
 
     @SuppressWarnings("unchecked")
@@ -117,7 +124,8 @@ public final class JsonObjectSchemaTranslator {
 
     private static Map<String, JsonSchemaElement> replaceDefinitions(Map<String, JsonSchemaElement> properties, Map<String, JsonSchemaElement> definitions) {
         return properties.entrySet().stream()
-            .map(entry -> {
+            .map(entry ->
+            {
                 JsonSchemaElement schema = replaceDefinitions(entry.getValue(), definitions);
                 return Map.entry(entry.getKey(), schema);
             })
@@ -131,8 +139,10 @@ public final class JsonObjectSchemaTranslator {
 
         return switch (schema) {
             case JsonReferenceSchema jsonReferenceSchema ->
-                definitions.getOrDefault(jsonReferenceSchema.reference(),
-                    JsonObjectSchema.builder().description(jsonReferenceSchema.description()).build());
+                definitions.getOrDefault(
+                    jsonReferenceSchema.reference(),
+                    JsonObjectSchema.builder().description(jsonReferenceSchema.description()).build()
+                );
             case JsonObjectSchema jsonObjectSchema -> JsonObjectSchema.builder()
                 .description(jsonObjectSchema.description())
                 .required(jsonObjectSchema.required())

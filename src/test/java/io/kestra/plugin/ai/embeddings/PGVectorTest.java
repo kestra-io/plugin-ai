@@ -1,20 +1,22 @@
 package io.kestra.plugin.ai.embeddings;
 
-import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.runners.RunContextFactory;
-import io.kestra.plugin.ai.ContainerTest;
-import io.kestra.plugin.ai.rag.IngestDocument;
-import io.kestra.plugin.ai.provider.Ollama;
-import jakarta.inject.Inject;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 
-import java.util.List;
-import java.util.Map;
+import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.provider.Ollama;
+import io.kestra.plugin.ai.rag.IngestDocument;
+
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,11 +43,13 @@ class PGVectorTest extends ContainerTest {
 
     @Test
     void inlineDocuments() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "flow", Map.of("id", "flow", "namespace", "namespace")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "flow", Map.of("id", "flow", "namespace", "namespace")
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(

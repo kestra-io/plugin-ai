@@ -1,27 +1,30 @@
 package io.kestra.plugin.ai.embeddings;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import com.alicloud.openservices.tablestore.model.search.FieldSchema;
 import com.alicloud.openservices.tablestore.model.search.FieldType;
+
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.rag.IngestDocument;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TablestoreTest {
-    private final String  TABLESTORE_ENDPOINT = System.getenv("TABLESTORE_ENDPOINT");
-    private final String  TABLESTORE_INSTANCE_NAME = System.getenv("TABLESTORE_INSTANCE_NAME");
-    private final String  TABLESTORE_ACCESS_KEY_ID = System.getenv("TABLESTORE_ACCESS_KEY_ID");
-    private final String  TABLESTORE_ACCESS_KEY_SECRET = System.getenv("TABLESTORE_ACCESS_KEY_SECRET");
+    private final String TABLESTORE_ENDPOINT = System.getenv("TABLESTORE_ENDPOINT");
+    private final String TABLESTORE_INSTANCE_NAME = System.getenv("TABLESTORE_INSTANCE_NAME");
+    private final String TABLESTORE_ACCESS_KEY_ID = System.getenv("TABLESTORE_ACCESS_KEY_ID");
+    private final String TABLESTORE_ACCESS_KEY_SECRET = System.getenv("TABLESTORE_ACCESS_KEY_SECRET");
     private static final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
     @Inject
     private RunContextFactory runContextFactory;
@@ -33,21 +36,24 @@ class TablestoreTest {
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
     @Test
     void testTablestoreEmbeddingStore_shouldReturnEmbeddingStore() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-embedding-exp-03-07",
-            "endpoint", TABLESTORE_ENDPOINT,
-            "instanceName", TABLESTORE_INSTANCE_NAME,
-            "accessKeyId", TABLESTORE_ACCESS_KEY_ID,
-            "accessKeySecret", TABLESTORE_ACCESS_KEY_SECRET,
-            "metadataSchemaList",   Arrays.asList(
-                new FieldSchema("meta_example_keyword", FieldType.KEYWORD),
-                new FieldSchema("meta_example_long", FieldType.LONG),
-                new FieldSchema("meta_example_double", FieldType.DOUBLE),
-                new FieldSchema("meta_example_text", FieldType.TEXT)
-                    .setAnalyzer(FieldSchema.Analyzer.MaxWord)),
-            "flow", Map.of("id", "flow", "namespace", "namespace")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", GEMINI_API_KEY,
+                "modelName", "gemini-embedding-exp-03-07",
+                "endpoint", TABLESTORE_ENDPOINT,
+                "instanceName", TABLESTORE_INSTANCE_NAME,
+                "accessKeyId", TABLESTORE_ACCESS_KEY_ID,
+                "accessKeySecret", TABLESTORE_ACCESS_KEY_SECRET,
+                "metadataSchemaList", Arrays.asList(
+                    new FieldSchema("meta_example_keyword", FieldType.KEYWORD),
+                    new FieldSchema("meta_example_long", FieldType.LONG),
+                    new FieldSchema("meta_example_double", FieldType.DOUBLE),
+                    new FieldSchema("meta_example_text", FieldType.TEXT)
+                        .setAnalyzer(FieldSchema.Analyzer.MaxWord)
+                ),
+                "flow", Map.of("id", "flow", "namespace", "namespace")
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(

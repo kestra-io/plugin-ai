@@ -1,6 +1,11 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.model.chat.request.ResponseFormatType;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -9,18 +14,15 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.List;
-import java.util.Map;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.empty;
 
 @KestraTest
 class ChatCompletionStrictJsonModeIntegrationTest {
@@ -33,47 +35,59 @@ class ChatCompletionStrictJsonModeIntegrationTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".*")
     void testChatCompletionOpenAI_givenStrictJsonModeAndArraySchema_shouldReturnStructuredPeopleList() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", OPENAI_API_KEY,
-            "modelName", OPENAI_MODEL,
-            "messages", List.of(
-                ChatMessage.builder()
-                    .type(ChatMessageType.USER)
-                    .content("Generate exactly 3 fictional people with silly favorite hobbies.")
-                    .build()
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", OPENAI_API_KEY,
+                "modelName", OPENAI_MODEL,
+                "messages", List.of(
+                    ChatMessage.builder()
+                        .type(ChatMessageType.USER)
+                        .content("Generate exactly 3 fictional people with silly favorite hobbies.")
+                        .build()
+                )
             )
-        ));
+        );
 
         ChatCompletion task = ChatCompletion.builder()
             .messages(Property.ofExpression("{{ messages }}"))
-            .configuration(ChatConfiguration.builder()
-                .responseFormat(ChatConfiguration.ResponseFormat.builder()
-                    .type(Property.ofValue(ResponseFormatType.JSON))
-                    .jsonSchema(Property.ofValue(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                            "people", Map.of(
-                                "type", "array",
-                                "items", Map.of(
-                                    "type", "object",
-                                    "properties", Map.of(
-                                        "name", Map.of("type", "string"),
-                                        "hobby", Map.of("type", "string")
-                                    ),
-                                    "required", List.of("name", "hobby")
+            .configuration(
+                ChatConfiguration.builder()
+                    .responseFormat(
+                        ChatConfiguration.ResponseFormat.builder()
+                            .type(Property.ofValue(ResponseFormatType.JSON))
+                            .jsonSchema(
+                                Property.ofValue(
+                                    Map.of(
+                                        "type", "object",
+                                        "properties", Map.of(
+                                            "people", Map.of(
+                                                "type", "array",
+                                                "items", Map.of(
+                                                    "type", "object",
+                                                    "properties", Map.of(
+                                                        "name", Map.of("type", "string"),
+                                                        "hobby", Map.of("type", "string")
+                                                    ),
+                                                    "required", List.of("name", "hobby")
+                                                )
+                                            )
+                                        ),
+                                        "required", List.of("people")
+                                    )
                                 )
                             )
-                        ),
-                        "required", List.of("people")
-                    )))
-                    .strictJson(Property.ofValue(true))
-                    .build())
-                .build())
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .build())
+                            .strictJson(Property.ofValue(true))
+                            .build()
+                    )
+                    .build()
+            )
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build()
+            )
             .build();
 
         ChatCompletion.Output output = task.run(runContext);

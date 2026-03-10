@@ -1,26 +1,5 @@
 package io.kestra.plugin.ai.embeddings;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.mongodb.client.MongoClients;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.mongodb.IndexMapping;
-import dev.langchain4j.store.embedding.mongodb.MongoDbEmbeddingStore;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.models.annotations.Example;
-import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.utils.Await;
-import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
@@ -29,6 +8,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.mongodb.client.MongoClients;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.Await;
+import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
+
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.mongodb.IndexMapping;
+import dev.langchain4j.store.embedding.mongodb.MongoDbEmbeddingStore;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Getter
 @SuperBuilder
@@ -118,11 +120,10 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
             .indexName(runContext.render(indexName).as(String.class).orElseThrow())
             .createIndex(renderedCreateIndex)
             .indexMapping(
-                metadataFieldNames != null ?
-                    IndexMapping.builder()
-                        .dimension(dimension)
-                        .metadataFieldNames(new HashSet<>(runContext.render(metadataFieldNames).asList(String.class)))
-                        .build() : null
+                metadataFieldNames != null ? IndexMapping.builder()
+                    .dimension(dimension)
+                    .metadataFieldNames(new HashSet<>(runContext.render(metadataFieldNames).asList(String.class)))
+                    .build() : null
             )
             .build();
 
@@ -130,13 +131,15 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
             // Creating a vector search index can take up to a minute, so this delay allows the index to become queryable
             try {
                 Await.until(
-                    () -> {
+                    () ->
+                    {
                         try {
                             // Try a harmless dummy query to check index readiness
-                            store.search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(Embedding.from(Collections.nCopies(dimension, 0.0f)))
-                                .maxResults(1)
-                                .build()
+                            store.search(
+                                EmbeddingSearchRequest.builder()
+                                    .queryEmbedding(Embedding.from(Collections.nCopies(dimension, 0.0f)))
+                                    .maxResults(1)
+                                    .build()
                             );
                             return true;
                         } catch (Exception e) {

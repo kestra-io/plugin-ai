@@ -1,29 +1,12 @@
 package io.kestra.plugin.ai.embeddings;
 
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.instrumentation.NoopInstrumentation;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.models.annotations.Example;
-import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
-import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.experimental.SuperBuilder;
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+
+import javax.net.ssl.SSLContext;
+
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -39,11 +22,32 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 
-import javax.net.ssl.SSLContext;
-import java.io.IOException;
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
+
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.instrumentation.NoopInstrumentation;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.experimental.SuperBuilder;
 
 // it needs Elasticsearch 8.15 min
 @Getter
@@ -172,7 +176,8 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         RestClientTransport client(RunContext runContext) throws IllegalVariableEvaluationException {
             RestClientBuilder builder = RestClient
                 .builder(this.httpHosts(runContext))
-                .setHttpClientConfigCallback(httpClientBuilder -> {
+                .setHttpClientConfigCallback(httpClientBuilder ->
+                {
                     httpClientBuilder = this.httpAsyncClientBuilder(runContext);
                     return httpClientBuilder;
                 });
@@ -189,8 +194,10 @@ public class Elasticsearch extends EmbeddingStoreProvider {
                 builder.setStrictDeprecationMode(runContext.render(this.strictDeprecationMode).as(Boolean.class).get());
             }
 
-            return new RestClientTransport(builder.build(), new JacksonJsonpMapper(MAPPER), null,
-                NoopInstrumentation.INSTANCE);
+            return new RestClientTransport(
+                builder.build(), new JacksonJsonpMapper(MAPPER), null,
+                NoopInstrumentation.INSTANCE
+            );
         }
 
         @SneakyThrows
@@ -227,7 +234,8 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         private HttpHost[] httpHosts(RunContext runContext) throws IllegalVariableEvaluationException {
             return runContext.render(this.hosts)
                 .stream()
-                .map(s -> {
+                .map(s ->
+                {
                     URI uri = URI.create(s);
                     return new HttpHost(uri.getHost(), uri.getPort(), uri.getScheme());
                 })
@@ -237,7 +245,8 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         private Header[] defaultHeaders(RunContext runContext) throws IllegalVariableEvaluationException {
             return runContext.render(this.headers).asList(String.class)
                 .stream()
-                .map(header -> {
+                .map(header ->
+                {
                     String[] nameAndValue = header.split(":");
                     return new BasicHeader(nameAndValue[0], nameAndValue[1]);
                 })

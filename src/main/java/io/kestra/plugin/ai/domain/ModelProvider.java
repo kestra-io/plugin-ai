@@ -1,31 +1,5 @@
 package io.kestra.plugin.ai.domain;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.http.client.HttpClientBuilderLoader;
-import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.image.ImageModel;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.plugins.AdditionalPlugin;
-import io.kestra.core.plugins.serdes.PluginDeserializer;
-import io.kestra.core.runners.RunContext;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +11,36 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.time.Duration;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.plugins.AdditionalPlugin;
+import io.kestra.core.plugins.serdes.PluginDeserializer;
+import io.kestra.core.runners.RunContext;
+
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.image.ImageModel;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -88,10 +92,10 @@ public abstract class ModelProvider extends AdditionalPlugin {
             return null;
         }
 
-        try (ByteArrayInputStream clientPemStream =
-                 clientPem != null ? new ByteArrayInputStream(clientPem.getBytes(StandardCharsets.UTF_8)) : null;
-             ByteArrayInputStream caPemStream =
-                 caPem != null ? new ByteArrayInputStream(caPem.getBytes(StandardCharsets.UTF_8)) : null) {
+        try (
+            ByteArrayInputStream clientPemStream = clientPem != null ? new ByteArrayInputStream(clientPem.getBytes(StandardCharsets.UTF_8)) : null;
+            ByteArrayInputStream caPemStream = caPem != null ? new ByteArrayInputStream(caPem.getBytes(StandardCharsets.UTF_8)) : null
+        ) {
 
             HttpClient.Builder httpClient = withPemCertificate(clientPemStream, caPemStream);
 
@@ -127,7 +131,7 @@ public abstract class ModelProvider extends AdditionalPlugin {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         keyStore.load(null, null);
 
-        Certificate[] privateKeyCertificatesChain = new Certificate[]{clientCertificate};
+        Certificate[] privateKeyCertificatesChain = new Certificate[] { clientCertificate };
 
         if (caPem != null) {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");

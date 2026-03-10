@@ -1,9 +1,7 @@
 package io.kestra.plugin.ai.completion;
 
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.model.image.ImageModel;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -16,11 +14,15 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
 
 @SuperBuilder
 @ToString
@@ -39,26 +41,26 @@ import org.slf4j.Logger;
             full = true,
             code = {
                 """
-                id: image_generation
-                namespace: company.ai
+                    id: image_generation
+                    namespace: company.ai
 
-                tasks:
-                  - id: image_generation
-                    type: io.kestra.plugin.ai.completion.ImageGeneration
-                    prompt: >
-                      Four-panel comic page about a data engineer shipping a workflow.
-                      Clean modern line art with soft colors and ample white space.
-                      Panel 1: Early morning desk setup with dual monitors, coffee, and a workflow DAG on screen; calm focused mood.
-                      Panel 2: Debugging a failing task; close-up of terminal and error icon; speech bubble: "hmm…"
-                      Panel 3: Fix applied; green checks ripple through the pipeline; small celebratory detail (cat paw, fist pump).
-                      Panel 4: Deployed dashboard showing metrics trending up; sticky note says "ship it".
-                      Include subtle tech props (cloud icons, database cylinder) but no logos.
-                      Minimal readable text only in tiny bubbles/notes; no large paragraphs of text.
-                    provider:
-                      type: io.kestra.plugin.ai.provider.OpenAI
-                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
-                      modelName: dall-e-3
-                """
+                    tasks:
+                      - id: image_generation
+                        type: io.kestra.plugin.ai.completion.ImageGeneration
+                        prompt: >
+                          Four-panel comic page about a data engineer shipping a workflow.
+                          Clean modern line art with soft colors and ample white space.
+                          Panel 1: Early morning desk setup with dual monitors, coffee, and a workflow DAG on screen; calm focused mood.
+                          Panel 2: Debugging a failing task; close-up of terminal and error icon; speech bubble: "hmm…"
+                          Panel 3: Fix applied; green checks ripple through the pipeline; small celebratory detail (cat paw, fist pump).
+                          Panel 4: Deployed dashboard showing metrics trending up; sticky note says "ship it".
+                          Include subtle tech props (cloud icons, database cylinder) but no logos.
+                          Minimal readable text only in tiny bubbles/notes; no large paragraphs of text.
+                        provider:
+                          type: io.kestra.plugin.ai.provider.OpenAI
+                          apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                          modelName: dall-e-3
+                    """
             }
         ),
     },
@@ -82,7 +84,7 @@ import org.slf4j.Logger;
             description = "Large Language Model (LLM) total token count"
         )
     },
-    aliases = {"io.kestra.plugin.langchain4j.ImageGeneration", "io.kestra.plugin.langchain4j.completion.ImageGeneration"}
+    aliases = { "io.kestra.plugin.langchain4j.ImageGeneration", "io.kestra.plugin.langchain4j.completion.ImageGeneration" }
 )
 
 public class ImageGeneration extends Task implements RunnableTask<ImageGeneration.Output> {

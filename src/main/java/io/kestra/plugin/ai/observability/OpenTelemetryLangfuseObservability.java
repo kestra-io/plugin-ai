@@ -1,10 +1,17 @@
 package io.kestra.plugin.ai.observability;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.service.Result;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.DefaultRunContext;
@@ -14,6 +21,10 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.service.Result;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -29,15 +40,6 @@ import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public final class OpenTelemetryLangfuseObservability implements AgentObservability {
     private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
@@ -67,8 +69,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         Tracer tracer,
         SdkTracerProvider tracerProvider,
         OpenTelemetrySdk openTelemetrySdk,
-        boolean sharedOpenTelemetry
-    ) {
+        boolean sharedOpenTelemetry) {
         this.runContext = runContext;
         this.taskId = taskId;
         this.providerType = providerType;
@@ -88,8 +89,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         String modelName,
         ChatConfiguration chatConfiguration,
         ResolvedConfig config,
-        SpanExporter spanExporter
-    ) {
+        SpanExporter spanExporter) {
         var resourceBuilder = Resource.builder()
             .put("service.name", config.serviceName());
 
@@ -132,8 +132,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         String modelName,
         ChatConfiguration chatConfiguration,
         ResolvedConfig config,
-        OpenTelemetry openTelemetry
-    ) {
+        OpenTelemetry openTelemetry) {
         var tracer = openTelemetry.getTracer(INSTRUMENTATION_SCOPE);
 
         return new OpenTelemetryLangfuseObservability(
@@ -155,8 +154,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         LangfuseObservability langfuse,
         String taskId,
         ModelProvider provider,
-        ChatConfiguration chatConfiguration
-    ) {
+        ChatConfiguration chatConfiguration) {
         try {
             var sharedOpenTelemetry = resolveOpenTelemetryBean(runContext);
             ResolvedConfig resolvedConfig = ResolvedConfig.from(runContext, langfuse);
@@ -328,7 +326,8 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
             }
 
             if (completion != null && completion.toolExecutions() != null) {
-                completion.toolExecutions().forEach(toolExecution -> {
+                completion.toolExecutions().forEach(toolExecution ->
+                {
                     AttributesBuilder attrs = Attributes.builder();
 
                     ToolExecutionRequest request = toolExecution.request();
@@ -547,8 +546,7 @@ public final class OpenTelemetryLangfuseObservability implements AgentObservabil
         boolean captureToolArguments,
         boolean captureToolResults,
         int maxPayloadChars,
-        Duration exportTimeout
-    ) {
+        Duration exportTimeout) {
         private boolean hasExporterConfiguration() {
             return !isBlank(endpoint) && !isBlank(publicKey) && !isBlank(secretKey);
         }

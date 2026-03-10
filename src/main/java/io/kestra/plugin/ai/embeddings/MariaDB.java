@@ -1,28 +1,31 @@
 package io.kestra.plugin.ai.embeddings;
 
+import java.io.IOException;
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.mariadb.DefaultMetadataStorageConfig;
-import dev.langchain4j.store.embedding.mariadb.MariaDbEmbeddingStore;
-import dev.langchain4j.store.embedding.mariadb.MetadataStorageConfig;
-import dev.langchain4j.store.embedding.mariadb.MetadataStorageMode;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.mariadb.DefaultMetadataStorageConfig;
+import dev.langchain4j.store.embedding.mariadb.MariaDbEmbeddingStore;
+import dev.langchain4j.store.embedding.mariadb.MetadataStorageConfig;
+import dev.langchain4j.store.embedding.mariadb.MetadataStorageMode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.lang3.StringUtils;
-
-import java.io.IOException;
-import java.util.List;
 
 @Getter
 @SuperBuilder

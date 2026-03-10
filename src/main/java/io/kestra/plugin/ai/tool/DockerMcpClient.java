@@ -1,14 +1,19 @@
 package io.kestra.plugin.ai.tool;
 
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.scripts.runner.docker.DockerService;
+
+import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -16,9 +21,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.List;
-import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
 
@@ -33,25 +35,25 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
             full = true,
             code = {
                 """
-                id: docker_mcp_client
-                namespace: company.ai
+                    id: docker_mcp_client
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
-                    defaults: What is the current UTC time?
+                    inputs:
+                      - id: prompt
+                        type: STRING
+                        defaults: What is the current UTC time?
 
-                tasks:
-                  - id: agent
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                    prompt: "{{ inputs.prompt }}"
-                    tools:
-                      - type: io.kestra.plugin.ai.tool.DockerMcpClient
-                        image: mcp/time"""
+                    tasks:
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                        prompt: "{{ inputs.prompt }}"
+                        tools:
+                          - type: io.kestra.plugin.ai.tool.DockerMcpClient
+                            image: mcp/time"""
             }
         ),
         @Example(
@@ -59,30 +61,30 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
             full = true,
             code = {
                 """
-                id: docker_mcp_client
-                namespace: company.ai
+                    id: docker_mcp_client
+                    namespace: company.ai
 
-                inputs:
-                  - id: prompt
-                    type: STRING
-                    defaults: Create a file 'hello.txt' with the content "Hello World" in the /tmp directory.
+                    inputs:
+                      - id: prompt
+                        type: STRING
+                        defaults: Create a file 'hello.txt' with the content "Hello World" in the /tmp directory.
 
-                tasks:
-                  - id: agent
-                    type: io.kestra.plugin.ai.agent.AIAgent
-                    provider:
-                      type: io.kestra.plugin.ai.provider.GoogleGemini
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
-                    prompt: "{{ inputs.prompt }}"
-                    tools:
-                      - type: io.kestra.plugin.ai.tool.DockerMcpClient
-                        image: mcp/filesystem
-                        command: ["/tmp"]
-                        # Mount the container path to the task working directory to access the generated file
-                        binds: ["{{workingDir}}:/tmp"]
-                    outputFiles:
-                      - hello.txt"""
+                    tasks:
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          modelName: gemini-2.5-flash
+                        prompt: "{{ inputs.prompt }}"
+                        tools:
+                          - type: io.kestra.plugin.ai.tool.DockerMcpClient
+                            image: mcp/filesystem
+                            command: ["/tmp"]
+                            # Mount the container path to the task working directory to access the generated file
+                            binds: ["{{workingDir}}:/tmp"]
+                        outputFiles:
+                          - hello.txt"""
             }
         ),
     }

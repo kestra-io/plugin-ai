@@ -1,21 +1,23 @@
 package io.kestra.plugin.ai.domain;
 
+import java.io.IOException;
+import java.time.Duration;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.memory.ChatMemory;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.plugins.AdditionalPlugin;
 import io.kestra.core.plugins.serdes.PluginDeserializer;
 import io.kestra.core.runners.RunContext;
+
+import dev.langchain4j.memory.ChatMemory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.io.IOException;
-import java.time.Duration;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -60,5 +62,9 @@ public abstract class MemoryProvider extends AdditionalPlugin {
         // by default: no-op
     }
 
-    public enum Drop { NEVER, BEFORE_TASKRUN, AFTER_TASKRUN}
+    public enum Drop {
+        NEVER,
+        BEFORE_TASKRUN,
+        AFTER_TASKRUN
+    }
 }

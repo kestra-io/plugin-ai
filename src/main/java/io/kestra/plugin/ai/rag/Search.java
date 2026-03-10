@@ -1,8 +1,13 @@
 package io.kestra.plugin.ai.rag;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.util.AbstractMap;
+import java.util.List;
+import java.util.Map;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -16,20 +21,16 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URI;
-import java.util.AbstractMap;
-import java.util.List;
-import java.util.Map;
 
 import static io.kestra.core.models.tasks.common.FetchType.NONE;
 
@@ -184,7 +185,8 @@ public class Search extends Task implements RunnableTask<Search.Output> {
         ) {
             var flowable = Flux
                 .create(
-                    s -> {
+                    s ->
+                    {
                         results.forEach(s::next);
                         s.complete();
                     },

@@ -1,17 +1,19 @@
 package io.kestra.plugin.ai.domain;
 
+import java.io.IOException;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.plugins.AdditionalPlugin;
 import io.kestra.core.plugins.serdes.PluginDeserializer;
 import io.kestra.core.runners.RunContext;
+
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.io.IOException;
 
 @Plugin
 @SuperBuilder(toBuilder = true)

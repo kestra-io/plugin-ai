@@ -1,6 +1,20 @@
 package io.kestra.plugin.ai.tool;
 
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.utils.ListUtils;
+import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.domain.*;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -13,16 +27,6 @@ import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecutor;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.models.annotations.Example;
-import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
-import io.kestra.core.utils.ListUtils;
-import io.kestra.plugin.ai.AIUtils;
-import io.kestra.plugin.ai.domain.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -31,16 +35,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.util.List;
-import java.util.Map;
-
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @Getter
 @SuperBuilder
 @NoArgsConstructor
 @Plugin(
-    examples =  {
+    examples = {
         @Example(
             title = "Call an AI agent as a tool",
             full = true,
@@ -138,12 +139,17 @@ public class AIAgent extends ToolProvider {
             .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
             .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
             .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
-            .toolArgumentsErrorHandler((error, context) -> {
-                runContext.logger().error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+            .toolArgumentsErrorHandler((error, context) ->
+            {
+                runContext.logger().error(
+                    "An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error
+                );
                 throw new ToolArgumentsException(error);
             })
-            .toolExecutionErrorHandler((error, context) -> {
-                runContext.logger().error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+            .toolExecutionErrorHandler((error, context) ->
+            {
+                runContext.logger()
+                    .error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                 throw new ToolExecutionException(error);
             });
 
@@ -154,9 +160,11 @@ public class AIAgent extends ToolProvider {
             QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
 
             // Create a query router that will route each query to the content retrievers
-            agent.retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                .queryRouter(queryRouter)
-                .build());
+            agent.retrievalAugmentor(
+                DefaultRetrievalAugmentor.builder()
+                    .queryRouter(queryRouter)
+                    .build()
+            );
         }
 
         var jsonSchema = JsonObjectSchema.builder()

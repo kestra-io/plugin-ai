@@ -1,12 +1,9 @@
 package io.kestra.plugin.ai.embeddings;
 
-import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContextFactory;
-import io.kestra.plugin.ai.ContainerTest;
-import io.kestra.plugin.ai.provider.Ollama;
-import io.kestra.plugin.ai.rag.IngestDocument;
-import jakarta.inject.Inject;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -15,9 +12,14 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
+import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.provider.Ollama;
+import io.kestra.plugin.ai.rag.IngestDocument;
+
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -52,11 +54,13 @@ class MongoDBAtlasLocalContainerTest extends ContainerTest {
     @Test
     @Disabled("needs to be run against a free tier MongoDB Atlas instance to be tested (with host, username and password)")
     void inlineDocuments() throws Exception {
-        var runContext = runContextFactory.of(Map.of(
-            "modelName", "chroma/all-minilm-l6-v2-f32",
-            "endpoint", ollamaEndpoint,
-            "flow", Map.of("id", "flow", "namespace", "namespace")
-        ));
+        var runContext = runContextFactory.of(
+            Map.of(
+                "modelName", "chroma/all-minilm-l6-v2-f32",
+                "endpoint", ollamaEndpoint,
+                "flow", Map.of("id", "flow", "namespace", "namespace")
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(
@@ -77,11 +81,13 @@ class MongoDBAtlasLocalContainerTest extends ContainerTest {
                     .indexName(Property.ofValue(INDEX_NAME))
                     .build()
             )
-            .fromDocuments(List.of(
-                IngestDocument.InlineDocument.builder()
-                    .content(Property.ofValue("Test content for embedding."))
-                    .build()
-            ))
+            .fromDocuments(
+                List.of(
+                    IngestDocument.InlineDocument.builder()
+                        .content(Property.ofValue("Test content for embedding."))
+                        .build()
+                )
+            )
             .build();
 
         var output = task.run(runContext);

@@ -1,5 +1,13 @@
 package io.kestra.plugin.ai.memory;
 
+import java.time.Duration;
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
+
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
@@ -10,14 +18,8 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.utility.DockerImageName;
 
-import java.time.Duration;
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,11 +43,13 @@ class RedisTest extends ContainerTest {
         String redisHost = redis.getHost();
         Integer redisPort = redis.getMappedPort(6379);
 
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint,
-            "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint,
+                "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
+            )
+        );
 
         // First prompt - store memory in Redis
         var rag = ChatCompletion.builder()
@@ -57,12 +61,14 @@ class RedisTest extends ContainerTest {
                     .build()
             )
             .embeddings(KestraKVStore.builder().build())
-            .memory(Redis.builder()
-                .host(Property.ofValue(redisHost))
-                .port(Property.ofValue(redisPort))
-                .ttl(Property.ofValue(Duration.ofMinutes(5)))
-                .memoryId(Property.ofValue("test-memory"))
-                .build())
+            .memory(
+                Redis.builder()
+                    .host(Property.ofValue(redisHost))
+                    .port(Property.ofValue(redisPort))
+                    .ttl(Property.ofValue(Duration.ofMinutes(5)))
+                    .memoryId(Property.ofValue("test-memory"))
+                    .build()
+            )
             .prompt(Property.ofValue("Hello, my name is John"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
@@ -81,11 +87,13 @@ class RedisTest extends ContainerTest {
                     .build()
             )
             .embeddings(KestraKVStore.builder().build())
-            .memory(Redis.builder()
-                .host(Property.ofValue(redisHost))
-                .port(Property.ofValue(redisPort))
-                .memoryId(Property.ofValue("test-memory"))
-                .build())
+            .memory(
+                Redis.builder()
+                    .host(Property.ofValue(redisHost))
+                    .port(Property.ofValue(redisPort))
+                    .memoryId(Property.ofValue("test-memory"))
+                    .build()
+            )
             .prompt(Property.ofValue("What's my name?"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())

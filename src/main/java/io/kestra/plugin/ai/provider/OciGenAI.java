@@ -1,14 +1,14 @@
 package io.kestra.plugin.ai.provider;
 
+import java.io.IOException;
+
+import org.apache.commons.lang3.Strings;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.oracle.bmc.Region;
 import com.oracle.bmc.auth.AuthenticationDetailsProvider;
 import com.oracle.bmc.auth.ConfigFileAuthenticationDetailsProvider;
-import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiChatModel;
-import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiCohereChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.image.ImageModel;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -16,15 +16,18 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
+
+import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiChatModel;
+import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiCohereChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.lang3.Strings;
-
-import java.io.IOException;
 
 @Getter
 @SuperBuilder

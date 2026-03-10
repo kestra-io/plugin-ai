@@ -1,10 +1,13 @@
 package io.kestra.plugin.ai.tool;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.service.tool.ToolExecutor;
+
 import io.kestra.core.docs.JsonSchemaGenerator;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
@@ -19,6 +22,11 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.core.utils.MapUtils;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.tool.internal.JsonObjectSchemaTranslator;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.tool.ToolExecutor;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -26,41 +34,35 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 @Getter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @Plugin(
-    examples =  {
+    examples = {
         @Example(
-                title = "Call a Kestra runnable task as a tool, letting the agent set the `message` property for you",
+            title = "Call a Kestra runnable task as a tool, letting the agent set the `message` property for you",
             full = true,
             code = {
                 """
-                    id: call_a_kestra_task
-                    namespace: company.ai
+                        id: call_a_kestra_task
+                        namespace: company.ai
 
-                    tasks:
-                      - id: agent
-                        type: io.kestra.plugin.ai.agent.AIAgent
-                        provider:
-                          type: io.kestra.plugin.ai.provider.GoogleGemini
-                          modelName: gemini-2.5-flash
-                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                        tools:
-                          - type: io.kestra.plugin.ai.tool.KestraTask
-                            tasks:
-                              - id: log
-                                type: io.kestra.plugin.core.log.Log
-                                message: "..." # This is a placeholder; the agent will fill it.
-                        prompt: "Log the following message: 'Hello World!'"
-                """
+                        tasks:
+                          - id: agent
+                            type: io.kestra.plugin.ai.agent.AIAgent
+                            provider:
+                              type: io.kestra.plugin.ai.provider.GoogleGemini
+                              modelName: gemini-2.5-flash
+                              apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                            tools:
+                              - type: io.kestra.plugin.ai.tool.KestraTask
+                                tasks:
+                                  - id: log
+                                    type: io.kestra.plugin.core.log.Log
+                                    message: "..." # This is a placeholder; the agent will fill it.
+                            prompt: "Log the following message: 'Hello World!'"
+                    """
             }
         ),
     }
@@ -96,7 +98,8 @@ public class KestraTask extends ToolProvider {
 
             var schemaAnnotation = Optional.ofNullable(task.getClass().getAnnotation(Schema.class));
             if (schemaAnnotation.isEmpty()) {
-                runContext.logger().warn("The task {} has no description, so the LLM may not understand what is its purpose; you may need to explicitly describe it in the prompt.", task.getId());
+                runContext.logger()
+                    .warn("The task {} has no description, so the LLM may not understand what is its purpose; you may need to explicitly describe it in the prompt.", task.getId());
             }
             var description = schemaAnnotation.map(s -> s.title()).orElse(null);
             var schema = jsonSchemaGenerator.properties(Task.class, task.getClass());
@@ -141,7 +144,7 @@ public class KestraTask extends ToolProvider {
         private final RunnableTask<?> task;
         private final RunContext runContext;
 
-        KestraTaskToolExecutor(RunnableTask<?> task,  RunContext runContext) {
+        KestraTaskToolExecutor(RunnableTask<?> task, RunContext runContext) {
             this.task = task;
             this.runContext = runContext;
         }

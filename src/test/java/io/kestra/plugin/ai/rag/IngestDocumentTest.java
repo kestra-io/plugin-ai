@@ -1,6 +1,18 @@
 package io.kestra.plugin.ai.rag;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.IntStream;
+
+import org.junit.jupiter.api.Test;
+
 import com.fasterxml.jackson.databind.JsonNode;
+
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.exceptions.ResourceExpiredException;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -13,17 +25,8 @@ import io.kestra.core.storages.kv.KVValue;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.Ollama;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.IntStream;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,10 +38,12 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void inlineDocuments() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(
@@ -65,10 +70,12 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void internalStorageURIs() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         Path path = runContext.workingDir().createFile("document.txt");
         Files.write(path, "I'm Loïc".getBytes());
@@ -99,10 +106,12 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void workingDirectoryPath() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         Path path1 = runContext.workingDir().createFile("ingest/document1.txt");
         Files.write(path1, "I'm Loïc".getBytes());
@@ -134,10 +143,12 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void externalURLs() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         var task = IngestDocument.builder()
             .provider(
@@ -164,20 +175,23 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void inlineDocumentsWithBulkSize() throws Exception {
-        RunContext runContext = runContextFactory.of("namespace", Map.of(
-            "modelName", "tinydolphin",
-            "endpoint", ollamaEndpoint
-        ));
+        RunContext runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "tinydolphin",
+                "endpoint", ollamaEndpoint
+            )
+        );
 
         int bulkSize = 5;
         int totalDocs = 12;
 
         List<IngestDocument.InlineDocument> docs = IntStream.range(0, totalDocs)
-                .mapToObj(i -> IngestDocument.InlineDocument.builder()
+            .mapToObj(
+                i -> IngestDocument.InlineDocument.builder()
                     .content(Property.ofValue("doc-" + i))
                     .build()
-                )
-                .toList();
+            )
+            .toList();
 
         var task = IngestDocument.builder()
             .provider(
@@ -201,7 +215,6 @@ class IngestDocumentTest extends ContainerTest {
         KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
         assertKvStore(kvStore, kvKey, totalDocs);
     }
-
 
     private void assertKvStore(KVStore kvStore, String kvKey, int nbDocuments) throws IOException, ResourceExpiredException {
         Optional<KVEntry> kvEntry = kvStore.get(kvKey);

@@ -1,23 +1,25 @@
 package io.kestra.plugin.ai.embeddings;
 
+import java.io.IOException;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.pinecone.PineconeEmbeddingStore;
-import dev.langchain4j.store.embedding.pinecone.PineconeServerlessIndexConfig;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.pinecone.PineconeEmbeddingStore;
+import dev.langchain4j.store.embedding.pinecone.PineconeServerlessIndexConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.io.IOException;
 
 @Getter
 @SuperBuilder
@@ -83,11 +85,13 @@ public class Pinecone extends EmbeddingStoreProvider {
             .apiKey(runContext.render(apiKey).as(String.class).orElseThrow())
             .index(runContext.render(index).as(String.class).orElseThrow())
             .nameSpace(runContext.render(namespace).as(String.class).orElse(null)) // null will fallback to "default"
-            .createIndex(PineconeServerlessIndexConfig.builder()
-                .cloud(runContext.render(cloud).as(String.class).orElseThrow())
-                .region(runContext.render(region).as(String.class).orElseThrow())
-                .dimension(dimension)
-                .build())
+            .createIndex(
+                PineconeServerlessIndexConfig.builder()
+                    .cloud(runContext.render(cloud).as(String.class).orElseThrow())
+                    .region(runContext.render(region).as(String.class).orElseThrow())
+                    .dimension(dimension)
+                    .build()
+            )
             .build();
 
         if (drop) {

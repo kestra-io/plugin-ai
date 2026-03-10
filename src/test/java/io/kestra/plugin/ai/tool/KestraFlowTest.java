@@ -1,7 +1,10 @@
 package io.kestra.plugin.ai.tool;
 
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.output.FinishReason;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.Label;
 import io.kestra.core.models.flows.GenericFlow;
@@ -15,12 +18,11 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
+
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.output.FinishReason;
 import io.micronaut.data.model.Pageable;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,28 +50,37 @@ class KestraFlowTest {
             """;
         var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
 
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
-            .tools(List.of(
-                KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world")).description(Property.ofValue("A flow that say Hello World")).build())
-            )
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute a flow to say Hello World, please answer with its execution id.").build()
-                )))
+                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world")).description(Property.ofValue("A flow that say Hello World"))
+                        .build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute a flow to say Hello World, please answer with its execution id.").build()
+                    )
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
@@ -106,34 +117,43 @@ class KestraFlowTest {
             """;
         var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
 
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
-            .tools(List.of(
-                KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-description")).build())
-            )
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute a flow to say Hello World, please return its response as a valid JSON.").build()
-                )))
+                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-description")).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute a flow to say Hello World, please return its response as a valid JSON.").build()
+                    )
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(ChatConfiguration.builder()
-                .temperature(Property.ofValue(0.1))
-                .seed(Property.ofValue(123456789))
-                .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
-                .build()
+            .configuration(
+                ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.1))
+                    .seed(Property.ofValue(123456789))
+                    .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
+                    .build()
             )
             .build();
 
@@ -179,30 +199,39 @@ class KestraFlowTest {
             """;
         var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
 
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             .tools(
-                List.of(KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-input")).description(Property.ofValue("A flow that say Hello World")).build())
-            )
-            .messages(Property.ofValue(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("""
-                        I want to execute a flow to say Hello World.
-                        Call it with the input id 'name' value 'John' and add a label key 'llm' value 'true'.""").build()
-                )))
+                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-input"))
+                        .description(Property.ofValue("A flow that say Hello World")).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("""
+                            I want to execute a flow to say Hello World.
+                            Call it with the input id 'name' value 'John' and add a label key 'llm' value 'true'.""").build()
+                    )
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
@@ -242,28 +271,37 @@ class KestraFlowTest {
             """;
         var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
 
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
-            .tools(List.of(
-                KestraFlow.builder().build())
-            )
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to execute the flow 'hello-world' from the namespace 'company.team', please answer with its execution id.").build()
-                )))
+                    KestraFlow.builder().build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER)
+                            .content("I want to execute the flow 'hello-world' from the namespace 'company.team', please answer with its execution id.").build()
+                    )
+                )
+            )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();

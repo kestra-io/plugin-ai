@@ -1,7 +1,11 @@
 package io.kestra.plugin.ai.tool;
 
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.model.output.FinishReason;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
@@ -22,17 +26,15 @@ import io.kestra.plugin.core.execution.SetVariables;
 import io.kestra.plugin.core.http.Request;
 import io.kestra.plugin.core.log.Fetch;
 import io.kestra.plugin.core.log.Log;
+
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -46,34 +48,42 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void logTask() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        Log.builder().id("log").type(Log.class.getName()).message("...").build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to log the following message: \"Hello World!\"").build()
-                )))
+                    KestraTask.builder().tasks(
+                        List.of(
+                            Log.builder().id("log").type(Log.class.getName()).message("...").build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to log the following message: \"Hello World!\"").build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);
@@ -89,72 +99,91 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void setVariables() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        SetVariables.builder().id("setVariables").type(SetVariables.class.getName()).variables(Property.ofExpression("{{agent.variables}}")).build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to set a variable of name 'some' and value 'variable'").build()
-                )))
+                    KestraTask.builder().tasks(
+                        List.of(
+                            SetVariables.builder().id("setVariables").type(SetVariables.class.getName()).variables(Property.ofExpression("{{agent.variables}}")).build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to set a variable of name 'some' and value 'variable'").build()
+                    )
+                )
+            )
             .build();
 
-        IllegalArgumentException exception =  assertThrows(IllegalArgumentException.class, () -> chat.run(runContext));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> chat.run(runContext));
         assertThat(exception.getMessage()).isEqualTo("The KestraTask tool is only capable of calling runnable tasks but 'setVariables' is not a runnable task.");
     }
 
     @Test
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
     void httpRequest() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", GEMINI_API_KEY,
-            "modelName", "gemini-2.5-flash"
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", GEMINI_API_KEY,
+                "modelName", "gemini-2.5-flash"
+            )
+        );
 
         // we use Gemini as the context window of the Langchain4J demo OpenAI API is limited to 5000
         var chat = ChatCompletion.builder()
-            .provider(GoogleGemini.builder()
-                .type(GoogleGemini.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .build()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        Request.builder().id("request").type(SetVariables.class.getName()).uri(Property.ofExpression("...")).build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.USER).content("""
-                            Call the HTTP URL https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/docs/07.architecture/01.main-components.md, retrieve its outputs and extract the body.
-                            Add a HTTP Header X-Kestra-API: anything when calling the URL.""")
-                        .build()
-                )))
+                    KestraTask.builder().tasks(
+                        List.of(
+                            Request.builder().id("request").type(SetVariables.class.getName()).uri(Property.ofExpression("...")).build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER)
+                            .content(
+                                """
+                                    Call the HTTP URL https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/docs/07.architecture/01.main-components.md, retrieve its outputs and extract the body.
+                                    Add a HTTP Header X-Kestra-API: anything when calling the URL."""
+                            )
+                            .build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);
@@ -170,35 +199,43 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void fetchTask() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-            "execution", Map.of("id", "executionId")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "execution", Map.of("id", "executionId")
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        Fetch.builder().id("fetch").type(Fetch.class.getName()).build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to fetch logs from the following task ids: task1, task2 and task3").build()
-                )))
+                    KestraTask.builder().tasks(
+                        List.of(
+                            Fetch.builder().id("fetch").type(Fetch.class.getName()).build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to fetch logs from the following task ids: task1, task2 and task3").build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);
@@ -216,41 +253,53 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void myAwesomeTaskAISetAll() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-            "execution", Map.of("id", "executionId")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "execution", Map.of("id", "executionId")
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true))
+                    .build()
+            )
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("""
-                        I want to call my awesome tasks with the following properties:
-                        - A number of value 7
-                        - A string of value 'Hello World'
-                        - An optional with the value 'optional'
-                        - A message with key 'mykey' and value 'myvalue'"""
+                    KestraTask.builder().tasks(
+                        List.of(
+                            MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
+                        )
                     ).build()
-                )))
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content(
+                            """
+                                I want to call my awesome tasks with the following properties:
+                                - A number of value 7
+                                - A string of value 'Hello World'
+                                - An optional with the value 'optional'
+                                - A message with key 'mykey' and value 'myvalue'"""
+                        ).build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);
@@ -267,40 +316,52 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void myAwesomeTaskAISetMandatory() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-            "execution", Map.of("id", "executionId")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "execution", Map.of("id", "executionId")
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true))
+                    .build()
+            )
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("""
-                        I want to call my awesome tasks with the following properties:
-                        - A number of value 7
-                        - A string of value 'Hello World'
-                        - A message with key 'mykey' and value 'myvalue'"""
+                    KestraTask.builder().tasks(
+                        List.of(
+                            MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
+                        )
                     ).build()
-                )))
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content(
+                            """
+                                I want to call my awesome tasks with the following properties:
+                                - A number of value 7
+                                - A string of value 'Hello World'
+                                - A message with key 'mykey' and value 'myvalue'"""
+                        ).build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);
@@ -317,42 +378,54 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void myAwesomeTaskAISetMissingMandatory() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-            "execution", Map.of("id", "executionId")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "execution", Map.of("id", "executionId")
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName())
-                            .string(Property.ofValue("..."))
-                            .number(Property.ofValue(8))
-                            .build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).logRequests(Property.ofValue(true)).logResponses(Property.ofValue(true))
+                    .build()
+            )
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("""
-                        I want to call my awesome tasks with the following properties:
-                        - A string of value 'Hello World'
-                        - A message with key 'mykey' and value 'myvalue'"""
+                    KestraTask.builder().tasks(
+                        List.of(
+                            MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName())
+                                .string(Property.ofValue("..."))
+                                .number(Property.ofValue(8))
+                                .build()
+                        )
                     ).build()
-                )))
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content(
+                            """
+                                I want to call my awesome tasks with the following properties:
+                                - A string of value 'Hello World'
+                                - A message with key 'mykey' and value 'myvalue'"""
+                        ).build()
+                    )
+                )
+            )
             .build();
 
         var output = chat.run(runContext);
@@ -369,35 +442,43 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void fail() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of(
-            "apiKey", "demo",
-            "modelName", "gpt-4o-mini",
-            "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-            "execution", Map.of("id", "executionId")
-        ));
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "execution", Map.of("id", "executionId")
+            )
+        );
 
         var chat = ChatCompletion.builder()
-            .provider(OpenAI.builder()
-                .type(OpenAI.class.getName())
-                .apiKey(Property.ofExpression("{{ apiKey }}"))
-                .modelName(Property.ofExpression("{{ modelName }}"))
-                .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                .build()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
             )
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(List.of(
-                KestraTask.builder().tasks(
-                    List.of(
-                        Fail.builder().id("fail").type(Fail.class.getName()).build()
-                    )
-                ).build()
-            ))
-            .messages(Property.ofValue(
+            .tools(
                 List.of(
-                    ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                    ChatMessage.builder().type(ChatMessageType.USER).content("I want to fail").build()
-                )))
+                    KestraTask.builder().tasks(
+                        List.of(
+                            Fail.builder().id("fail").type(Fail.class.getName()).build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to fail").build()
+                    )
+                )
+            )
             .build();
 
         var exception = assertThrows(ToolExecutionException.class, () -> chat.run(runContext));

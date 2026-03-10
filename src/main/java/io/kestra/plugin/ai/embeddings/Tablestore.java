@@ -1,24 +1,26 @@
 package io.kestra.plugin.ai.embeddings;
 
+import java.util.List;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.search.FieldSchema;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.tablestore.TablestoreEmbeddingStore;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.tablestore.TablestoreEmbeddingStore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.List;
 
 @Getter
 @SuperBuilder
@@ -76,11 +78,13 @@ public class Tablestore extends EmbeddingStoreProvider {
 
     @Schema(title = "Metadata Schema List", description = "Optional list of metadata field schemas for the collection.")
     private Property<List<FieldSchema>> metadataSchemaList;
+
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IllegalVariableEvaluationException {
         var rMetadataSchemaList = runContext.render(metadataSchemaList).asList(FieldSchema.class);
         return new TablestoreEmbeddingStore(
-           toSyncClient(runContext), dimension, rMetadataSchemaList);
+            toSyncClient(runContext), dimension, rMetadataSchemaList
+        );
     }
 
     private SyncClient toSyncClient(RunContext runContext) throws IllegalVariableEvaluationException {

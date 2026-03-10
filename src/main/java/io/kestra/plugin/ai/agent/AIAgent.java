@@ -1,14 +1,12 @@
 package io.kestra.plugin.ai.agent;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.Result;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -27,17 +25,20 @@ import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.observability.AgentObservability;
 import io.kestra.plugin.ai.observability.OpenTelemetryLangfuseObservability;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.rag.query.router.QueryRouter;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.net.URI;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -694,12 +695,16 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
                 .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
                 .systemMessageProvider(throwFunction(memoryId -> rSystemMessage))
-                .toolArgumentsErrorHandler((error, context) -> {
+                .toolArgumentsErrorHandler((error, context) ->
+                {
                     agentObservability.onToolArgumentsError(context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
-                    logger.error("An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    logger.error(
+                        "An error occurred while processing tool arguments for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error
+                    );
                     throw new ToolArgumentsException(error);
                 })
-                .toolExecutionErrorHandler((error, context) -> {
+                .toolExecutionErrorHandler((error, context) ->
+                {
                     agentObservability.onToolExecutionError(context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     logger.error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolExecutionException(error);
@@ -716,9 +721,11 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
 
                 // Create a query router that will route each query to the content retrievers
-                agent.retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                    .queryRouter(queryRouter)
-                    .build());
+                agent.retrievalAugmentor(
+                    DefaultRetrievalAugmentor.builder()
+                        .queryRouter(queryRouter)
+                        .build()
+                );
             }
 
             Result<AiMessage> completion = agent.build().invoke(rPrompt);
@@ -759,7 +766,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     @Override
     public void kill() {
         if (this.tools != null) {
-            this.tools.forEach(tool -> {
+            this.tools.forEach(tool ->
+            {
                 try {
                     tool.kill();
                 } catch (Exception ignored) {
@@ -767,7 +775,6 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             });
         }
     }
-
 
     interface Agent {
         Result<AiMessage> invoke(String userMessage);

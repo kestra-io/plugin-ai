@@ -1,6 +1,10 @@
 package io.kestra.plugin.ai;
 
-import io.kestra.core.utils.Await;
+import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeoutException;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.Container;
@@ -8,11 +12,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeoutException;
-
+import io.kestra.core.utils.Await;
 
 public class ContainerTest {
 
