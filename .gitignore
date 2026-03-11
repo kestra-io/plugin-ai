@@ -15,4 +15,5 @@ out/
 .attach*
 src/test/resources/application-test.yml
 src/test/resources/mtls
-**/allure-results
+**/allure-results.factorypath
+bin/
