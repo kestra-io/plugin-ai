@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.agent;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.Result;
@@ -71,28 +72,35 @@ public abstract class AbstractAiAgentWorkflow extends Task implements RunnableTa
                 .map(throwFunction(agent -> {
                     List<ToolProvider> toolProviders = ListUtils.emptyOnNull(agent.tools);
                     allToolProviders.addAll(toolProviders);
-                    return AgenticServices.agentBuilder(SubAgentInterface.class)
+                    return AgenticServices.agentBuilder()
                         .chatModel(provider.chatModel(runContext, configuration))
                         .tools(buildTools(runContext, toolProviders))
                         .outputKey(runContext.render(agent.outputName).as(String.class).orElseThrow())
                         .name(runContext.render(agent.name).as(String.class).orElseThrow())
                         .description(runContext.render(agent.description).as(String.class).orElse(null))
-                        .systemMessageProvider(throwFunction(memoryId -> runContext.render(agent.systemMessage).as(String.class).orElse(null)))
-                        .defaultKeyValue("prompt", agent.prompt)
+                        .systemMessage(runContext.render(agent.systemMessage).as(String.class).orElse(null))
+                        .userMessage(agent.prompt)
+                        .inputs(runContext.render(agent.inputKeys).asList(String.class)
+                            .stream()
+                            .map(it -> new AgentArgument(String.class, it))
+                            .toArray(AgentArgument[]::new)
+                        )
                         .build();
                     }
                 ))
                 .toArray();
 
             WorkflowAgent workflowAgent = workflowAgent(runContext, assistants, runContext.render(agents.getLast().outputName).as(String.class).orElseThrow());
-            Result<AiMessage> completion = workflowAgent.invoke(rInputs);
-            runContext.logger().debug("Generated completion: {}", completion.content());
+            String completion = workflowAgent.invoke(rInputs);
+            runContext.logger().debug("Generated completion: {}", completion);
 
             // send metrics for token usage
-            TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
-            AIUtils.sendMetrics(runContext, tokenUsage);
+//            TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage();
+//            AIUtils.sendMetrics(runContext, tokenUsage);
 
-            return AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
+//            return AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
+            return AIOutput.builder()
+                .textOutput(completion)
                 .outputFiles(AIUtils.gatherOutputFiles(outputFiles, runContext))
                 .build();
         } finally {
@@ -117,13 +125,7 @@ public abstract class AbstractAiAgentWorkflow extends Task implements RunnableTa
 
     protected interface WorkflowAgent {
         @dev.langchain4j.agentic.Agent
-        Result<AiMessage> invoke(Map<String, Object> inputs);
-    }
-
-    protected interface SubAgentInterface {
-        @UserMessage("{{prompt}}")
-        @dev.langchain4j.agentic.Agent
-        Result<AiMessage> invoke(@V("prompt") String prompt);
+        String invoke(Map<String, Object> inputs); // FIXME using Result<AiMessage> generates a CLassCastException so we must use String here
     }
 
     @Builder
@@ -162,6 +164,8 @@ public abstract class AbstractAiAgentWorkflow extends Task implements RunnableTa
         @NotNull
         @PluginProperty
         private String prompt;
+
+        private Property<List<String>> inputKeys;
 
         @Schema(title = "Output name", description = "The name of the output, you can use it in the prompt of other agents via {{outputName}}")
         @NotNull
