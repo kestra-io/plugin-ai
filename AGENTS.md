@@ -1,4 +1,4 @@
-# Kestra Ai Plugin
+# Kestra AI Plugin
 
 ## What
 
@@ -84,8 +84,8 @@ Infrastructure dependencies (Docker Compose services):
 
 ```
 plugin-ai/
-├── src/main/java/io/kestra/plugin/ai/
-├── src/test/java/io/kestra/plugin/ai/
+├── src/main/java/io/kestra/plugin/ai/tool/
+├── src/test/java/io/kestra/plugin/ai/tool/
 ├── build.gradle
 └── README.md
 ```
