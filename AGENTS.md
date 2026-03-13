@@ -2,7 +2,7 @@
 
 ## What
 
-Plugin for AI with Langchain4j for Kestra Exposes 169 plugin components (tasks, triggers, and/or conditions).
+Plugin for AI with Langchain4j for Kestra Exposes 57 plugin components (tasks, triggers, and/or conditions).
 
 ## Why
 
@@ -22,62 +22,6 @@ Infrastructure dependencies (Docker Compose services):
 
 ### Key Plugin Classes
 
-- `classname=A2AClient`
-- `classname=A2AClient`
-- `classname=AIAgent`
-- `classname=AIAgent`
-- `classname=AmazonBedrock`
-- `classname=Anthropic`
-- `classname=AzureOpenAI`
-- `classname=ChatCompletion`
-- `classname=ChatCompletion`
-- `classname=Chroma`
-- `classname=Classification`
-- `classname=CodeExecution`
-- `classname=DashScope`
-- `classname=DeepSeek`
-- `classname=DockerMcpClient`
-- `classname=Elasticsearch`
-- `classname=EmbeddingStoreRetriever`
-- `classname=GitHubModels`
-- `classname=GoogleCustomWebSearch`
-- `classname=GoogleCustomWebSearch`
-- `classname=GoogleGemini`
-- `classname=GoogleVertexAI`
-- `classname=HuggingFace`
-- `classname=ImageGeneration`
-- `classname=IngestDocument`
-- `classname=JSONStructuredExtraction`
-- `classname=KestraFlow`
-- `classname=KestraKVStore`
-- `classname=KestraKVStore`
-- `classname=KestraTask`
-- `classname=LocalAI`
-- `classname=MariaDB`
-- `classname=Milvus`
-- `classname=MistralAI`
-- `classname=MongoDBAtlas`
-- `classname=OciGenAI`
-- `classname=Ollama`
-- `classname=OpenAI`
-- `classname=OpenRouter`
-- `classname=PGVector`
-- `classname=Pinecone`
-- `classname=PostgreSQL`
-- `classname=Qdrant`
-- `classname=Redis`
-- `classname=Redis`
-- `classname=Search`
-- `classname=SqlDatabaseRetriever`
-- `classname=SseMcpClient`
-- `classname=StdioMcpClient`
-- `classname=StreamableHttpMcpClient`
-- `classname=Tablestore`
-- `classname=TavilyWebSearch`
-- `classname=WatsonxAI`
-- `classname=Weaviate`
-- `classname=WorkersAI`
-- `classname=ZhiPuAI`
 - `io.kestra.plugin.ai.agent.A2AClient`
 - `io.kestra.plugin.ai.agent.AIAgent`
 - `io.kestra.plugin.ai.completion.ChatCompletion`
@@ -135,69 +79,13 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.tool.StdioMcpClient`
 - `io.kestra.plugin.ai.tool.StreamableHttpMcpClient`
 - `io.kestra.plugin.ai.tool.TavilyWebSearch`
-- `pkg=io.kestra.plugin.ai.agent`
-- `pkg=io.kestra.plugin.ai.agent`
-- `pkg=io.kestra.plugin.ai.completion`
-- `pkg=io.kestra.plugin.ai.completion`
-- `pkg=io.kestra.plugin.ai.completion`
-- `pkg=io.kestra.plugin.ai.completion`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.embeddings`
-- `pkg=io.kestra.plugin.ai.memory`
-- `pkg=io.kestra.plugin.ai.memory`
-- `pkg=io.kestra.plugin.ai.memory`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.provider`
-- `pkg=io.kestra.plugin.ai.rag`
-- `pkg=io.kestra.plugin.ai.rag`
-- `pkg=io.kestra.plugin.ai.rag`
-- `pkg=io.kestra.plugin.ai.retriever`
-- `pkg=io.kestra.plugin.ai.retriever`
-- `pkg=io.kestra.plugin.ai.retriever`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
-- `pkg=io.kestra.plugin.ai.tool`
 
 ### Project Structure
 
 ```
 plugin-ai/
-├── src/main/java/project/group +/
-├── src/test/java/project/group +/
+├── src/main/java/io/kestra/plugin/ai/
+├── src/test/java/io/kestra/plugin/ai/
 ├── build.gradle
 └── README.md
 ```
