@@ -16,6 +16,8 @@ import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.GuardrailRule;
+import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
@@ -780,6 +782,232 @@ class AIAgentTest {
 
         assertThat(output.getTextOutput()).isNotNull();
         assertThat(output.getTextOutput()).contains("Kestra");
+    }
+
+    @Test
+    void withInputGuardrailPasses() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .prompt(Property.ofValue("Summarize Kestra in one sentence."))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .guardrails(
+                Guardrails.builder()
+                    .input(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ message.length < 10000 }}")
+                                .message("Message too long")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        var output = agent.run(runContext);
+
+        assertThat(output.isGuardrailViolated()).isFalse();
+        assertThat(output.getTextOutput()).isNotNull();
+    }
+
+    @Test
+    void withInputGuardrailViolated() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
+
+        // expression requires message shorter than 5 chars — prompt "Hello World" (11 chars) always violates
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .prompt(Property.ofValue("Hello World"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .guardrails(
+                Guardrails.builder()
+                    .input(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ message.length < 5 }}")
+                                .message("Message too long")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        var output = agent.run(runContext);
+
+        assertThat(output.isGuardrailViolated()).isTrue();
+        assertThat(output.getGuardrailViolationMessage()).contains("Message too long");
+        assertThat(output.getTextOutput()).isNull();
+    }
+
+    @Test
+    void withOutputGuardrailPasses() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .prompt(Property.ofValue("Summarize Kestra in one sentence."))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .guardrails(
+                Guardrails.builder()
+                    .output(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ response.length > 0 }}")
+                                .message("Empty response")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        var output = agent.run(runContext);
+
+        assertThat(output.isGuardrailViolated()).isFalse();
+        assertThat(output.getTextOutput()).isNotNull();
+    }
+
+    @Test
+    void withOutputGuardrailViolated() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
+
+        // expression requires response shorter than 1 char — any real LLM response always violates
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .prompt(Property.ofValue("Summarize Kestra in one sentence."))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .guardrails(
+                Guardrails.builder()
+                    .output(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ response.length < 1 }}")
+                                .message("Response contains confidential information")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        var output = agent.run(runContext);
+
+        assertThat(output.isGuardrailViolated()).isTrue();
+        assertThat(output.getGuardrailViolationMessage()).contains("Response contains confidential information");
+        assertThat(output.getTextOutput()).isNull();
+    }
+
+    @Test
+    void withMultipleGuardrails_firstViolatingRuleWins() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+            )
+        );
+
+        // Two input rules: first passes (length < 10000), second fails (length < 5).
+        // Output rules are also configured but should never be evaluated — LLM is never called.
+        // Asserts fail-fast: second input rule fires, its message is reported, output rule is never reached.
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .prompt(Property.ofValue("Hello World"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .guardrails(
+                Guardrails.builder()
+                    .input(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ message.length < 10000 }}")
+                                .message("Message too long")
+                                .build(),
+                            GuardrailRule.builder()
+                                .expression("{{ message.length < 5 }}")
+                                .message("Message exceeds strict limit")
+                                .build()
+                        )
+                    )
+                    .output(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ response.length < 1 }}")
+                                .message("Should never be reached")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        var output = agent.run(runContext);
+
+        assertThat(output.isGuardrailViolated()).isTrue();
+        assertThat(output.getGuardrailViolationMessage()).contains("Message exceeds strict limit");
+        assertThat(output.getGuardrailViolationMessage()).doesNotContain("Should never be reached");
+        assertThat(output.getTextOutput()).isNull();
     }
 
 }

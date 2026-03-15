@@ -16,8 +16,11 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.GuardrailRule;
+import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 
@@ -27,6 +30,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -119,6 +123,17 @@ public class Classification extends Task implements RunnableTask<Classification.
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
+    @Schema(
+        title = "Guardrails",
+        description = """
+            Input guardrails are evaluated against the prompt before the LLM is called.
+            Output guardrails are evaluated against the classification result before it is returned.
+            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+    )
+    @PluginProperty
+    @Nullable
+    private Guardrails guardrails;
+
     @Override
     public Classification.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -126,6 +141,13 @@ public class Classification extends Task implements RunnableTask<Classification.
         String rPrompt = runContext.render(prompt).as(String.class).orElseThrow();
         List<String> rClasses = runContext.render(classes).asList(String.class);
         String rSystemMessage = runContext.render(systemMessage).as(String.class, Map.of("classes", rClasses)).orElseThrow();
+
+        // Input guardrail check
+        String inputViolation = evaluateGuardrails(ListUtils.emptyOnNull(guardrails != null ? guardrails.getInput() : null), Map.of("message", rPrompt), runContext);
+        if (inputViolation != null) {
+            logger.warn("Input guardrail violated: {}", inputViolation);
+            return Output.builder().guardrailViolated(true).guardrailViolationMessage("Input guardrail: " + inputViolation).build();
+        }
 
         List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(SystemMessage.systemMessage(rSystemMessage));
@@ -137,6 +159,13 @@ public class Classification extends Task implements RunnableTask<Classification.
 
         logger.debug("Generated Classification: {}", response.aiMessage().text());
 
+        // Output guardrail check
+        String outputViolation = evaluateGuardrails(ListUtils.emptyOnNull(guardrails != null ? guardrails.getOutput() : null), Map.of("response", response.aiMessage().text()), runContext);
+        if (outputViolation != null) {
+            logger.warn("Output guardrail violated: {}", outputViolation);
+            return Output.builder().guardrailViolated(true).guardrailViolationMessage("Output guardrail: " + outputViolation).build();
+        }
+
         TokenUsage tokenUsage = TokenUsage.from(response.tokenUsage());
         AIUtils.sendMetrics(runContext, tokenUsage);
 
@@ -145,6 +174,21 @@ public class Classification extends Task implements RunnableTask<Classification.
             .tokenUsage(tokenUsage)
             .finishReason(response.finishReason())
             .build();
+    }
+
+    private String evaluateGuardrails(List<GuardrailRule> rules, Map<String, Object> context, RunContext runContext) {
+        for (GuardrailRule rule : rules) {
+            try {
+                String result = runContext.render(Property.<String> ofExpression(rule.getExpression()))
+                    .as(String.class, context).orElse("false");
+                if (!Boolean.parseBoolean(result.trim())) {
+                    return rule.getMessage();
+                }
+            } catch (Exception e) {
+                return "Guardrail expression evaluation failed: " + e.getMessage();
+            }
+        }
+        return null;
     }
 
     @Builder
@@ -158,5 +202,12 @@ public class Classification extends Task implements RunnableTask<Classification.
 
         @Schema(title = "Finish reason")
         private FinishReason finishReason;
+
+        @Schema(title = "Guardrail violated", description = "True if a guardrail rule was violated")
+        @Builder.Default
+        private boolean guardrailViolated = false;
+
+        @Schema(title = "Guardrail violation message", description = "The message from the first violated guardrail rule")
+        private String guardrailViolationMessage;
     }
 }
