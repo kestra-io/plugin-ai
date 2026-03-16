@@ -16,8 +16,6 @@ public final class GuardrailsEvaluator {
     private GuardrailsEvaluator() {
     }
 
-    // -- Direct evaluation (Classification, JSONStructuredExtraction) --
-
     public static String checkInput(@Nullable Guardrails guardrails, String prompt, RunContext ctx) {
         if (guardrails == null || ListUtils.emptyOnNull(guardrails.getInput()).isEmpty())
             return null;
@@ -30,11 +28,8 @@ public final class GuardrailsEvaluator {
         return new ExpressionOutputGuardrail(guardrails.getOutput(), ctx).checkOrNull(response);
     }
 
-    // -- AiServices wiring (AIAgent, completion.ChatCompletion, rag.ChatCompletion) --
-
     /**
      * Registers input/output guardrails on an AiServices builder when rules are configured.
-     * Replaces the duplicate {@code buildGuardRailsIfNeeded()} method in each AiServices-based task.
      */
     public static void applyGuardrails(@Nullable Guardrails guardrails, AiServices<?> builder, RunContext ctx) {
         if (guardrails == null)
