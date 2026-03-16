@@ -42,9 +42,7 @@ public class ExpressionOutputGuardrail implements OutputGuardrail {
         this.runContext = runContext;
     }
 
-    @Override
-    public OutputGuardrailResult validate(OutputGuardrailRequest request) {
-        ChatResponse chatResponse = request.responseFromLLM();
+    public String checkOrNull(ChatResponse chatResponse) {
         String responseText = chatResponse.aiMessage().text();
         FinishReason finishReason = chatResponse.finishReason();
         TokenUsage tokenUsage = chatResponse.tokenUsage();
@@ -61,13 +59,18 @@ public class ExpressionOutputGuardrail implements OutputGuardrail {
                     .as(String.class, context)
                     .orElse("false");
                 if (!Boolean.parseBoolean(result.trim())) {
-                    return fatal(rule.getMessage());
+                    return rule.getMessage();
                 }
             } catch (Exception e) {
-                return fatal("Guardrail expression evaluation failed: " + e.getMessage());
+                return "Guardrail expression evaluation failed: " + e.getMessage();
             }
         }
+        return null;
+    }
 
-        return success();
+    @Override
+    public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+        String violation = checkOrNull(request.responseFromLLM());
+        return violation != null ? fatal(violation) : success();
     }
 }

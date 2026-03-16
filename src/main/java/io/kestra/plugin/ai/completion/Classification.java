@@ -16,13 +16,12 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
-import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -143,10 +142,9 @@ public class Classification extends Task implements RunnableTask<Classification.
         String rSystemMessage = runContext.render(systemMessage).as(String.class, Map.of("classes", rClasses)).orElseThrow();
 
         // Input guardrail check
-        String inputViolation = evaluateGuardrails(ListUtils.emptyOnNull(guardrails != null ? guardrails.getInput() : null), Map.of("message", rPrompt), runContext);
+        String inputViolation = GuardrailsEvaluator.checkInput(guardrails, rPrompt, runContext);
         if (inputViolation != null) {
-            logger.warn("Input guardrail violated: {}", inputViolation);
-            return Output.builder().guardrailViolated(true).guardrailViolationMessage("Input guardrail: " + inputViolation).build();
+            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ");
         }
 
         List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
@@ -160,10 +158,9 @@ public class Classification extends Task implements RunnableTask<Classification.
         logger.debug("Generated Classification: {}", response.aiMessage().text());
 
         // Output guardrail check
-        String outputViolation = evaluateGuardrails(ListUtils.emptyOnNull(guardrails != null ? guardrails.getOutput() : null), Map.of("response", response.aiMessage().text()), runContext);
+        String outputViolation = GuardrailsEvaluator.checkOutput(guardrails, response, runContext);
         if (outputViolation != null) {
-            logger.warn("Output guardrail violated: {}", outputViolation);
-            return Output.builder().guardrailViolated(true).guardrailViolationMessage("Output guardrail: " + outputViolation).build();
+            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ");
         }
 
         TokenUsage tokenUsage = TokenUsage.from(response.tokenUsage());
@@ -176,19 +173,12 @@ public class Classification extends Task implements RunnableTask<Classification.
             .build();
     }
 
-    private String evaluateGuardrails(List<GuardrailRule> rules, Map<String, Object> context, RunContext runContext) {
-        for (GuardrailRule rule : rules) {
-            try {
-                String result = runContext.render(Property.<String> ofExpression(rule.getExpression()))
-                    .as(String.class, context).orElse("false");
-                if (!Boolean.parseBoolean(result.trim())) {
-                    return rule.getMessage();
-                }
-            } catch (Exception e) {
-                return "Guardrail expression evaluation failed: " + e.getMessage();
-            }
-        }
-        return null;
+    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x) {
+        logger.warn(s, outputViolation);
+        return Output.builder()
+            .guardrailViolated(true)
+            .guardrailViolationMessage(x + outputViolation)
+            .build();
     }
 
     @Builder

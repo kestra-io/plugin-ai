@@ -37,9 +37,7 @@ public class ExpressionInputGuardrail implements InputGuardrail {
         this.runContext = runContext;
     }
 
-    @Override
-    public InputGuardrailResult validate(UserMessage userMessage) {
-        String messageText = userMessage.singleText();
+    public String checkOrNull(String messageText) {
         Map<String, Object> context = Map.of("message", messageText);
 
         for (GuardrailRule rule : rules) {
@@ -48,13 +46,18 @@ public class ExpressionInputGuardrail implements InputGuardrail {
                     .as(String.class, context)
                     .orElse("false");
                 if (!Boolean.parseBoolean(result.trim())) {
-                    return fatal(rule.getMessage());
+                    return rule.getMessage();
                 }
             } catch (Exception e) {
-                return fatal("Guardrail expression evaluation failed: " + e.getMessage());
+                return "Guardrail expression evaluation failed: " + e.getMessage();
             }
         }
+        return null;
+    }
 
-        return success();
+    @Override
+    public InputGuardrailResult validate(UserMessage userMessage) {
+        String violation = checkOrNull(userMessage.singleText());
+        return violation != null ? fatal(violation) : success();
     }
 }

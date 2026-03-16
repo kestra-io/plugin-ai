@@ -19,8 +19,7 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.domain.ChatMessage;
-import io.kestra.plugin.ai.guardrail.ExpressionInputGuardrail;
-import io.kestra.plugin.ai.guardrail.ExpressionOutputGuardrail;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.*;
@@ -265,7 +264,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                     throw new ToolExecutionException(error);
                 });
 
-            buildGuardRailsIfNeeded(runContext, builder);
+            GuardrailsEvaluator.applyGuardrails(guardrails, builder, runContext);
 
             Result<AiMessage> aiResponse = builder.build().chat(((UserMessage) chatMessages.getLast()).singleText());
             logger.debug("AI Response: {}", aiResponse.content());
@@ -290,30 +289,15 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .sources(output.getSources())
                 .build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
-            return buildGuardrailViolationOutput(e, logger);
+            return Output.builder()
+                .guardrailViolated(true)
+                .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
+                .build();
         } finally {
             toolProviders.forEach(tool -> tool.close(runContext));
 
             TimingChatModelListener.clear();
         }
-    }
-
-    private void buildGuardRailsIfNeeded(RunContext runContext, AiServices<Assistant> builder) {
-        if (guardrails != null && !ListUtils.emptyOnNull(guardrails.getInput()).isEmpty()) {
-            builder.inputGuardrails(new ExpressionInputGuardrail(guardrails.getInput(), runContext));
-        }
-        if (guardrails != null && !ListUtils.emptyOnNull(guardrails.getOutput()).isEmpty()) {
-            builder.outputGuardrails(new ExpressionOutputGuardrail(guardrails.getOutput(), runContext));
-        }
-    }
-
-    private Output buildGuardrailViolationOutput(final Exception e, Logger logger) {
-        var guardrailType = e instanceof InputGuardrailException ? "Input" : "Output";
-        logger.warn("{} guardrail violated: {}", guardrailType, e.getMessage());
-        return Output.builder()
-            .guardrailViolated(true)
-            .guardrailViolationMessage(guardrailType + " guardrail: " + e.getMessage())
-            .build();
     }
 
     interface Assistant {

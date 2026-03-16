@@ -24,8 +24,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
-import io.kestra.plugin.ai.guardrail.ExpressionInputGuardrail;
-import io.kestra.plugin.ai.guardrail.ExpressionOutputGuardrail;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.AgentObservability;
 import io.kestra.plugin.ai.observability.OpenTelemetryLangfuseObservability;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
@@ -33,6 +32,7 @@ import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -737,8 +737,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                     throw new ToolExecutionException(error);
                 });
 
-            buildGuardRailsIfNeeded(runContext, agent);
-
+            GuardrailsEvaluator.applyGuardrails(guardrails, agent, runContext);
             if (memory != null) {
                 agent.chatMemory(memory.chatMemory(runContext));
             }
@@ -769,6 +768,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 .outputFiles(gatherOutputFiles(runContext))
                 .build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
+            agentObservability.onFailure(e);
             return buildGuardrailViolationOutput(e, logger);
         } catch (Exception e) {
             agentObservability.onFailure(e);
@@ -785,21 +785,10 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         }
     }
 
-    private void buildGuardRailsIfNeeded(RunContext runContext, AiServices<Agent> agent) {
-        if (guardrails != null && !ListUtils.emptyOnNull(guardrails.getInput()).isEmpty()) {
-            agent.inputGuardrails(new ExpressionInputGuardrail(guardrails.getInput(), runContext));
-        }
-        if (guardrails != null && !ListUtils.emptyOnNull(guardrails.getOutput()).isEmpty()) {
-            agent.outputGuardrails(new ExpressionOutputGuardrail(guardrails.getOutput(), runContext));
-        }
-    }
-
-    private AIOutput buildGuardrailViolationOutput(final Exception e, final Logger logger) {
-        var guardrailType = e instanceof InputGuardrailException ? "Input" : "Output";
-        logger.warn("{} guardrail violated: {}", guardrailType, e.getMessage());
+    private static AIOutput buildGuardrailViolationOutput(GuardrailException e, Logger logger) {
         return AIOutput.builder()
             .guardrailViolated(true)
-            .guardrailViolationMessage(e.getMessage())
+            .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
             .outputFiles(Collections.emptyMap())
             .build();
     }

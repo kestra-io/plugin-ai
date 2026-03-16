@@ -2,7 +2,6 @@ package io.kestra.plugin.ai.completion;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 
@@ -15,13 +14,12 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
-import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -199,10 +197,9 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         String rSystemMessage = runContext.render(systemMessage).as(String.class).orElseThrow();
 
         // Input guardrail check
-        String inputViolation = evaluateGuardrails(ListUtils.emptyOnNull(guardrails != null ? guardrails.getInput() : null), Map.of("message", rPrompt), runContext);
+        String inputViolation = GuardrailsEvaluator.checkInput(guardrails, rPrompt, runContext);
         if (inputViolation != null) {
-            logger.warn("Input guardrail violated: {}", inputViolation);
-            return Output.builder().guardrailViolated(true).guardrailViolationMessage("Input guardrail: " + inputViolation).build();
+            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ");
         }
 
         ResponseFormat responseFormat = ResponseFormat.builder()
@@ -236,10 +233,9 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         logger.debug("Generated Structured Extraction: {}", answer.aiMessage().text());
 
         // Output guardrail check
-        String outputViolation = evaluateGuardrails(ListUtils.emptyOnNull(guardrails != null ? guardrails.getOutput() : null), Map.of("response", answer.aiMessage().text()), runContext);
+        String outputViolation = GuardrailsEvaluator.checkOutput(guardrails, answer, runContext);
         if (outputViolation != null) {
-            logger.warn("Output guardrail violated: {}", outputViolation);
-            return Output.builder().guardrailViolated(true).guardrailViolationMessage("Output guardrail: " + outputViolation).build();
+            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ");
         }
 
         TokenUsage tokenUsage = TokenUsage.from(answer.tokenUsage());
@@ -253,19 +249,12 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
             .build();
     }
 
-    private String evaluateGuardrails(List<GuardrailRule> rules, Map<String, Object> context, RunContext runContext) {
-        for (GuardrailRule rule : rules) {
-            try {
-                String result = runContext.render(Property.<String> ofExpression(rule.getExpression()))
-                    .as(String.class, context).orElse("false");
-                if (!Boolean.parseBoolean(result.trim())) {
-                    return rule.getMessage();
-                }
-            } catch (Exception e) {
-                return "Guardrail expression evaluation failed: " + e.getMessage();
-            }
-        }
-        return null;
+    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x) {
+        logger.warn(s, outputViolation);
+        return Output.builder()
+            .guardrailViolated(true)
+            .guardrailViolationMessage(x + outputViolation)
+            .build();
     }
 
     @Builder

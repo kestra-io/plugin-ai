@@ -34,7 +34,7 @@ import static org.hamcrest.Matchers.nullValue;
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
-    private final String OPENROUTER_API_KEY = "";//System.getenv("OPENROUTER_API_KEY");
+    private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
 
     @Inject
     private RunContextFactory runContextFactory;
