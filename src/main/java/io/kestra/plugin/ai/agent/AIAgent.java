@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -22,6 +24,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.AgentObservability;
 import io.kestra.plugin.ai.observability.OpenTelemetryLangfuseObservability;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
@@ -29,6 +32,9 @@ import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.GuardrailException;
+import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -36,6 +42,7 @@ import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -605,6 +612,15 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         apiKey: "{{ secret('TAVILY_API_KEY') }}"
                       - type: io.kestra.plugin.ai.tool.CodeExecution
                         apiKey: "{{ secret('RAPID_API_KEY') }}"
+
+                    guardrails:
+                      input:
+                        - expression: "{{ message.length < 10000 }}"
+                          message: "Message too long"
+                      output:
+                        - expression: "{{ not (response contains 'CONFIDENTIAL') }}"
+                          message: "Response contains confidential information"
+
                 """
         ),
     },
@@ -674,6 +690,17 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     @PluginProperty
     private LangfuseObservability observability;
 
+    @Schema(
+        title = "Guardrails",
+        description = """
+            Input guardrails are evaluated against the user prompt before the LLM is called.
+            Output guardrails are evaluated against the AI response before it is returned.
+            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+    )
+    @Nullable
+    @PluginProperty
+    private Guardrails guardrails;
+
     private Property<List<String>> outputFiles;
 
     @Override
@@ -710,6 +737,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                     throw new ToolExecutionException(error);
                 });
 
+            GuardrailsEvaluator.applyGuardrails(guardrails, agent, runContext);
             if (memory != null) {
                 agent.chatMemory(memory.chatMemory(runContext));
             }
@@ -739,6 +767,9 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             return AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
                 .outputFiles(gatherOutputFiles(runContext))
                 .build();
+        } catch (final InputGuardrailException | OutputGuardrailException e) {
+            agentObservability.onFailure(e);
+            return buildGuardrailViolationOutput(e, logger);
         } catch (Exception e) {
             agentObservability.onFailure(e);
             throw e;
@@ -752,6 +783,14 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
             TimingChatModelListener.clear();
         }
+    }
+
+    private static AIOutput buildGuardrailViolationOutput(GuardrailException e, Logger logger) {
+        return AIOutput.builder()
+            .guardrailViolated(true)
+            .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
+            .outputFiles(Collections.emptyMap())
+            .build();
     }
 
     // output files should all be inside the working directory

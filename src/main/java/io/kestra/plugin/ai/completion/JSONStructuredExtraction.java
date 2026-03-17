@@ -16,8 +16,10 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -31,6 +33,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -107,6 +110,14 @@ import lombok.experimental.SuperBuilder;
                           type: io.kestra.plugin.ai.provider.OpenAI
                           apiKey: "{{ secret('OPENAI_API_KEY') }}"
                           modelName: gpt-5-mini
+                        guardrails:
+                          input:
+                            - expression: "{{ message.length < 10000 }}"
+                              message: "Message too long"
+                          output:
+                            - expression: "{{ not (response contains 'CONFIDENTIAL') }}"
+                              message: "Response contains confidential information"
+
                     """
             }
         )
@@ -163,6 +174,17 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
+    @Schema(
+        title = "Guardrails",
+        description = """
+            Input guardrails are evaluated against the prompt before the LLM is called.
+            Output guardrails are evaluated against the extracted JSON before it is returned.
+            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+    )
+    @PluginProperty
+    @Nullable
+    private Guardrails guardrails;
+
     @Override
     public JSONStructuredExtraction.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -173,6 +195,12 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
 
         String rSystemMessage = runContext.render(systemMessage).as(String.class).orElseThrow();
+
+        // Input guardrail check
+        String inputViolation = GuardrailsEvaluator.checkInput(guardrails, rPrompt, runContext);
+        if (inputViolation != null) {
+            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ");
+        }
 
         ResponseFormat responseFormat = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
@@ -204,6 +232,12 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         ChatResponse answer = model.chat(chatRequest);
         logger.debug("Generated Structured Extraction: {}", answer.aiMessage().text());
 
+        // Output guardrail check
+        String outputViolation = GuardrailsEvaluator.checkOutput(guardrails, answer, runContext);
+        if (outputViolation != null) {
+            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ");
+        }
+
         TokenUsage tokenUsage = TokenUsage.from(answer.tokenUsage());
         AIUtils.sendMetrics(runContext, tokenUsage);
 
@@ -212,6 +246,14 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
             .extractedJson(answer.aiMessage().text())
             .tokenUsage(tokenUsage)
             .finishReason(answer.finishReason())
+            .build();
+    }
+
+    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x) {
+        logger.warn(s, outputViolation);
+        return Output.builder()
+            .guardrailViolated(true)
+            .guardrailViolationMessage(x + outputViolation)
             .build();
     }
 
@@ -229,6 +271,13 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
 
         @Schema(title = "Finish reason")
         private FinishReason finishReason;
+
+        @Schema(title = "Guardrail violated", description = "True if a guardrail rule was violated")
+        @Builder.Default
+        private boolean guardrailViolated = false;
+
+        @Schema(title = "Guardrail violation message", description = "The message from the first violated guardrail rule")
+        private String guardrailViolationMessage;
     }
 
     public static JsonObjectSchema buildDynamicSchema(List<String> fields) {

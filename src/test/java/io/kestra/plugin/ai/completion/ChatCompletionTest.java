@@ -22,6 +22,8 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
+import io.kestra.plugin.ai.domain.GuardrailRule;
+import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.provider.*;
 
@@ -2204,6 +2206,202 @@ class ChatCompletionTest extends ContainerTest {
 
         assertThat(tool1KillCalled[0], equalTo(true));
         assertThat(tool2KillCalled[0], equalTo(true));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletion_withInputGuardrailPasses() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", OPENROUTER_API_KEY,
+                "modelName", "openrouter/free",
+                "baseUrl", "https://openrouter.ai/api/v1"
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER).content("Summarize Kestra in one sentence.").build()
+                    )
+                )
+            )
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(
+                OpenRouter.builder()
+                    .type(OpenRouter.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .guardrails(
+                Guardrails.builder()
+                    .input(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ message.length < 10000 }}")
+                                .message("Message too long")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.isGuardrailViolated(), is(false));
+        assertThat(output.getTextOutput(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletion_withInputGuardrailViolated() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", OPENROUTER_API_KEY,
+                "modelName", "openrouter/free",
+                "baseUrl", "https://openrouter.ai/api/v1"
+            )
+        );
+
+        // expression requires message shorter than 5 chars — "Hello World" (11 chars) always violates, no LLM call made
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER).content("Hello World").build()
+                    )
+                )
+            )
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(
+                OpenRouter.builder()
+                    .type(OpenRouter.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .guardrails(
+                Guardrails.builder()
+                    .input(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ message.length < 5 }}")
+                                .message("Message too long")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.isGuardrailViolated(), is(true));
+        assertThat(output.getGuardrailViolationMessage(), containsString("Message too long"));
+        assertThat(output.getTextOutput(), nullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletion_withOutputGuardrailPasses() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", OPENROUTER_API_KEY,
+                "modelName", "openrouter/free",
+                "baseUrl", "https://openrouter.ai/api/v1"
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER).content("Summarize Kestra in one sentence.").build()
+                    )
+                )
+            )
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(
+                OpenRouter.builder()
+                    .type(OpenRouter.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .guardrails(
+                Guardrails.builder()
+                    .output(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ response.length > 0 }}")
+                                .message("Empty response")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.isGuardrailViolated(), is(false));
+        assertThat(output.getTextOutput(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OPENROUTER_API_KEY", matches = ".*")
+    void testChatCompletion_withOutputGuardrailViolated() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", OPENROUTER_API_KEY,
+                "modelName", "openrouter/free",
+                "baseUrl", "https://openrouter.ai/api/v1"
+            )
+        );
+
+        // expression requires response shorter than 1 char — any real LLM response always violates
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER).content("Summarize Kestra in one sentence.").build()
+                    )
+                )
+            )
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(
+                OpenRouter.builder()
+                    .type(OpenRouter.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .guardrails(
+                Guardrails.builder()
+                    .output(
+                        List.of(
+                            GuardrailRule.builder()
+                                .expression("{{ response.length < 1 }}")
+                                .message("Response contains confidential information")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.isGuardrailViolated(), is(true));
+        assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
+        assertThat(output.getTextOutput(), nullValue());
     }
 
 }

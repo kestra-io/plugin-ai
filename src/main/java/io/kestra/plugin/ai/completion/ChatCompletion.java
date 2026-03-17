@@ -19,11 +19,14 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -191,6 +194,17 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Nullable
     private List<ToolProvider> tools;
 
+    @Schema(
+        title = "Guardrails",
+        description = """
+            Input guardrails are evaluated against the last user message before the LLM is called.
+            Output guardrails are evaluated against the AI response before it is returned.
+            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+    )
+    @Nullable
+    @PluginProperty
+    private Guardrails guardrails;
+
     @Override
     public ChatCompletion.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -225,7 +239,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             // Generate AI response
-            Assistant assistant = AiServices.builder(Assistant.class)
+            var builder = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .systemMessageProvider(
                     chatMemoryId -> chatMessages.stream()
@@ -248,9 +262,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                     runContext.logger()
                         .error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
                     throw new ToolExecutionException(error);
-                })
-                .build();
-            Result<AiMessage> aiResponse = assistant.chat(((UserMessage) chatMessages.getLast()).singleText());
+                });
+
+            GuardrailsEvaluator.applyGuardrails(guardrails, builder, runContext);
+
+            Result<AiMessage> aiResponse = builder.build().chat(((UserMessage) chatMessages.getLast()).singleText());
             logger.debug("AI Response: {}", aiResponse.content());
 
             // send metrics for token usage
@@ -271,6 +287,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .requestDuration(output.getRequestDuration())
                 .thinking(output.getThinking())
                 .sources(output.getSources())
+                .build();
+        } catch (final InputGuardrailException | OutputGuardrailException e) {
+            return Output.builder()
+                .guardrailViolated(true)
+                .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
                 .build();
         } finally {
             toolProviders.forEach(tool -> tool.close(runContext));

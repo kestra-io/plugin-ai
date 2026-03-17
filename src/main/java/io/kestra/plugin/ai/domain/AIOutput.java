@@ -75,6 +75,20 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
     @Schema(title = "Content sources used during RAG retrieval")
     private final List<ContentSource> sources;
+
+    @Schema(
+        title = "Guardrail violated",
+        description = "True when an input or output guardrail expression evaluated to false. When true, `guardrailViolationMessage` contains the rule's configured message and no LLM output is available."
+    )
+    @Builder.Default
+    private final boolean guardrailViolated = false;
+
+    @Schema(
+        title = "Guardrail violation message",
+        description = "The message from the first guardrail rule that failed. Null when no guardrail was violated."
+    )
+    private final String guardrailViolationMessage;
+
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
     public static AIOutputBuilder<?, ?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
