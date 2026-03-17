@@ -18,11 +18,15 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
+import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.GuardrailException;
+import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -32,6 +36,7 @@ import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -314,6 +319,17 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     )
     private MemoryProvider memory;
 
+    @Schema(
+        title = "Guardrails",
+        description = """
+            Input guardrails are evaluated against the user prompt before the LLM is called.
+            Output guardrails are evaluated against the AI response before it is returned.
+            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+    )
+    @Nullable
+    @PluginProperty
+    private Guardrails guardrails;
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
@@ -343,6 +359,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 assistant.chatMemory(memory.chatMemory(runContext));
             }
 
+            GuardrailsEvaluator.applyGuardrails(guardrails, assistant, runContext);
             String renderedPrompt = runContext.render(prompt).as(String.class).orElseThrow();
             Result<AiMessage> completion = assistant.build().chat(renderedPrompt);
             runContext.logger().debug("Generated completion: {}", completion.content());
@@ -363,6 +380,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .requestDuration(output.getRequestDuration())
                 .sources(output.getSources())
                 .build();
+        } catch (final InputGuardrailException | OutputGuardrailException e) {
+            return buildGuardrailViolationOutput(runContext, e);
         } finally {
             toolProviders.forEach(tool -> tool.close(runContext));
 
@@ -372,6 +391,13 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
             TimingChatModelListener.clear();
         }
+    }
+
+    private static Output buildGuardrailViolationOutput(RunContext runContext, GuardrailException e) {
+        return Output.builder()
+            .guardrailViolated(true)
+            .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, runContext.logger()))
+            .build();
     }
 
     private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext) throws Exception {
