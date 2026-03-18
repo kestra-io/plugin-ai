@@ -139,6 +139,7 @@ import java.util.List;
                         contentBlocks:
                           - text: Summarize this document.
                           - type: PDF
+                            # Smart URI supported: kestra://, file://, or nsfile://
                             uri: "{{ outputs.upload.uri }}"
                 """
             }

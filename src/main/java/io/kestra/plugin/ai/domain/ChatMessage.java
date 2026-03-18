@@ -13,9 +13,9 @@ import java.util.List;
 public record ChatMessage(
     @Schema(title = "Message type")
     ChatMessageType type,
-    @Schema(title = "Text content", description = "Plain text message content. Must be set only when `contentBlocks` is not set.")
+    @Schema(title = "Text content", description = "Plain text message content. Mutually exclusive with `contentBlocks`.")
     String content,
-    @Schema(title = "Content blocks", description = "Multimodal message blocks (TEXT, IMAGE, PDF). Must be set only when `content` is not set.")
+    @Schema(title = "Content blocks", description = "Multimodal message blocks (TEXT, IMAGE, PDF). Mutually exclusive with `content`.")
     List<ContentBlock> contentBlocks
 ) {
     public ChatMessage {
@@ -45,8 +45,11 @@ public record ChatMessage(
 
     @Builder
     public record ContentBlock(
+        @Schema(title = "Block type", description = "Block type. Defaults to `TEXT` when omitted.")
         Type type,
+        @Schema(title = "Text", description = "Text payload, required for `TEXT` blocks.")
         String text,
+        @Schema(title = "URI", description = "URI payload for `IMAGE` and `PDF` blocks. Supported smart URI schemes: `kestra://`, `file://`, and `nsfile://`.")
         String uri
     ) {
         public Type effectiveType() {

@@ -5,36 +5,34 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import io.kestra.core.models.property.URIFetcher;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import jakarta.annotation.Nullable;
+import org.apache.tika.Tika;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
 public final class CompletionInputContentUtils {
     private static final String PDF_MIME_TYPE = "application/pdf";
+    private static final String OCTET_STREAM_MIME_TYPE = "application/octet-stream";
+    private static final Tika TIKA = new Tika();
 
     private CompletionInputContentUtils() {
     }
 
-    public static UserMessage toUserMessage(RunContext runContext, @Nullable String prompt, @Nullable List<ChatMessage.ContentBlock> promptContentBlocks) throws Exception {
-        boolean hasPrompt = prompt != null && !prompt.isBlank();
-        if (hasPrompt) {
+    public static UserMessage toUserMessage(RunContext runContext, @Nullable String prompt, @Nullable List<ChatMessage.ContentBlock> contentBlocks) throws Exception {
+        validatePromptInput("Input", prompt, contentBlocks);
+        if (prompt != null && !prompt.isBlank()) {
             return UserMessage.userMessage(prompt);
         }
 
-        if (promptContentBlocks == null || promptContentBlocks.isEmpty()) {
-            throw new IllegalArgumentException("At least one input content block must be provided.");
-        }
-
-        List<Content> contents = new ArrayList<>(promptContentBlocks.size());
-        for (ChatMessage.ContentBlock block : promptContentBlocks) {
+        List<Content> contents = new ArrayList<>(contentBlocks.size());
+        for (ChatMessage.ContentBlock block : contentBlocks) {
             contents.add(switch (block.effectiveType()) {
                 case TEXT -> toTextContent(block);
                 case IMAGE -> toImageContent(runContext, block);
@@ -42,11 +40,18 @@ public final class CompletionInputContentUtils {
             });
         }
 
-        if (contents.isEmpty()) {
-            throw new IllegalArgumentException("`promptContentBlocks` must contain at least one content block.");
-        }
-
         return UserMessage.userMessage(contents);
+    }
+
+    public static void validatePromptInput(String taskName, @Nullable String prompt, @Nullable List<ChatMessage.ContentBlock> contentBlocks) {
+        boolean hasPrompt = prompt != null && !prompt.isBlank();
+        boolean hasContentBlocks = contentBlocks != null && !contentBlocks.isEmpty();
+        if (hasPrompt && hasContentBlocks) {
+            throw new IllegalArgumentException(taskName + " accepts either `prompt` or `contentBlocks`, but not both.");
+        }
+        if (!hasPrompt && !hasContentBlocks) {
+            throw new IllegalArgumentException(taskName + " requires one input source: `prompt` or `contentBlocks`.");
+        }
     }
 
     private static TextContent toTextContent(ChatMessage.ContentBlock block) {
@@ -58,22 +63,22 @@ public final class CompletionInputContentUtils {
 
     private static ImageContent toImageContent(RunContext runContext, ChatMessage.ContentBlock block) throws Exception {
         if (block.uri() == null || block.uri().isBlank()) {
-            throw new IllegalArgumentException("IMAGE content blocks require `uri` pointing to a Kestra uploaded file.");
+            throw new IllegalArgumentException("IMAGE content blocks require `uri` pointing to a supported smart URI (`kestra://`, `file://`, or `nsfile://`).");
         }
 
         URI uri = parseUri(block.uri(), "IMAGE");
-        byte[] bytes = resolveKestraFileBytes(runContext, uri, "IMAGE");
+        byte[] bytes = resolveUriBytes(runContext, uri, "IMAGE");
         String mediaType = resolveImageMediaType(bytes);
         return ImageContent.from(Base64.getEncoder().encodeToString(bytes), mediaType);
     }
 
     private static PdfFileContent toPdfContent(RunContext runContext, ChatMessage.ContentBlock block) throws Exception {
         if (block.uri() == null || block.uri().isBlank()) {
-            throw new IllegalArgumentException("PDF content blocks require `uri` pointing to a Kestra uploaded file.");
+            throw new IllegalArgumentException("PDF content blocks require `uri` pointing to a supported smart URI (`kestra://`, `file://`, or `nsfile://`).");
         }
 
         URI uri = parseUri(block.uri(), "PDF");
-        byte[] bytes = resolveKestraFileBytes(runContext, uri, "PDF");
+        byte[] bytes = resolveUriBytes(runContext, uri, "PDF");
         return PdfFileContent.from(Base64.getEncoder().encodeToString(bytes), PDF_MIME_TYPE);
     }
 
@@ -85,25 +90,18 @@ public final class CompletionInputContentUtils {
         }
     }
 
-    private static byte[] resolveKestraFileBytes(RunContext runContext, URI uri, String blockType) throws Exception {
-        if (!"kestra".equalsIgnoreCase(uri.getScheme())) {
-            throw new IllegalArgumentException(blockType + " content supports only Kestra uploaded files (`kestra://...`).");
-        }
-
-        try (InputStream inputStream = runContext.storage().getFile(uri)) {
+    private static byte[] resolveUriBytes(RunContext runContext, URI uri, String blockType) throws Exception {
+        try (InputStream inputStream = URIFetcher.of(uri).fetch(runContext)) {
             return inputStream.readAllBytes();
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to read " + blockType + " file from Kestra storage uri `" + uri + "`.", e);
+            throw new IllegalArgumentException("Unable to read " + blockType + " file from uri `" + uri + "`.", e);
         }
     }
 
     private static String resolveImageMediaType(byte[] bytes) throws Exception {
-        String mediaType;
-        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes)) {
-            mediaType = URLConnection.guessContentTypeFromStream(stream);
-        }
+        String mediaType = TIKA.detect(bytes);
 
-        if (mediaType == null || mediaType.isBlank()) {
+        if (mediaType == null || mediaType.isBlank() || OCTET_STREAM_MIME_TYPE.equalsIgnoreCase(mediaType)) {
             throw new IllegalArgumentException("Unable to detect IMAGE media type.");
         }
         if (!mediaType.startsWith("image/")) {

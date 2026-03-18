@@ -30,6 +30,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
@@ -84,7 +85,6 @@ class JSONStructuredExtractionTest extends ContainerTest {
         // GIVEN
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "prompt", "Hello, my name is Alice, I live in London.",
                 "schemaName", "Person",
                 "jsonFields", List.of("name", "city"),
                 "modelName", "tinydolphin",
@@ -93,7 +93,13 @@ class JSONStructuredExtractionTest extends ContainerTest {
         );
 
         JSONStructuredExtraction task = JSONStructuredExtraction.builder()
-            .prompt(Property.ofExpression("{{ prompt }}"))
+            .contentBlocks(Property.ofValue(
+                List.of(
+                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                        .text("Hello, my name is Alice, I live in London.")
+                        .build()
+                )
+            ))
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(
@@ -388,5 +394,37 @@ class JSONStructuredExtractionTest extends ContainerTest {
         assertThat(output.getGuardrailViolationMessage(), containsString("Prompt exceeds strict limit"));
         assertThat(output.getGuardrailViolationMessage(), not(containsString("Should never be reached")));
         assertThat(output.getExtractedJson(), nullValue());
+    }
+
+    @Test
+    void shouldFailWhenBothPromptAndContentBlocksAreProvided() {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        JSONStructuredExtraction task = JSONStructuredExtraction.builder()
+            .prompt(Property.ofValue("hello"))
+            .contentBlocks(Property.ofValue(
+                List.of(
+                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                        .text("hello")
+                        .build()
+                )
+            ))
+            .schemaName(Property.ofValue("Person"))
+            .jsonFields(Property.ofValue(List.of("name")))
+            .build();
+
+        assertThrows(IllegalArgumentException.class, () -> task.run(runContext));
+    }
+
+    @Test
+    void shouldFailWhenNeitherPromptNorContentBlocksAreProvided() {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        JSONStructuredExtraction task = JSONStructuredExtraction.builder()
+            .schemaName(Property.ofValue("Person"))
+            .jsonFields(Property.ofValue(List.of("name")))
+            .build();
+
+        assertThrows(IllegalArgumentException.class, () -> task.run(runContext));
     }
 }
