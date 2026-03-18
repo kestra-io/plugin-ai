@@ -10,11 +10,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import java.time.Duration;
-import java.util.List;
-
-import org.slf4j.Logger;
-
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -25,28 +20,20 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
-import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
-
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
@@ -61,7 +48,7 @@ import java.util.List;
 @Schema(
     title = "Extract JSON fields from text",
     description = """
-        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given input (`prompt` or `promptContentBlocks`). Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
+        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given input (`prompt` or `contentBlocks`). Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
 )
 @Plugin(
     examples = {
@@ -161,15 +148,16 @@ import java.util.List;
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
-    @Schema(title = "Text prompt", description = "Text input for structured JSON extraction. Use either `prompt` or `promptContentBlocks`.")
+    @Schema(title = "Text prompt", description = "Text input for structured JSON extraction. Use either `prompt` or `contentBlocks`.")
+    @Nullable
     private Property<String> prompt;
 
     @Schema(
-        title = "Prompt content blocks",
-        description = "Multimodal input blocks for extraction (TEXT, IMAGE, PDF). Use either `prompt` or `promptContentBlocks`."
+        title = "Content blocks",
+        description = "Multimodal input blocks for extraction (TEXT, IMAGE, PDF). Use either `prompt` or `contentBlocks`. For IMAGE/PDF `uri`, supported smart URI schemes are `kestra://`, `file://`, and `nsfile://`."
     )
     @Nullable
-    private Property<List<ChatMessage.ContentBlock>> promptContentBlocks;
+    private Property<List<ChatMessage.ContentBlock>> contentBlocks;
 
     @Schema(title = "System message", description = "Optional system instruction for the model.")
     @Builder.Default
@@ -212,8 +200,8 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         Logger logger = runContext.logger();
 
         String rPrompt = prompt == null ? null : runContext.render(prompt).as(String.class).orElse(null);
-        List<ChatMessage.ContentBlock> rPromptContentBlocks = promptContentBlocks == null ? null : runContext.render(promptContentBlocks).asList(ChatMessage.ContentBlock.class);
-        validatePromptInput(rPrompt, rPromptContentBlocks);
+        List<ChatMessage.ContentBlock> rContentBlocks = contentBlocks == null ? null : runContext.render(contentBlocks).asList(ChatMessage.ContentBlock.class);
+        CompletionInputContentUtils.validatePromptInput("JSONStructuredExtraction", rPrompt, rContentBlocks);
 
         String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
@@ -242,7 +230,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
                 .build())
             .messages(List.of(
                 SystemMessage.systemMessage(rSystemMessage),
-                CompletionInputContentUtils.toUserMessage(runContext, rPrompt, rPromptContentBlocks)
+                CompletionInputContentUtils.toUserMessage(runContext, rPrompt, rContentBlocks)
             ))
             .build();
 
@@ -307,14 +295,4 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         return schemaBuilder.build();
     }
 
-    private void validatePromptInput(String prompt, List<ChatMessage.ContentBlock> promptContentBlocks) {
-        boolean hasPrompt = prompt != null && !prompt.isBlank();
-        boolean hasPromptContentBlocks = promptContentBlocks != null && !promptContentBlocks.isEmpty();
-        if (hasPrompt && hasPromptContentBlocks) {
-            throw new IllegalArgumentException("JSONStructuredExtraction accepts either `prompt` or `promptContentBlocks`, but not both.");
-        }
-        if (!hasPrompt && !hasPromptContentBlocks) {
-            throw new IllegalArgumentException("JSONStructuredExtraction requires one input source: `prompt` or `promptContentBlocks`.");
-        }
-    }
 }

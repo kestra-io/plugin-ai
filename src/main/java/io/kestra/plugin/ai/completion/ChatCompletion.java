@@ -1,11 +1,18 @@
 package io.kestra.plugin.ai.completion;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-
-import org.slf4j.Logger;
-
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -17,25 +24,23 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
-import io.kestra.plugin.ai.domain.*;
+import io.kestra.plugin.ai.domain.AIOutput;
+import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.Guardrails;
+import io.kestra.plugin.ai.domain.ModelProvider;
+import io.kestra.plugin.ai.domain.TokenUsage;
+import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
-
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.guardrail.InputGuardrailException;
-import dev.langchain4j.guardrail.OutputGuardrailException;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
@@ -136,6 +141,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                         contentBlocks:
                           - text: Summarize this document.
                           - type: PDF
+                            # Smart URI supported: kestra://, file://, or nsfile://
                             uri: "{{ outputs.upload.uri }}"
                 """
             }
@@ -286,6 +292,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                     );
                     throw new ToolArgumentsException(error);
                 })
+                .toolExecutionErrorHandler((error, context) ->
+                {
+                    runContext.logger()
+                        .error("An error occurred during tool execution for tool {} with request ID {}", context.toolExecutionRequest().name(), context.toolExecutionRequest().id(), error);
+                    throw new ToolExecutionException(error);
                 });
 
             GuardrailsEvaluator.applyGuardrails(guardrails, builder, runContext);
@@ -366,7 +377,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     private List<ChatMessage.ContentBlock> resolveContents(ChatMessage message) {
         List<ChatMessage.ContentBlock> contents = message.effectiveContents();
         if (contents.isEmpty()) {
-            throw new IllegalArgumentException("Message type " + message.type() + " must define either `content` (legacy) or `contentBlocks`.");
+            throw new IllegalArgumentException("Message type " + message.type() + " must define either `content` or `contentBlocks`.");
         }
         return contents;
     }
