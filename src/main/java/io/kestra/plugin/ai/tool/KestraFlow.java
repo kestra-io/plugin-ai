@@ -442,7 +442,7 @@ public class KestraFlow extends ToolProvider {
 
                 var execution = Execution.newExecution(flowInterface, (f, e) -> finalInputs, finalLabels, scheduledDate);
 
-                var executionQueue = (QueueInterface<Execution>) runContext.services().additionalServices(QueueInterface.class, Qualifiers.byName(QueueFactoryInterface.EXECUTION_NAMED));
+                var executionQueue = (QueueInterface<Execution>) runContext.getApplicationContext().getBean(QueueInterface.class, Qualifiers.byName(QueueFactoryInterface.EXECUTION_NAMED));
                 executionQueue.emit(execution);
 
                 return JacksonMapper.ofJson().writeValueAsString(execution);
