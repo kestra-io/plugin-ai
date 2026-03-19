@@ -277,7 +277,7 @@ public class KestraFlow extends ToolProvider {
             var rRevision = runContext.render(this.revision).as(Integer.class, additionalVariables);
 
             var defaultRunContext = (DefaultRunContext) runContext;
-            var flowMetaStoreInterface = defaultRunContext.getApplicationContext().getBean(FlowMetaStoreInterface.class);
+            var flowMetaStoreInterface = defaultRunContext.services().additionalServices(FlowMetaStoreInterface.class);
             var flowInfo = runContext.flowInfo();
             var flowInterface = flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), rNamespace, rFlowId, rRevision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
                 .orElseThrow(() -> new IllegalArgumentException("Unable to find flow at '" + rFlowId + "' in namespace '" + rNamespace + "'"));
@@ -377,7 +377,7 @@ public class KestraFlow extends ToolProvider {
             var flowId = (String) parameters.get("flowId");
             var revision = Optional.ofNullable((Integer) parameters.get("revision"));
 
-            var flowMetaStoreInterface = runContext.getApplicationContext().getBean(FlowMetaStoreInterface.class);
+            var flowMetaStoreInterface = runContext.services().additionalServices(FlowMetaStoreInterface.class);
             var flowInfo = runContext.flowInfo();
             return flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), namespace, flowId, revision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
                 .orElseThrow(() -> new ToolExecutionException("Flow not found: " + namespace + "." + flowId));
@@ -442,7 +442,7 @@ public class KestraFlow extends ToolProvider {
 
                 var execution = Execution.newExecution(flowInterface, (f, e) -> finalInputs, finalLabels, scheduledDate);
 
-                var executionQueue = (QueueInterface<Execution>) runContext.getApplicationContext().getBean(QueueInterface.class, Qualifiers.byName(QueueFactoryInterface.EXECUTION_NAMED));
+                var executionQueue = (QueueInterface<Execution>) runContext.services().additionalServices(QueueInterface.class, Qualifiers.byName(QueueFactoryInterface.EXECUTION_NAMED));
                 executionQueue.emit(execution);
 
                 return JacksonMapper.ofJson().writeValueAsString(execution);
