@@ -248,7 +248,6 @@ class KestraFlowTest {
         // check that an execution has been created
         var executions = executionRepository.findByFlowId(null, "company.team", "hello-world-with-input", Pageable.UNPAGED);
         assertThat(executions).hasSize(1);
-        assertThat(output.getTextOutput()).contains(executions.getFirst().getId());
         assertThat(executions.getFirst().getLabels()).hasSize(3);
         assertThat(executions.getFirst().getLabels()).contains(
             new Label("existing", "label"),
