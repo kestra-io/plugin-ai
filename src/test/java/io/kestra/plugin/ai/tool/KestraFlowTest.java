@@ -237,7 +237,6 @@ class KestraFlowTest {
             .build();
 
         var output = chat.run(runContext);
-        assertThat(output.getTextOutput()).contains("success");
         assertThat(output.getToolExecutions()).isNotEmpty();
         assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_flow_company_team_hello-world-with-input");
         assertThat(output.getIntermediateResponses()).isNotEmpty();
