@@ -1,11 +1,18 @@
 package io.kestra.plugin.ai.completion;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-
-import org.slf4j.Logger;
-
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -17,26 +24,30 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
-import io.kestra.plugin.ai.domain.*;
+import io.kestra.plugin.ai.domain.AIOutput;
+import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.domain.Guardrails;
+import io.kestra.plugin.ai.domain.ModelProvider;
+import io.kestra.plugin.ai.domain.TokenUsage;
+import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
-
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.guardrail.InputGuardrailException;
-import dev.langchain4j.guardrail.OutputGuardrailException;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static io.kestra.plugin.ai.domain.ChatMessageType.*;
 
@@ -111,6 +122,31 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
             }
         ),
         @Example(
+            title = "Chat completion with mixed text and PDF content",
+            full = true,
+            code = {
+                """
+                id: chat_completion_with_pdf
+                namespace: company.ai
+
+                tasks:
+                  - id: chat_completion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-4o-mini
+                    messages:
+                      - type: USER
+                        contentBlocks:
+                          - text: Summarize this document.
+                          - type: PDF
+                            # Smart URI supported: kestra://, file://, or nsfile://
+                            uri: "{{ outputs.upload.uri }}"
+                """
+            }
+        ),
+        @Example(
             full = true,
             title = """
                 Extract structured outputs with a JSON schema.
@@ -171,10 +207,9 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
     aliases = { "io.kestra.plugin.langchain4j.ChatCompletion", "io.kestra.plugin.langchain4j.completion.ChatCompletion" }
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
-
     @Schema(
         title = "Chat Messages",
-        description = "The list of chat messages for the current conversation. There can be only one system message, and the last message must be a user message"
+        description = "The list of chat messages for the current conversation. A `ChatMessage` can either be text (using `content`) or a multi-block multimodal message (using `contentBlocks`). There can be only one system message, and the last message must be a user message."
     )
     @NotNull
     protected Property<List<ChatMessage>> messages;
@@ -211,7 +246,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
         // Render existing messages
         List<ChatMessage> renderedChatMessagesInput = runContext.render(messages).asList(ChatMessage.class);
-        List<dev.langchain4j.data.message.ChatMessage> chatMessages = convertMessages(renderedChatMessagesInput);
+        List<dev.langchain4j.data.message.ChatMessage> chatMessages = convertMessages(runContext, renderedChatMessagesInput);
 
         long nbSystemMessages = chatMessages.stream().filter(msg -> msg.type() == dev.langchain4j.data.message.ChatMessageType.SYSTEM).count();
         if (nbSystemMessages > 1) {
@@ -266,7 +301,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
             GuardrailsEvaluator.applyGuardrails(guardrails, builder, runContext);
 
-            Result<AiMessage> aiResponse = builder.build().chat(((UserMessage) chatMessages.getLast()).singleText());
+            Result<AiMessage> aiResponse = builder.build().chat(((UserMessage) chatMessages.getLast()).contents());
             logger.debug("AI Response: {}", aiResponse.content());
 
             // send metrics for token usage
@@ -301,17 +336,50 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     }
 
     interface Assistant {
-        Result<AiMessage> chat(@dev.langchain4j.service.UserMessage String chatMessage);
+        Result<AiMessage> chat(List<Content> chatMessage);
     }
 
-    private List<dev.langchain4j.data.message.ChatMessage> convertMessages(List<ChatMessage> messages) {
-        return messages.stream()
-            .map(dto -> switch (dto.type()) {
-                case SYSTEM -> SystemMessage.systemMessage(dto.content());
-                case AI -> AiMessage.aiMessage(dto.content());
-                case USER -> UserMessage.userMessage(dto.content());
-            })
-            .toList();
+    List<dev.langchain4j.data.message.ChatMessage> convertMessages(RunContext runContext, List<ChatMessage> messages) throws Exception {
+        List<dev.langchain4j.data.message.ChatMessage> converted = new ArrayList<>(messages.size());
+        for (ChatMessage message : messages) {
+            converted.add(switch (message.type()) {
+                case SYSTEM -> SystemMessage.systemMessage(resolveTextOnlyMessage(message));
+                case AI -> AiMessage.aiMessage(resolveTextOnlyMessage(message));
+                case USER -> CompletionInputContentUtils.toUserMessage(runContext, message.content(), message.contentBlocks());
+            });
+        }
+        return converted;
+    }
+
+    private String resolveTextOnlyMessage(ChatMessage message) {
+        List<ChatMessage.ContentBlock> blocks = resolveContents(message);
+        StringBuilder builder = new StringBuilder();
+
+        for (ChatMessage.ContentBlock block : blocks) {
+            if (block.effectiveType() != ChatMessage.ContentBlock.Type.TEXT) {
+                throw new IllegalArgumentException("Only TEXT content blocks are supported for " + message.type() + " messages.");
+            }
+            if (block.text() == null || block.text().isBlank()) {
+                throw new IllegalArgumentException("TEXT content blocks require a non-empty `text` field.");
+            }
+            if (!builder.isEmpty()) {
+                builder.append('\n');
+            }
+            builder.append(block.text());
+        }
+
+        if (builder.isEmpty()) {
+            throw new IllegalArgumentException("Message type " + message.type() + " requires non-empty text content.");
+        }
+        return builder.toString();
+    }
+
+    private List<ChatMessage.ContentBlock> resolveContents(ChatMessage message) {
+        List<ChatMessage.ContentBlock> contents = message.effectiveContents();
+        if (contents.isEmpty()) {
+            throw new IllegalArgumentException("Message type " + message.type() + " must define either `content` or `contentBlocks`.");
+        }
+        return contents;
     }
 
     @Override

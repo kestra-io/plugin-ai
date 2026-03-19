@@ -1,12 +1,9 @@
 package io.kestra.plugin.ai.completion;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import org.slf4j.Logger;
-
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -18,21 +15,26 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
-
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @SuperBuilder
 @ToString
@@ -42,7 +44,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(
     title = "Classify text into provided classes",
     description = """
-        Uses an LLM to assign the prompt to exactly one category from `classes`. A default system prompt forces a single-label reply; override it if you need different behavior. Output includes token usage and finish reason."""
+        Uses an LLM to assign the input (`prompt` or `contentBlocks`) to exactly one category from `classes`. A default system prompt forces a single-label reply; override it if you need different behavior. Output includes token usage and finish reason."""
 )
 @Plugin(
     examples = {
@@ -94,9 +96,16 @@ import lombok.experimental.SuperBuilder;
 )
 public class Classification extends Task implements RunnableTask<Classification.Output> {
 
-    @Schema(title = "Text prompt", description = "The input text to classify")
-    @NotNull
+    @Schema(title = "Text prompt", description = "Text input to classify. Use either `prompt` or `contentBlocks`.")
+    @Nullable
     private Property<String> prompt;
+
+    @Schema(
+        title = "Content blocks",
+        description = "Multimodal input blocks for classification (TEXT, IMAGE, PDF). Use either `prompt` or `contentBlocks`. For IMAGE/PDF `uri`, supported smart URI schemes are `kestra://`, `file://`, and `nsfile://`."
+    )
+    @Nullable
+    private Property<List<ChatMessage.ContentBlock>> contentBlocks;
 
     @Schema(
         title = "Optional system message",
@@ -137,7 +146,9 @@ public class Classification extends Task implements RunnableTask<Classification.
     public Classification.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow();
+        String rPrompt = prompt == null ? null : runContext.render(prompt).as(String.class).orElse(null);
+        List<ChatMessage.ContentBlock> rContentBlocks = contentBlocks == null ? null : runContext.render(contentBlocks).asList(ChatMessage.ContentBlock.class);
+        CompletionInputContentUtils.validatePromptInput("Classification", rPrompt, rContentBlocks);
         List<String> rClasses = runContext.render(classes).asList(String.class);
         String rSystemMessage = runContext.render(systemMessage).as(String.class, Map.of("classes", rClasses)).orElseThrow();
 
@@ -149,7 +160,7 @@ public class Classification extends Task implements RunnableTask<Classification.
 
         List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(SystemMessage.systemMessage(rSystemMessage));
-        chatMessages.add(UserMessage.userMessage(rPrompt));
+        chatMessages.add(CompletionInputContentUtils.toUserMessage(runContext, rPrompt, rContentBlocks));
 
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
         ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
