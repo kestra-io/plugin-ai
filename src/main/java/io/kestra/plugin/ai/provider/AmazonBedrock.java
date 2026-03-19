@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.services().bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 @Getter
 @SuperBuilder
