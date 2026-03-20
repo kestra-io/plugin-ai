@@ -60,7 +60,7 @@ import lombok.experimental.SuperBuilder;
                       password: secret
                       tableName: my_custom_memory_table
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.first}}"
+                    prompt: "{{ inputs.first }}"
                 """
         )
     }

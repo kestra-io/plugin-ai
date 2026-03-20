@@ -68,7 +68,7 @@ public class KestraKVStore extends EmbeddingStoreProvider {
 
     @Schema(title = "The name of the KV pair to use")
     @Builder.Default
-    private Property<String> kvName = Property.ofExpression("{{flow.id}}-embedding-store");
+    private Property<String> kvName = Property.ofExpression("{{ flow.id }}-embedding-store");
 
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {

@@ -75,7 +75,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
                           - type: USER
-                            content: "{{inputs.prompt}}"
+                            content: "{{ inputs.prompt }}"
                     """
             }
         ),
@@ -102,7 +102,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
                           - type: USER
-                            content: "{{inputs.prompt}}"
+                            content: "{{ inputs.prompt }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.GoogleCustomWebSearch
                             apiKey: "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
@@ -144,7 +144,7 @@ import static io.kestra.plugin.ai.domain.ChatMessageType.*;
                               type: string
                       messages:
                       - type: USER
-                        content: "{{inputs.prompt}}"
+                        content: "{{ inputs.prompt }}"
                 """
         )
     },

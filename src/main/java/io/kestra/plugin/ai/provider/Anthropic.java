@@ -62,7 +62,7 @@ import lombok.experimental.SuperBuilder;
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
                           - type: USER
-                            content: "{{inputs.prompt}}"
+                            content: "{{ inputs.prompt }}"
                     """
             }
         )

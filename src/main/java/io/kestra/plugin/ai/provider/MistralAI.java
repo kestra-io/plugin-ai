@@ -64,7 +64,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
                           - type: USER
-                            content: "{{inputs.prompt}}"
+                            content: "{{ inputs.prompt }}"
                     """
             }
         )
