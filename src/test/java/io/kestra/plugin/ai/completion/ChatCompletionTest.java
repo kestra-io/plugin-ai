@@ -540,6 +540,38 @@ class ChatCompletionTest extends ContainerTest {
 
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
     @Test
+    void testChatCompletionAnthropicAI_givenPromptCachingEnabled() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
+                "apiKey", ANTHROPIC_API_KEY,
+                "messages", List.of(
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).promptCaching(Property.ofValue(true)).build())
+            .provider(
+                Anthropic.builder()
+                    .type(Anthropic.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+    }
+
+    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
+    @Test
     void testChatCompletionAnthropicAI() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
