@@ -97,6 +97,15 @@ public class ChatConfiguration {
     @Nullable
     private Property<Integer> maxToken;
 
+    @Schema(
+        title = "Enable Prompt Caching",
+        description = """
+            When enabled, instructs the provider to cache system messages and tool definitions across requests.
+            This can significantly reduce latency and cost for repeated calls with the same system prompt or tools.
+            Currently supported by Anthropic only; other providers silently ignore this setting."""
+    )
+    private Property<Boolean> promptCaching;
+
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
         if (responseFormat == null) {
             return dev.langchain4j.model.chat.request.ResponseFormat.TEXT;

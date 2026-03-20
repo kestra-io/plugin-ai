@@ -69,7 +69,7 @@ import redis.clients.jedis.Jedis;
                       host: localhost
                       port: 6379
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.first}}"
+                    prompt: "{{ inputs.first }}"
 
                   - id: second
                     type: io.kestra.plugin.ai.rag.ChatCompletion
@@ -89,7 +89,7 @@ import redis.clients.jedis.Jedis;
                       port: 6379
                       drop: AFTER_TASKRUN
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.second}}"
+                    prompt: "{{ inputs.second }}"
                 """
         )
     }

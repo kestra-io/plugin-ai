@@ -267,7 +267,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             title = """
                 Perform market research with an AI Agent using a web search retriever and save the findings as a Markdown report.
                 The retriever gathers up-to-date information, the agent summarizes it, and the filesystem tool writes the result to the task working directory.
-                Mount {{workingDir}} to a container path (e.g., /tmp) so the generated report file is accessible and can be collected with `outputFiles`.""",
+                Mount {{ workingDir }} to a container path (e.g., /tmp) so the generated report file is accessible and can be collected with `outputFiles`.""",
             code = """
                 id: market_research_agent
                 namespace: company.ai
@@ -310,7 +310,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       - type: io.kestra.plugin.ai.tool.DockerMcpClient
                         image: mcp/filesystem
                         command: ["/tmp"]
-                        binds: ["{{workingDir}}:/tmp"] # mount host_path:container_path to access the generated report
+                        binds: ["{{ workingDir }}:/tmp"] # mount host_path:container_path to access the generated report
                     outputFiles:
                       - report.md
                 """

@@ -157,7 +157,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       type: io.kestra.plugin.ai.memory.KestraKVStore
                       ttl: PT1M
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.first}}"
+                    prompt: "{{ inputs.first }}"
 
                   - id: second
                     type: io.kestra.plugin.ai.rag.ChatCompletion
@@ -171,7 +171,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     memory:
                       type: io.kestra.plugin.ai.memory.KestraKVStore
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.second}}"
+                    prompt: "{{ inputs.second }}"
 
                 pluginDefaults:
                   - type: io.kestra.plugin.ai.provider.GoogleGemini
