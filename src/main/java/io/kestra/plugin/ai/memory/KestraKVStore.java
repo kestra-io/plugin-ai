@@ -69,7 +69,7 @@ import lombok.experimental.SuperBuilder;
                     memory:
                       type: io.kestra.plugin.ai.memory.KestraKVStore
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.first}}"
+                    prompt: "{{ inputs.first }}"
 
                   - id: second
                     type: io.kestra.plugin.ai.rag.ChatCompletion
@@ -87,7 +87,7 @@ import lombok.experimental.SuperBuilder;
                       type: io.kestra.plugin.ai.memory.KestraKVStore
                       drop: AFTER_TASKRUN
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{inputs.second}}"
+                    prompt: "{{ inputs.second }}"
                 """
         ),
     },

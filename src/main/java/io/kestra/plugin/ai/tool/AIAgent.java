@@ -64,7 +64,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                           modelName: gemini-2.5-flash
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         systemMessage: Summarize the user message, then translate it into French using the provided tool.
-                        prompt: "{{inputs.prompt}}"
+                        prompt: "{{ inputs.prompt }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.AIAgent
                             description: Translation expert

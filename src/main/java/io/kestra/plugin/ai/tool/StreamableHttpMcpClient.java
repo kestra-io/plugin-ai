@@ -43,7 +43,7 @@ import lombok.experimental.SuperBuilder;
                     tasks:
                       - id: agent
                         type: io.kestra.plugin.ai.agent.AIAgent
-                        prompt: "{{inputs.prompt}}"
+                        prompt: "{{ inputs.prompt }}"
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-2.5-flash

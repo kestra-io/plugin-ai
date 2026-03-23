@@ -82,7 +82,7 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                             image: mcp/filesystem
                             command: ["/tmp"]
                             # Mount the container path to the task working directory to access the generated file
-                            binds: ["{{workingDir}}:/tmp"]
+                            binds: ["{{ workingDir }}:/tmp"]
                         outputFiles:
                           - hello.txt"""
             }
