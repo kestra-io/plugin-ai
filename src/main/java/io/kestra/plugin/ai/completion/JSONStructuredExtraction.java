@@ -1,10 +1,15 @@
 package io.kestra.plugin.ai.completion;
 
-import java.time.Duration;
-import java.util.List;
-
-import org.slf4j.Logger;
-
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -16,27 +21,24 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
+import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
-
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+
+import java.time.Duration;
+import java.util.List;
 
 @SuperBuilder
 @ToString
@@ -46,7 +48,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(
     title = "Extract JSON fields from text",
     description = """
-        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given prompt. Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
+        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given input (`prompt` or `contentBlocks`). Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
 )
 @Plugin(
     examples = {
@@ -146,8 +148,16 @@ import lombok.experimental.SuperBuilder;
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
-    @Schema(title = "Text prompt", description = "The input text for structured JSON extraction.")
+    @Schema(title = "Text prompt", description = "Text input for structured JSON extraction. Use either `prompt` or `contentBlocks`.")
+    @Nullable
     private Property<String> prompt;
+
+    @Schema(
+        title = "Content blocks",
+        description = "Multimodal input blocks for extraction (TEXT, IMAGE, PDF). Use either `prompt` or `contentBlocks`. For IMAGE/PDF `uri`, supported smart URI schemes are `kestra://`, `file://`, and `nsfile://`."
+    )
+    @Nullable
+    private Property<List<ChatMessage.ContentBlock>> contentBlocks;
 
     @Schema(title = "System message", description = "Optional system instruction for the model.")
     @Builder.Default
@@ -189,7 +199,9 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     public JSONStructuredExtraction.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rPrompt = runContext.render(prompt).as(String.class).orElseThrow(() -> new IllegalArgumentException("Prompt must be provided for structured extraction"));
+        String rPrompt = prompt == null ? null : runContext.render(prompt).as(String.class).orElse(null);
+        List<ChatMessage.ContentBlock> rContentBlocks = contentBlocks == null ? null : runContext.render(contentBlocks).asList(ChatMessage.ContentBlock.class);
+        CompletionInputContentUtils.validatePromptInput("JSONStructuredExtraction", rPrompt, rContentBlocks);
 
         String rSchemaName = runContext.render(schemaName).as(String.class).orElseThrow();
         List<String> rJsonFields = Property.asList(jsonFields, runContext, String.class);
@@ -213,17 +225,13 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
             .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-            .parameters(
-                ChatRequestParameters.builder()
-                    .responseFormat(responseFormat)
-                    .build()
-            )
-            .messages(
-                List.of(
-                    SystemMessage.systemMessage(rSystemMessage),
-                    UserMessage.userMessage(rPrompt)
-                )
-            )
+            .parameters(ChatRequestParameters.builder()
+                .responseFormat(responseFormat)
+                .build())
+            .messages(List.of(
+                SystemMessage.systemMessage(rSystemMessage),
+                CompletionInputContentUtils.toUserMessage(runContext, rPrompt, rContentBlocks)
+            ))
             .build();
 
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
@@ -286,4 +294,5 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         schemaBuilder.required(fields);
         return schemaBuilder.build();
     }
+
 }

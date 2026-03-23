@@ -27,6 +27,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @KestraTest
 class ClassificationTest extends ContainerTest {
@@ -74,7 +75,6 @@ class ClassificationTest extends ContainerTest {
         // GIVEN
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "prompt", "Is 'This is a joke' a good joke?",
                 "classes", List.of("true", "false"),
                 "modelName", "tinydolphin",
                 "endpoint", ollamaEndpoint
@@ -82,7 +82,13 @@ class ClassificationTest extends ContainerTest {
         );
 
         Classification task = Classification.builder()
-            .prompt(Property.ofExpression("{{ prompt }}"))
+            .contentBlocks(Property.ofValue(
+                List.of(
+                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                        .text("Is 'This is a joke' a good joke?")
+                        .build()
+                )
+            ))
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(
                 Ollama.builder()
@@ -322,5 +328,35 @@ class ClassificationTest extends ContainerTest {
         assertThat(output.getGuardrailViolationMessage(), containsString("Prompt exceeds strict limit"));
         assertThat(output.getGuardrailViolationMessage(), not(containsString("Should never be reached")));
         assertThat(output.getClassification(), nullValue());
+    }
+
+    @Test
+    void shouldFailWhenBothPromptAndContentBlocksAreProvided() {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        Classification task = Classification.builder()
+            .prompt(Property.ofValue("hello"))
+            .contentBlocks(Property.ofValue(
+                List.of(
+                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                        .text("hello")
+                        .build()
+                )
+            ))
+            .classes(Property.ofValue(List.of("true", "false")))
+            .build();
+
+        assertThrows(IllegalArgumentException.class, () -> task.run(runContext));
+    }
+
+    @Test
+    void shouldFailWhenNeitherPromptNorContentBlocksAreProvided() {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        Classification task = Classification.builder()
+            .classes(Property.ofValue(List.of("true", "false")))
+            .build();
+
+        assertThrows(IllegalArgumentException.class, () -> task.run(runContext));
     }
 }
