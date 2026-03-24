@@ -80,7 +80,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-watsonx"
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
-    implementation "org.apache.tika:tika-core:3.2.3"
+    implementation "org.apache.tika:tika-core:3.3.0"
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
 
