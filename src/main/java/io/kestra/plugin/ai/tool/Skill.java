@@ -66,6 +66,41 @@ import lombok.experimental.SuperBuilder;
                                   3. Keep proper nouns unchanged"""
             }
         ),
+        @Example(
+            title = "Load skill content from Kestra internal storage",
+            full = true,
+            code = {
+                """
+                    id: agent_with_skill_from_storage
+                    namespace: company.ai
+
+                    tasks:
+                      - id: load_instructions
+                        type: io.kestra.core.tasks.storages.LocalFiles
+                        inputs:
+                          coding_guidelines.md: |
+                            You are a senior code reviewer. When reviewing code:
+                            1. Check for security vulnerabilities
+                            2. Ensure proper error handling
+                            3. Verify naming conventions are followed
+                            4. Flag any code duplication
+
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        prompt: Review this Python function - "def add(a, b): return a + b"
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          modelName: gemini-2.5-flash
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                        tools:
+                          - type: io.kestra.plugin.ai.tool.Skill
+                            skills:
+                              - name: code_review_expert
+                                description: Expert code reviewer with strict guidelines
+                                contentUri: "{{ outputs.load_instructions.uris['coding_guidelines.md'] }}"
+                """
+            }
+        ),
     }
 )
 @JsonDeserialize
