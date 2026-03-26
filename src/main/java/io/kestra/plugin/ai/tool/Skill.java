@@ -2,7 +2,8 @@ package io.kestra.plugin.ai.tool;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -14,18 +15,15 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.skills.DefaultSkill;
 import dev.langchain4j.skills.DefaultSkillResource;
+import dev.langchain4j.skills.Skills;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -75,15 +73,14 @@ import lombok.experimental.SuperBuilder;
                     namespace: company.ai
 
                     tasks:
-                      - id: load_instructions
-                        type: io.kestra.core.tasks.storages.LocalFiles
-                        inputs:
-                          coding_guidelines.md: |
-                            You are a senior code reviewer. When reviewing code:
-                            1. Check for security vulnerabilities
-                            2. Ensure proper error handling
-                            3. Verify naming conventions are followed
-                            4. Flag any code duplication
+                      - id: write_instructions
+                        type: io.kestra.plugin.core.storage.Write
+                        content: |
+                          You are a senior code reviewer. When reviewing code:
+                          1. Check for security vulnerabilities
+                          2. Ensure proper error handling
+                          3. Verify naming conventions are followed
+                          4. Flag any code duplication
 
                       - id: agent
                         type: io.kestra.plugin.ai.agent.AIAgent
@@ -97,7 +94,7 @@ import lombok.experimental.SuperBuilder;
                             skills:
                               - name: code_review_expert
                                 description: Expert code reviewer with strict guidelines
-                                contentUri: "{{ outputs.load_instructions.uris['coding_guidelines.md'] }}"
+                                contentUri: "{{ outputs.write_instructions.uri }}"
                 """
             }
         ),
@@ -135,58 +132,17 @@ public class Skill extends ToolProvider {
             throw new IllegalArgumentException("At least one skill must be defined");
         }
 
-        // Build a map for quick lookup by name
-        var skillMap = new HashMap<String, dev.langchain4j.skills.Skill>();
+        // Validate no duplicate skill names
+        var seenNames = new HashSet<String>();
         for (var skill : skillList) {
-            skillMap.put(skill.name(), skill);
+            if (!seenNames.add(skill.name())) {
+                throw new IllegalArgumentException("Duplicate skill name: '" + skill.name() + "'. Each skill must have a unique name.");
+            }
         }
 
-        // Build a concise skill catalog for the tool description
-        var catalogBuilder = new StringBuilder();
-        for (var skill : skillList) {
-            catalogBuilder.append("- ").append(skill.name()).append(": ").append(skill.description()).append("\n");
-        }
-
-        var tools = new HashMap<ToolSpecification, ToolExecutor>();
-
-        // activate_skill tool
-        var activateSpec = ToolSpecification.builder()
-            .name("activate_skill")
-            .description("Activates a skill and returns its content. Available skills:\n" + catalogBuilder)
-            .parameters(
-                JsonObjectSchema.builder()
-                    .addProperty("skill_name", JsonStringSchema.builder()
-                        .description("The name of the skill to activate")
-                        .build())
-                    .required("skill_name")
-                    .build()
-            )
-            .build();
-        tools.put(activateSpec, new ActivateSkillExecutor(runContext, skillMap));
-
-        // read_skill_resource tool (only when at least one skill has resources)
-        var hasResources = skillList.stream()
-            .anyMatch(skill -> !ListUtils.isEmpty(skill.resources()));
-        if (hasResources) {
-            var readResourceSpec = ToolSpecification.builder()
-                .name("read_skill_resource")
-                .description("Reads a resource file attached to a skill. Provide the skill name and the relative path of the resource.")
-                .parameters(
-                    JsonObjectSchema.builder()
-                        .addProperty("skill_name", JsonStringSchema.builder()
-                            .description("The name of the skill that owns the resource")
-                            .build())
-                        .addProperty("relative_path", JsonStringSchema.builder()
-                            .description("The relative path of the resource within the skill")
-                            .build())
-                        .required("skill_name", "relative_path")
-                        .build()
-                )
-                .build();
-            tools.put(readResourceSpec, new ReadResourceExecutor(runContext, skillMap));
-        }
-
-        return tools;
+        var skills = Skills.from(skillList);
+        var result = skills.toolProvider().provideTools(ToolProviderRequest.builder().build());
+        return result.tools();
     }
 
     private dev.langchain4j.skills.Skill buildSkill(RunContext runContext, Map<String, Object> additionalVariables, SkillDefinition def) {
@@ -210,7 +166,7 @@ public class Skill extends ToolProvider {
             var resolvedContent = rContent;
             if (rContentUri != null) {
                 try (InputStream file = runContext.storage().getFile(URI.create(rContentUri))) {
-                    resolvedContent = new String(file.readAllBytes());
+                    resolvedContent = new String(file.readAllBytes(), StandardCharsets.UTF_8);
                 }
             }
 
@@ -241,70 +197,6 @@ public class Skill extends ToolProvider {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to build skill", e);
-        }
-    }
-
-    private static class ActivateSkillExecutor implements ToolExecutor {
-        private final RunContext runContext;
-        private final Map<String, dev.langchain4j.skills.Skill> skillMap;
-
-        ActivateSkillExecutor(RunContext runContext, Map<String, dev.langchain4j.skills.Skill> skillMap) {
-            this.runContext = runContext;
-            this.skillMap = skillMap;
-        }
-
-        @Override
-        public String execute(ToolExecutionRequest request, Object memoryId) {
-            runContext.logger().debug("activate_skill request: {}", request);
-            try {
-                var parameters = JacksonMapper.toMap(request.arguments());
-                var skillName = (String) parameters.get("skill_name");
-                var skill = skillMap.get(skillName);
-                if (skill == null) {
-                    throw new IllegalArgumentException("Skill not found: '" + skillName + "'. Available skills: " + skillMap.keySet());
-                }
-                runContext.logger().info("Activated skill: {}", skillName);
-                return skill.content();
-            } catch (Exception e) {
-                throw new ToolExecutionException(e);
-            }
-        }
-    }
-
-    private static class ReadResourceExecutor implements ToolExecutor {
-        private final RunContext runContext;
-        private final Map<String, dev.langchain4j.skills.Skill> skillMap;
-
-        ReadResourceExecutor(RunContext runContext, Map<String, dev.langchain4j.skills.Skill> skillMap) {
-            this.runContext = runContext;
-            this.skillMap = skillMap;
-        }
-
-        @Override
-        public String execute(ToolExecutionRequest request, Object memoryId) {
-            runContext.logger().debug("read_skill_resource request: {}", request);
-            try {
-                var parameters = JacksonMapper.toMap(request.arguments());
-                var skillName = (String) parameters.get("skill_name");
-                var relativePath = (String) parameters.get("relative_path");
-
-                var skill = skillMap.get(skillName);
-                if (skill == null) {
-                    throw new IllegalArgumentException("Skill not found: '" + skillName + "'. Available skills: " + skillMap.keySet());
-                }
-
-                var resource = ListUtils.emptyOnNull(skill.resources()).stream()
-                    .filter(r -> r.relativePath().equals(relativePath))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(
-                        "Resource not found: '" + relativePath + "' in skill '" + skillName + "'"
-                    ));
-
-                runContext.logger().info("Read resource '{}' from skill '{}'", relativePath, skillName);
-                return resource.content();
-            } catch (Exception e) {
-                throw new ToolExecutionException(e);
-            }
         }
     }
 
