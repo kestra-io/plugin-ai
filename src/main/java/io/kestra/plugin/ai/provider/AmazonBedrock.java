@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -17,6 +20,7 @@ import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
 import dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel;
 import dev.langchain4j.model.bedrock.BedrockTitanEmbeddingModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -90,9 +94,18 @@ public class AmazonBedrock extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
             throw new IllegalArgumentException("Amazon Bedrock models do not support setting the seed.");
         }
+
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
 
         var awsAccessKeyId = runContext.render(this.accessKeyId).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Access Key ID cannot be null"));
         var awsSecretAccessKey = runContext.render(this.secretAccessKey).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Secret Access Key cannot be null"));
@@ -122,7 +135,7 @@ public class AmazonBedrock extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .build();
     }
 

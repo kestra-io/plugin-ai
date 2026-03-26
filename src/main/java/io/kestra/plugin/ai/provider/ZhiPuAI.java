@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -12,6 +15,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.community.model.zhipu.ZhipuAiChatModel;
 import dev.langchain4j.community.model.zhipu.ZhipuAiEmbeddingModel;
 import dev.langchain4j.community.model.zhipu.ZhipuAiImageModel;
@@ -89,6 +93,11 @@ public class ZhiPuAI extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("ZhiPu AI models do not support setting the topK parameter.");
         }
@@ -101,6 +110,10 @@ public class ZhiPuAI extends ModelProvider {
             throw new IllegalVariableEvaluationException("ZhiPu AI  models do not support configuring the response format.");
         }
 
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
+
         return ZhipuAiChatModel.builder()
             .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL))
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -112,7 +125,7 @@ public class ZhiPuAI extends ModelProvider {
             .stops(runContext.render(this.stops).asList(String.class))
             .maxRetries(runContext.render(this.maxRetries).as(Integer.class).orElse(3))
             .maxToken(runContext.render(this.maxToken).as(Integer.class).orElse(512))
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .build();
     }
 

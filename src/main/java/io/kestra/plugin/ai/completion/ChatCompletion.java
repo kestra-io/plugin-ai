@@ -10,7 +10,6 @@ import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.kestra.core.models.annotations.Example;
@@ -28,10 +27,12 @@ import io.kestra.plugin.ai.domain.AIOutput;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.Guardrails;
+import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
+import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
@@ -238,6 +239,13 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @PluginProperty
     private Guardrails guardrails;
 
+    @Schema(
+        title = "Langfuse observability",
+        description = "OpenTelemetry export to Langfuse. Disabled by default; prompt/output/tool payload capture is opt-in."
+    )
+    @PluginProperty
+    private LangfuseObservability observability;
+
     @Override
     public ChatCompletion.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -254,10 +262,9 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             throw new IllegalArgumentException("The last message must be a user message");
         }
 
-        Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
+        var taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
 
-        // Get the appropriate model from the factory
-        ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
+        var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
 
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         try {
@@ -273,7 +280,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
             // Generate AI response
             var builder = AiServices.builder(Assistant.class)
-                .chatModel(model)
+                .chatModel(this.provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners()))
+                .registerListeners(observabilityListeners.aiServiceListeners())
                 .systemMessageProvider(
                     chatMemoryId -> chatMessages.stream()
                         .filter(msg -> msg.type() == dev.langchain4j.data.message.ChatMessageType.SYSTEM)
@@ -327,6 +335,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
                 .build();
         } finally {
+            observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
 
             TimingChatModelListener.clear();

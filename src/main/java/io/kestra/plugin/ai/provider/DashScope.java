@@ -1,6 +1,9 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -15,6 +18,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.community.model.dashscope.*;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -107,6 +111,12 @@ public class DashScope extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration)
         throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+        throws IllegalVariableEvaluationException {
         if (configuration.getLogRequests() != null) {
             throw new IllegalArgumentException(
                 "DashScope (Qwen) models do not support setting the logRequests parameter."
@@ -117,6 +127,11 @@ public class DashScope extends ModelProvider {
                 "DashScope (Qwen) models do not support setting the logResponses parameter."
             );
         }
+
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
+
         Double rTemperature = runContext.render(configuration.getTemperature()).as(Double.class).orElse(null);
         Float fTemperature = rTemperature != null ? rTemperature.floatValue() : null;
         return QwenChatModel.builder()
@@ -132,7 +147,7 @@ public class DashScope extends ModelProvider {
             .repetitionPenalty(runContext.render(this.repetitionPenalty).as(Float.class).orElse(null))
             .temperature(fTemperature)
             .maxTokens(runContext.render(this.maxTokens).as(Integer.class).orElse(null))
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .build();
     }
 

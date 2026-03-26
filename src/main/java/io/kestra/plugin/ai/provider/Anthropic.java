@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,6 +19,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -83,6 +87,11 @@ public class Anthropic extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
             throw new IllegalArgumentException("Anthropic models do not support setting the seed.");
         }
@@ -98,6 +107,11 @@ public class Anthropic extends ModelProvider {
                 "`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."
             );
         }
+
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
+
         AnthropicChatModel.AnthropicChatModelBuilder chatModelBuilder = AnthropicChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -107,7 +121,7 @@ public class Anthropic extends ModelProvider {
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .maxTokens(maxTokens) // Anthropic max tokens
             .thinkingType(thinkingEnabled ? ENABLED : null)
             .thinkingBudgetTokens(thinkingBudgetTokens)

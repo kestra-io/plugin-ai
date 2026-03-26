@@ -1,6 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -15,6 +17,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -79,14 +82,23 @@ public class MistralAI extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120));
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, timeout, Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("Mistral models do not support setting the topK parameter.");
         }
+
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
 
         ResponseFormat responseFormat = configuration.computeResponseFormat(runContext);
         MistralAiChatModel.MistralAiChatModelBuilder chatModelBuilder = MistralAiChatModel.builder()
@@ -100,7 +112,7 @@ public class MistralAI extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .responseFormat(responseFormat)
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .timeout(timeout)
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
