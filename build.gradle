@@ -109,6 +109,9 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-agentic"
     implementation "dev.langchain4j:langchain4j-agentic-a2a"
 
+    // skills
+    implementation "dev.langchain4j:langchain4j-skills:1.12.2-beta22"
+
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
     implementation "io.opentelemetry:opentelemetry-api"

@@ -27,6 +27,7 @@ import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
+import io.kestra.plugin.ai.tool.Skill;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 
 import jakarta.inject.Inject;
@@ -1008,6 +1009,54 @@ class AIAgentTest {
         assertThat(output.getGuardrailViolationMessage()).contains("Message exceeds strict limit");
         assertThat(output.getGuardrailViolationMessage()).doesNotContain("Should never be reached");
         assertThat(output.getTextOutput()).isNull();
+    }
+
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void withSkillTool() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "gemini-2.5-flash",
+                "apiKey", GOOGLE_API_KEY
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .tools(
+                List.of(
+                    Skill.builder()
+                        .skills(
+                            List.of(
+                                Skill.SkillDefinition.builder()
+                                    .name(Property.ofValue("translation_expert"))
+                                    .description(Property.ofValue("Expert translator for multiple languages"))
+                                    .content(Property.ofValue(
+                                        "You are an expert translator. When translating text:\n" +
+                                        "1. Preserve the original meaning and tone\n" +
+                                        "2. Use natural phrasing in the target language\n" +
+                                        "3. Keep proper nouns unchanged"
+                                    ))
+                                    .build()
+                            )
+                        )
+                        .build()
+                )
+            )
+            .prompt(Property.ofValue("Translate the following text to French: \"Hello, how are you today?\" Use the available skill to help with the translation."))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getToolExecutions()).isNotEmpty();
+        assertThat(output.getToolExecutions()).extracting("requestName").contains("activate_skill");
     }
 
 }
