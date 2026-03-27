@@ -21,6 +21,7 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.domain.ModelProvider;
+import io.kestra.plugin.ai.domain.Observability;
 import io.kestra.plugin.ai.domain.TokenUsage;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -170,13 +171,13 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
 
     public static LangfuseObservabilityListeners create(
         RunContext runContext,
-        LangfuseObservability langfuse,
+        Observability observability,
         String taskId,
         ModelProvider provider,
         ChatConfiguration chatConfiguration) {
         try {
             var sharedOtel = resolveOpenTelemetryBean(runContext);
-            var resolvedConfig = ResolvedConfig.from(runContext, langfuse);
+            var resolvedConfig = ResolvedConfig.from(runContext, observability);
             if (!resolvedConfig.enabled()) {
                 return NOOP;
             }
@@ -605,7 +606,7 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
             return !isBlank(endpoint) && !isBlank(publicKey) && !isBlank(secretKey);
         }
 
-        private static ResolvedConfig from(RunContext runContext, LangfuseObservability raw) throws IllegalVariableEvaluationException {
+        private static ResolvedConfig from(RunContext runContext, Observability raw) throws IllegalVariableEvaluationException {
             if (raw == null) {
                 return disabled();
             }
@@ -615,9 +616,15 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
                 return disabled();
             }
 
-            var endpoint = normalizeEndpoint(render(runContext, raw.getEndpoint(), String.class, null));
-            var publicKey = render(runContext, raw.getPublicKey(), String.class, null);
-            var secretKey = render(runContext, raw.getSecretKey(), String.class, null);
+            // Langfuse-specific fields: only available when the provider is LangfuseObservability
+            String endpoint = null;
+            String publicKey = null;
+            String secretKey = null;
+            if (raw instanceof LangfuseObservability langfuse) {
+                endpoint = normalizeEndpoint(render(runContext, langfuse.getEndpoint(), String.class, null));
+                publicKey = render(runContext, langfuse.getPublicKey(), String.class, null);
+                secretKey = render(runContext, langfuse.getSecretKey(), String.class, null);
+            }
 
             int maxPayloadChars = render(runContext, raw.getMaxPayloadChars(), Integer.class, 2000);
             if (maxPayloadChars <= 0) {

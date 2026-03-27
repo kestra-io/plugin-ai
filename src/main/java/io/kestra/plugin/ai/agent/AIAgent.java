@@ -683,11 +683,11 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     private MemoryProvider memory;
 
     @Schema(
-        title = "Langfuse observability",
-        description = "OpenTelemetry export to Langfuse. Disabled by default; prompt/output/tool payload capture is opt-in."
+        title = "Observability",
+        description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
     )
     @PluginProperty
-    private LangfuseObservability observability;
+    private Observability observability;
 
     @Schema(
         title = "Guardrails",

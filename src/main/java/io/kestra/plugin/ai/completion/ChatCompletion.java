@@ -27,8 +27,8 @@ import io.kestra.plugin.ai.domain.AIOutput;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.Guardrails;
-import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.domain.ModelProvider;
+import io.kestra.plugin.ai.domain.Observability;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
@@ -240,11 +240,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     private Guardrails guardrails;
 
     @Schema(
-        title = "Langfuse observability",
-        description = "OpenTelemetry export to Langfuse. Disabled by default; prompt/output/tool payload capture is opt-in."
+        title = "Observability",
+        description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
     )
     @PluginProperty
-    private LangfuseObservability observability;
+    private Observability observability;
 
     @Override
     public ChatCompletion.Output run(RunContext runContext) throws Exception {
