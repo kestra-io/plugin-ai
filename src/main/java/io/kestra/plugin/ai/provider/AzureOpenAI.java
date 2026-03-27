@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -21,6 +24,7 @@ import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.azure.AzureOpenAiEmbeddingModel;
 import dev.langchain4j.model.azure.AzureOpenAiImageModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -95,9 +99,18 @@ public class AzureOpenAI extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("Azure OpenAI models do not support setting the topK");
         }
+
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
 
         var seed = runContext.render(configuration.getSeed()).as(Integer.class).orElse(null);
 
@@ -117,7 +130,7 @@ public class AzureOpenAI extends ModelProvider {
             .seed(seed != null ? seed.longValue() : null)
             .logRequestsAndResponses(logRequestAndResponses)
             .responseFormat(configuration.computeResponseFormat(runContext))
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
         if (apiKey != null) {

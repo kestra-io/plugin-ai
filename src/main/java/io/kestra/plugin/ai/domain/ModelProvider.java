@@ -34,6 +34,7 @@ import io.kestra.core.runners.RunContext;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,6 +42,9 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+
+import java.util.Collections;
+import java.util.List;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -76,6 +80,10 @@ public abstract class ModelProvider extends AdditionalPlugin {
 
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
         return chatModel(runContext, configuration);
+    }
+
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, timeout);
     }
 
     public abstract ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException;

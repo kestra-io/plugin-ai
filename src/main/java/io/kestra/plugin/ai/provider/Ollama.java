@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -14,6 +17,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
@@ -75,6 +79,15 @@ public class Ollama extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
+
         OllamaChatModel.OllamaChatModelBuilder chatModelBuilder = OllamaChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(this.endpoint).as(String.class).orElseThrow())
@@ -88,7 +101,7 @@ public class Ollama extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .think(runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false) ? true : null)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
-            .listeners(List.of(new TimingChatModelListener()));
+            .listeners(allListeners);
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
         if (httpClientBuilder != null) {

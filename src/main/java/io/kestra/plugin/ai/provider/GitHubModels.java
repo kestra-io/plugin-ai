@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
@@ -16,6 +19,7 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.github.GitHubModelsChatModel;
 import dev.langchain4j.model.github.GitHubModelsEmbeddingModel;
@@ -79,6 +83,16 @@ public class GitHubModels extends ModelProvider {
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration)
         throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+        throws IllegalVariableEvaluationException {
+
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
 
         var logRequests = runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false);
         var logResponses = runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false);
@@ -93,7 +107,7 @@ public class GitHubModels extends ModelProvider {
             .responseFormat(toAzureResponseFormat(runContext, configuration))
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .logRequestsAndResponses(logRequests || logResponses)
-            .listeners(List.of(new TimingChatModelListener()));
+            .listeners(allListeners);
 
         runContext.render(this.baseUrl).as(String.class).ifPresent(builder::endpoint);
 

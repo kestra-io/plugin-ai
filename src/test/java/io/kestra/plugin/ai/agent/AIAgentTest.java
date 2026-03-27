@@ -82,7 +82,7 @@ class AIAgentTest {
     }
 
     @Test
-    void withLangfuseObservabilityDisabledByDefault() throws Exception {
+    void withoutObservabilityNoTracesAreSent() throws Exception {
         WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
         try {
             wireMock.start();
@@ -107,14 +107,6 @@ class AIAgentTest {
                 )
                 .prompt(Property.ofValue("Explain Kestra in one sentence."))
                 .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-                .observability(
-                    LangfuseObservability.builder()
-                        .enabled(Property.ofValue(false))
-                        .endpoint(Property.ofValue(wireMock.baseUrl() + "/api/public/otel"))
-                        .publicKey(Property.ofValue("pk-lf-test"))
-                        .secretKey(Property.ofValue("sk-lf-test"))
-                        .build()
-                )
                 .build();
 
             var output = agent.run(runContext);
@@ -153,7 +145,6 @@ class AIAgentTest {
                 .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
                 .observability(
                     LangfuseObservability.builder()
-                        .enabled(Property.ofValue(true))
                         .endpoint(Property.ofValue(wireMock.baseUrl() + "/api/public/otel"))
                         .publicKey(Property.ofValue("pk-lf-test"))
                         .secretKey(Property.ofValue("sk-lf-test"))
@@ -205,7 +196,6 @@ class AIAgentTest {
                 .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
                 .observability(
                     LangfuseObservability.builder()
-                        .enabled(Property.ofValue(true))
                         .endpoint(Property.ofValue(wireMock.baseUrl() + "/api/public/otel"))
                         .publicKey(Property.ofValue("pk-lf-test"))
                         .secretKey(Property.ofValue("sk-lf-test"))

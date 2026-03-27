@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -14,6 +17,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -78,6 +82,15 @@ public class OpenRouter extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    }
+
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+        var allListeners = new ArrayList<ChatModelListener>();
+        allListeners.add(new TimingChatModelListener());
+        allListeners.addAll(additionalListeners);
+
         OpenAiChatModel.OpenAiChatModelBuilder chatModelBuilder = OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL))
@@ -89,7 +102,7 @@ public class OpenRouter extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .responseFormat(configuration.computeResponseFormat(runContext))
-            .listeners(List.of(new TimingChatModelListener()))
+            .listeners(allListeners)
             .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
