@@ -622,6 +622,37 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                 """
         ),
+        @Example(
+            full = true,
+            title = "Send agent traces to Langfuse for observability",
+            code = """
+                id: agent_with_langfuse_observability
+                namespace: company.ai
+
+                tasks:
+                  - id: agent
+                    type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-4o-mini
+                    systemMessage: You are a helpful assistant.
+                    prompt: Summarize the latest Kestra release notes.
+                    tools:
+                      - type: io.kestra.plugin.ai.tool.TavilyWebSearch
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
+                    observability:
+                      type: io.kestra.plugin.ai.domain.LangfuseObservability
+                      enabled: true
+                      endpoint: "{{ secret('LANGFUSE_ENDPOINT') }}"
+                      publicKey: "{{ secret('LANGFUSE_PUBLIC_KEY') }}"
+                      secretKey: "{{ secret('LANGFUSE_SECRET_KEY') }}"
+                      capturePrompt: true
+                      captureOutput: true
+                      captureToolArguments: true
+                      captureToolResults: true
+                """
+        ),
     },
     metrics = {
         @Metric(

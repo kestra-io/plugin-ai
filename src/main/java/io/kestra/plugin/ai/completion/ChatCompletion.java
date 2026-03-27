@@ -181,6 +181,35 @@ import java.util.List;
                       - type: USER
                         content: "{{ inputs.prompt }}"
                 """
+        ),
+        @Example(
+            full = true,
+            title = "Send chat traces to Langfuse for observability",
+            code = """
+                id: chat_with_langfuse_observability
+                namespace: company.ai
+
+                tasks:
+                  - id: chat
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-4o-mini
+                    messages:
+                      - type: SYSTEM
+                        content: You are a helpful assistant.
+                      - type: USER
+                        content: What is Kestra?
+                    observability:
+                      type: io.kestra.plugin.ai.domain.LangfuseObservability
+                      enabled: true
+                      endpoint: "{{ secret('LANGFUSE_ENDPOINT') }}"
+                      publicKey: "{{ secret('LANGFUSE_PUBLIC_KEY') }}"
+                      secretKey: "{{ secret('LANGFUSE_SECRET_KEY') }}"
+                      capturePrompt: true
+                      captureOutput: true
+                """
         )
     },
     metrics = {
