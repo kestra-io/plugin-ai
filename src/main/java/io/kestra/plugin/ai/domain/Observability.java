@@ -26,9 +26,6 @@ import lombok.experimental.SuperBuilder;
     description = "Observability export settings for AI tasks. Payload capture is disabled by default for security."
 )
 public abstract class Observability extends AdditionalPlugin {
-    @Schema(title = "Enable observability")
-    protected Property<Boolean> enabled;
-
     @Schema(title = "Service name")
     protected Property<String> serviceName;
 

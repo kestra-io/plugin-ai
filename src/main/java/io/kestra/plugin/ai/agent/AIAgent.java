@@ -643,7 +643,6 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         apiKey: "{{ secret('TAVILY_API_KEY') }}"
                     observability:
                       type: io.kestra.plugin.ai.domain.LangfuseObservability
-                      enabled: true
                       endpoint: "{{ secret('LANGFUSE_ENDPOINT') }}"
                       publicKey: "{{ secret('LANGFUSE_PUBLIC_KEY') }}"
                       secretKey: "{{ secret('LANGFUSE_SECRET_KEY') }}"

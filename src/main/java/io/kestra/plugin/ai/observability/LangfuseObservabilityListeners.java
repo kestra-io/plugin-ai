@@ -178,7 +178,7 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
         try {
             var sharedOtel = resolveOpenTelemetryBean(runContext);
             var resolvedConfig = ResolvedConfig.from(runContext, observability);
-            if (!resolvedConfig.enabled()) {
+            if (resolvedConfig == null) {
                 return NOOP;
             }
 
@@ -588,7 +588,6 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
     }
 
     private record ResolvedConfig(
-        boolean enabled,
         String endpoint,
         String publicKey,
         String secretKey,
@@ -608,12 +607,7 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
 
         private static ResolvedConfig from(RunContext runContext, Observability raw) throws IllegalVariableEvaluationException {
             if (raw == null) {
-                return disabled();
-            }
-
-            boolean enabled = render(runContext, raw.getEnabled(), Boolean.class, false);
-            if (!enabled) {
-                return disabled();
+                return null;
             }
 
             // Langfuse-specific fields: only available when the provider is LangfuseObservability
@@ -637,7 +631,6 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
             }
 
             return new ResolvedConfig(
-                true,
                 endpoint,
                 publicKey,
                 secretKey,
@@ -651,25 +644,6 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
                 render(runContext, raw.getCaptureToolResults(), Boolean.class, false),
                 maxPayloadChars,
                 timeout
-            );
-        }
-
-        private static ResolvedConfig disabled() {
-            return new ResolvedConfig(
-                false,
-                null,
-                null,
-                null,
-                "kestra-plugin-ai",
-                null,
-                null,
-                false,
-                false,
-                false,
-                false,
-                false,
-                2000,
-                Duration.ofSeconds(5)
             );
         }
 

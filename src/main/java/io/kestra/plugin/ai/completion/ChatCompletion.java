@@ -203,7 +203,6 @@ import java.util.List;
                         content: What is Kestra?
                     observability:
                       type: io.kestra.plugin.ai.domain.LangfuseObservability
-                      enabled: true
                       endpoint: "{{ secret('LANGFUSE_ENDPOINT') }}"
                       publicKey: "{{ secret('LANGFUSE_PUBLIC_KEY') }}"
                       secretKey: "{{ secret('LANGFUSE_SECRET_KEY') }}"
