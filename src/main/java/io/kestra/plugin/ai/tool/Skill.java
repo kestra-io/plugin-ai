@@ -19,6 +19,8 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.skills.DefaultSkill;
@@ -141,7 +143,12 @@ public class Skill extends ToolProvider {
         }
 
         var skills = Skills.from(skillList);
-        var result = skills.toolProvider().provideTools(ToolProviderRequest.builder().build());
+        var invocationContext = InvocationContext.builder().build();
+        var userMessage = UserMessage.from("placeholder");
+        var result = skills.toolProvider().provideTools(ToolProviderRequest.builder()
+            .invocationContext(invocationContext)
+            .userMessage(userMessage)
+            .build());
         return result.tools();
     }
 
