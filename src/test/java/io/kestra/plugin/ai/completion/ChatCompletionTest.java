@@ -64,6 +64,8 @@ class ChatCompletionTest extends ContainerTest {
     private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");
     private final String WATSONX_API_KEY = System.getenv("WATSONX_API_KEY");
     private final String WATSONX_PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");;
+    private final String VERTEX_AI_PROJECT = System.getenv("VERTEX_AI_PROJECT");
+    private final String VERTEX_AI_LOCATION = System.getenv("VERTEX_AI_LOCATION");
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -290,6 +292,115 @@ class ChatCompletionTest extends ContainerTest {
 
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("Unable to submit request because thinking is not supported by this model."));
+    }
+
+    /**
+     * Test Chat Completion using Google Vertex AI.
+     */
+    @Test
+    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_PROJECT", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_LOCATION", matches = ".*")
+    void testChatCompletionVertexAI() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "project", VERTEX_AI_PROJECT,
+                "location", VERTEX_AI_LOCATION,
+                "modelName", "gemini-2.0-flash",
+                "messages", List.of(
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(
+                GoogleVertexAI.builder()
+                    .type(GoogleVertexAI.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .location(Property.ofExpression("{{ location }}"))
+                    .project(Property.ofExpression("{{ project }}"))
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getSources(), notNullValue());
+        assertTrue(output.getSources().isEmpty());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_PROJECT", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_LOCATION", matches = ".*")
+    void testChatCompletionVertexAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "project", VERTEX_AI_PROJECT,
+                "location", VERTEX_AI_LOCATION,
+                "modelName", "gemini-2.0-flash",
+                "messages", List.of(
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                    .maxToken(Property.ofValue(10)).build()
+            )
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(
+                GoogleVertexAI.builder()
+                    .type(GoogleVertexAI.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .location(Property.ofExpression("{{ location }}"))
+                    .project(Property.ofExpression("{{ project }}"))
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+    }
+
+    @Test
+    void testChatCompletionVertexAI_givenEndpointSet_shouldThrowIllegalArgumentException() {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "project", "dummy-project",
+                "location", "us-central1",
+                "endpoint", "https://us-central1-aiplatform.googleapis.com",
+                "modelName", "gemini-2.0-flash",
+                "messages", List.of(
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .configuration(ChatConfiguration.builder().build())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .provider(
+                GoogleVertexAI.builder()
+                    .type(GoogleVertexAI.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .location(Property.ofExpression("{{ location }}"))
+                    .project(Property.ofExpression("{{ project }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .build();
+
+        assertThrows(IllegalArgumentException.class, () -> task.run(runContext));
     }
 
     /**

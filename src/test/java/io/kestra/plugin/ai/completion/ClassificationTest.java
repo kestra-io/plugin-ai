@@ -15,6 +15,7 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.provider.GoogleGemini;
+import io.kestra.plugin.ai.provider.GoogleVertexAI;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.provider.OpenRouter;
@@ -33,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ClassificationTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
     private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
+    private final String VERTEX_AI_PROJECT = System.getenv("VERTEX_AI_PROJECT");
+    private final String VERTEX_AI_LOCATION = System.getenv("VERTEX_AI_LOCATION");
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -59,6 +62,42 @@ class ClassificationTest extends ContainerTest {
                     .type(GoogleGemini.class.getName())
                     .apiKey(Property.ofExpression("{{ apiKey }}"))
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .build()
+            )
+            .build();
+
+        // WHEN
+        Classification.Output runOutput = task.run(runContext);
+
+        // THEN
+        assertThat(runOutput.getClassification(), notNullValue());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_PROJECT", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_LOCATION", matches = ".*")
+    void testClassificationVertexAI() throws Exception {
+        // GIVEN
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "prompt", "Is 'This is a joke' a good joke?",
+                "classes", List.of("true", "false"),
+                "project", VERTEX_AI_PROJECT,
+                "location", VERTEX_AI_LOCATION,
+                "modelName", "gemini-2.0-flash"
+            )
+        );
+
+        Classification task = Classification.builder()
+            .prompt(Property.ofExpression("{{ prompt }}"))
+            .systemMessage(Property.ofValue("You are a text classification assistant."))
+            .classes(Property.ofExpression("{{ classes }}"))
+            .provider(
+                GoogleVertexAI.builder()
+                    .type(GoogleVertexAI.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .location(Property.ofExpression("{{ location }}"))
+                    .project(Property.ofExpression("{{ project }}"))
                     .build()
             )
             .build();
