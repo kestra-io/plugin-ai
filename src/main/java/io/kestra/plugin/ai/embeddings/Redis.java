@@ -46,7 +46,7 @@ import redis.clients.jedis.JedisPooled;
                     type: io.kestra.plugin.ai.rag.IngestDocument
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-embedding-exp-03-07
+                      modelName: gemini-embedding-004
                       apiKey: my_api_key
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Redis

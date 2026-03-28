@@ -62,7 +62,7 @@ import lombok.experimental.SuperBuilder;
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-embedding-exp-03-07
+                      modelName: gemini-embedding-004
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
@@ -79,7 +79,7 @@ import lombok.experimental.SuperBuilder;
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-embedding-exp-03-07
+                      modelName: gemini-embedding-004
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore

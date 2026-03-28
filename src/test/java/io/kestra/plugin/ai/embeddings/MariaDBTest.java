@@ -54,7 +54,7 @@ class MariaDBTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-embedding-exp-03-07",
+                "modelName", "gemini-embedding-004",
                 "tableName", tableName,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )
@@ -93,7 +93,7 @@ class MariaDBTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-embedding-exp-03-07",
+                "modelName", "gemini-embedding-004",
                 "tableName", tableName,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )

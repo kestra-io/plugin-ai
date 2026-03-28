@@ -47,7 +47,7 @@ import lombok.experimental.SuperBuilder;
                     type: io.kestra.plugin.ai.rag.IngestDocument
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-embedding-exp-03-07
+                      modelName: gemini-embedding-004
                       googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
@@ -68,7 +68,7 @@ import lombok.experimental.SuperBuilder;
                           type: io.kestra.plugin.ai.embeddings.KestraKVStore
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          modelName: gemini-embedding-exp-03-07
+                          modelName: gemini-embedding-004
                           googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                         maxResults: 3
                         minScore: 0.0
@@ -106,7 +106,7 @@ import lombok.experimental.SuperBuilder;
                           collectionName: business-docs
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          modelName: gemini-embedding-exp-03-07
+                          modelName: gemini-embedding-004
                           googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
                         tavilyApiKey: "{{ secret('TAVILY_API_KEY') }}"

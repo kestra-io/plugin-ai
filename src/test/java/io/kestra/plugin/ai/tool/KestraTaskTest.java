@@ -166,7 +166,7 @@ class KestraTaskTest extends ContainerTest {
                 List.of(
                     KestraTask.builder().tasks(
                         List.of(
-                            Request.builder().id("request").type(SetVariables.class.getName()).uri(Property.ofExpression("...")).build()
+                            Request.builder().id("request").type(SetVariables.class.getName()).uri(Property.ofValue("...")).build()
                         )
                     ).build()
                 )

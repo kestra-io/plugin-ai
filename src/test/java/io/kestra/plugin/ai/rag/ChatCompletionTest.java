@@ -248,7 +248,7 @@ class ChatCompletionTest extends ContainerTest {
             .provider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .modelName(Property.ofValue("gemini-embedding-004"))
                     .apiKey(Property.ofExpression("{{ apiKey }}"))
                     .build()
             )
@@ -278,7 +278,7 @@ class ChatCompletionTest extends ContainerTest {
             .embeddingProvider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-exp-03-07"))
+                    .modelName(Property.ofValue("gemini-embedding-004"))
                     .apiKey(Property.ofExpression("{{ apiKey }}"))
                     .build()
             )
