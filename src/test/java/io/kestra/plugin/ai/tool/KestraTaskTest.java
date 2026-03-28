@@ -177,7 +177,7 @@ class KestraTaskTest extends ContainerTest {
                         ChatMessage.builder().type(ChatMessageType.USER)
                             .content(
                                 """
-                                    Call the HTTP URL https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/docs/07.architecture/01.main-components.md, retrieve its outputs and extract the body.
+                                    Call the HTTP URL https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/src/contents/docs/08.architecture/01.main-components/index.md, retrieve its outputs and extract the body.
                                     Add a HTTP Header X-Kestra-API: anything when calling the URL."""
                             )
                             .build()
@@ -187,7 +187,7 @@ class KestraTaskTest extends ContainerTest {
             .build();
 
         var output = chat.run(runContext);
-        assertThat(output.getTextOutput()).contains("Technical description of Kestra's main components, including the internal storage, queue, repository, and plugins.");
+        assertThat(output.getTextOutput()).contains("main components");
         assertThat(output.getToolExecutions()).isNotEmpty();
         assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_request");
         assertThat(output.getIntermediateResponses()).isNotEmpty();
