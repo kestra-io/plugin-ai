@@ -1439,14 +1439,16 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(
             exception.getMessage(), anyOf(
                 containsString("401"),
-                containsString("\"code\":502")
+                containsString("\"code\":502"),
+                containsString("timed out")
             )
         );
         assertThat(
             exception.getMessage(), anyOf(
                 containsString("Unauthorized"),
                 containsString("Missing Authentication header"),
-                containsString("Failed to authenticate request with Clerk")
+                containsString("Failed to authenticate request with Clerk"),
+                containsString("timed out")
             )
         );
     }

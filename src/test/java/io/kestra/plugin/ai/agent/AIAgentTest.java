@@ -444,7 +444,7 @@ class AIAgentTest {
             .provider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-004"))
+                    .modelName(Property.ofValue("gemini-embedding-001"))
                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                     .build()
             )
@@ -481,7 +481,7 @@ class AIAgentTest {
                             .embeddingProvider(
                                 GoogleGemini.builder()
                                     .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-004"))
+                                    .modelName(Property.ofValue("gemini-embedding-001"))
                                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                                     .build()
                             )
@@ -504,7 +504,7 @@ class AIAgentTest {
      * <ul>
      * <li><b>Two Kestra KVStore embedding stores</b> containing technical and business documents</li>
      * <li><b>Google Gemini</b> for both embedding generation
-     * ({@code gemini-embedding-004}) and LLM responses
+     * ({@code gemini-embedding-001}) and LLM responses
      * ({@code gemini-2.0-flash})</li>
      * <li><b>Tavily Web Search</b> for real-time, general-purpose internet search</li>
      * <li><b>Google Custom Search (CSE)</b> for domain-specific or curated web search results</li>
@@ -530,7 +530,7 @@ class AIAgentTest {
             .provider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-004"))
+                    .modelName(Property.ofValue("gemini-embedding-001"))
                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                     .build()
             )
@@ -556,7 +556,7 @@ class AIAgentTest {
             .provider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-004"))
+                    .modelName(Property.ofValue("gemini-embedding-001"))
                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                     .build()
             )
@@ -599,7 +599,7 @@ class AIAgentTest {
                             .embeddingProvider(
                                 GoogleGemini.builder()
                                     .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-004"))
+                                    .modelName(Property.ofValue("gemini-embedding-001"))
                                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                                     .build()
                             )
@@ -614,7 +614,7 @@ class AIAgentTest {
                             .embeddingProvider(
                                 GoogleGemini.builder()
                                     .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-004"))
+                                    .modelName(Property.ofValue("gemini-embedding-001"))
                                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                                     .build()
                             )
@@ -668,7 +668,7 @@ class AIAgentTest {
             .provider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-004"))
+                    .modelName(Property.ofValue("gemini-embedding-001"))
                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                     .build()
             )
@@ -715,7 +715,7 @@ class AIAgentTest {
                             .embeddingProvider(
                                 GoogleGemini.builder()
                                     .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-004"))
+                                    .modelName(Property.ofValue("gemini-embedding-001"))
                                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                                     .build()
                             )
@@ -731,7 +731,7 @@ class AIAgentTest {
                             .embeddingProvider(
                                 GoogleGemini.builder()
                                     .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-004"))
+                                    .modelName(Property.ofValue("gemini-embedding-001"))
                                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                                     .build()
                             )
@@ -747,7 +747,7 @@ class AIAgentTest {
                             .embeddingProvider(
                                 GoogleGemini.builder()
                                     .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-004"))
+                                    .modelName(Property.ofValue("gemini-embedding-001"))
                                     .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                                     .build()
                             )

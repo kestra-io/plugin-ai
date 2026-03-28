@@ -39,7 +39,7 @@ class TablestoreTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-embedding-004",
+                "modelName", "gemini-embedding-001",
                 "endpoint", TABLESTORE_ENDPOINT,
                 "instanceName", TABLESTORE_INSTANCE_NAME,
                 "accessKeyId", TABLESTORE_ACCESS_KEY_ID,

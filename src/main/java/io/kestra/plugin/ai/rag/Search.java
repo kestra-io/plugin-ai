@@ -53,7 +53,7 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
                     type: io.kestra.plugin.ai.rag.IngestDocument
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-embedding-004
+                      modelName: gemini-embedding-001
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
@@ -65,7 +65,7 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
                     type: io.kestra.plugin.ai.rag.Search
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-embedding-004
+                      modelName: gemini-embedding-001
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
