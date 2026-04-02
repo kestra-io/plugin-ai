@@ -178,9 +178,6 @@ dependencies {
 
     // Memories
     testImplementation "org.testcontainers:postgresql:1.21.4"
-
-    // plugin kestra
-    testImplementation group: 'io.kestra.plugin', name: 'plugin-kestra', version: '1.8.5'
 }
 
 /**********************************************************************************************************************\

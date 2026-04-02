@@ -3,7 +3,7 @@ package io.kestra.plugin.ai.tool;
 import java.util.List;
 import java.util.Map;
 
-import io.kestra.plugin.kestra.logs.Fetch;
+import io.kestra.plugin.core.log.Fetch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
