@@ -24,7 +24,6 @@ import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -90,7 +89,6 @@ import lombok.experimental.SuperBuilder;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                           modelName: gemini-2.5-flash
                           clientPem: "{{ secret('CLIENT_PEM') }}"
                           caPem: "{{ secret('CA_PEM') }}"
@@ -111,8 +109,10 @@ import lombok.experimental.SuperBuilder;
 )
 public class GoogleGemini extends ModelProvider {
 
-    @Schema(title = "API Key")
-    @NotNull
+    @Schema(
+        title = "API Key",
+        description = "Required unless certificate-based authentication is configured with `clientPem` (optionally with `caPem`)."
+    )
     private Property<String> apiKey;
 
     @Schema(title = "The configuration for embeddingModel")
@@ -129,9 +129,9 @@ public class GoogleGemini extends ModelProvider {
         allListeners.add(new TimingChatModelListener());
         allListeners.addAll(additionalListeners);
 
+        var rApiKey = resolveAuth(runContext);
         GoogleAiGeminiChatModel.GoogleAiGeminiChatModelBuilder chatModelBuilder = GoogleAiGeminiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
             .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
@@ -144,6 +144,10 @@ public class GoogleGemini extends ModelProvider {
             .thinkingConfig(getThinkingConfig(configuration, runContext))
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+
+        if (rApiKey != null) {
+            chatModelBuilder.apiKey(rApiKey);
+        }
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
         if (httpClientBuilder != null) {
@@ -165,10 +169,14 @@ public class GoogleGemini extends ModelProvider {
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+        var rApiKey = resolveAuth(runContext);
         GoogleAiEmbeddingModel.GoogleAiEmbeddingModelBuilder builder = GoogleAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
             .logger(runContext.logger());
+
+        if (rApiKey != null) {
+            builder.apiKey(rApiKey);
+        }
 
         if (embeddingModelConfiguration != null) {
             builder
@@ -180,6 +188,19 @@ public class GoogleGemini extends ModelProvider {
         }
 
         return builder.build();
+    }
+
+    String resolveAuth(RunContext runContext) throws IllegalVariableEvaluationException {
+        var rApiKey = runContext.render(this.apiKey).as(String.class).orElse(null);
+        var rClientPem = runContext.render(this.getClientPem()).as(String.class).orElse(null);
+
+        if (rApiKey == null && rClientPem == null) {
+            throw new IllegalArgumentException(
+                "GoogleGemini requires either `apiKey` or `clientPem` (optionally with `caPem`) for certificate-based authentication."
+            );
+        }
+
+        return rApiKey;
     }
 
     private static GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
