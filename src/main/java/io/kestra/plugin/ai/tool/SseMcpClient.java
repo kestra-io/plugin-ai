@@ -12,7 +12,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
+import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -91,8 +91,8 @@ public class SseMcpClient extends AbstractMcpClient {
 
     @Override
     protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
-        return new HttpMcpTransport.Builder()
-            .sseUrl(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
+        return new StreamableHttpMcpTransport.Builder()
+            .url(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
             .timeout(runContext.render(timeout).as(Duration.class, additionalVariables).orElse(null))
             .logRequests(runContext.render(logRequests).as(Boolean.class, additionalVariables).orElse(false))
             .logResponses(runContext.render(logResponses).as(Boolean.class, additionalVariables).orElse(false))
