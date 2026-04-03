@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.tool;
 import java.util.List;
 import java.util.Map;
 
+import io.kestra.plugin.core.log.Fetch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -24,7 +25,6 @@ import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.core.execution.Fail;
 import io.kestra.plugin.core.execution.SetVariables;
 import io.kestra.plugin.core.http.Request;
-import io.kestra.plugin.core.log.Fetch;
 import io.kestra.plugin.core.log.Log;
 
 import dev.langchain4j.exception.ToolExecutionException;

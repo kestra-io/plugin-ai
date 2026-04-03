@@ -5,9 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatJsonObject;
-import com.azure.ai.inference.models.ChatCompletionsResponseFormatText;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -20,10 +17,12 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.github.GitHubModelsChatModel;
-import dev.langchain4j.model.github.GitHubModelsEmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -98,18 +97,19 @@ public class GitHubModels extends ModelProvider {
         var logResponses = runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false);
         var seed = runContext.render(configuration.getSeed()).as(Integer.class).orElse(null);
 
-        var builder = GitHubModelsChatModel.builder()
-            .gitHubToken(runContext.render(this.gitHubToken).as(String.class).orElseThrow())
+        var builder = OpenAiChatModel.builder()
+            .apiKey(runContext.render(this.gitHubToken).as(String.class).orElseThrow())
+            .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse("https://models.inference.ai.azure.com"))
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
-            .seed(seed != null ? seed.longValue() : null)
+            .seed(seed)
             .responseFormat(toAzureResponseFormat(runContext, configuration))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
-            .logRequestsAndResponses(logRequests || logResponses)
-            .listeners(allListeners);
-
-        runContext.render(this.baseUrl).as(String.class).ifPresent(builder::endpoint);
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .logRequests(logRequests)
+            .logResponses(logResponses)
+            .listeners(allListeners)
+            .timeout(timeout);
 
         return builder.build();
     }
@@ -126,20 +126,17 @@ public class GitHubModels extends ModelProvider {
         var logRequests = runContext.render(Property.ofValue(false)).as(Boolean.class).orElse(false);
         var logResponses = runContext.render(Property.ofValue(false)).as(Boolean.class).orElse(false);
 
-        var builder = GitHubModelsEmbeddingModel.builder()
-            .gitHubToken(runContext.render(this.gitHubToken).as(String.class).orElseThrow())
+        var builder = OpenAiEmbeddingModel.builder()
+            .apiKey(runContext.render(this.gitHubToken).as(String.class).orElseThrow())
+            .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse("https://models.inference.ai.azure.com"))
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .logRequestsAndResponses(logRequests || logResponses);
-
-        runContext.render(this.baseUrl).as(String.class).ifPresent(builder::endpoint);
+            .logRequests(logRequests)
+            .logResponses(logResponses);
 
         return builder.build();
     }
 
-    private ChatCompletionsResponseFormat toAzureResponseFormat(
-        RunContext runContext,
-        ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-
+    private ResponseFormat toAzureResponseFormat(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         var lc4jFormat = configuration.computeResponseFormat(runContext);
 
         if (lc4jFormat.jsonSchema() != null) {
@@ -149,10 +146,10 @@ public class GitHubModels extends ModelProvider {
             );
         }
 
-        if (lc4jFormat.type() == dev.langchain4j.model.chat.request.ResponseFormatType.JSON) {
-            return new ChatCompletionsResponseFormatJsonObject();
+        if (lc4jFormat.type() == ResponseFormatType.JSON) {
+            return ResponseFormat.builder().type(ResponseFormatType.JSON).build();
         }
 
-        return new ChatCompletionsResponseFormatText();
+        return ResponseFormat.TEXT;
     }
 }

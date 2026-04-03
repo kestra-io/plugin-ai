@@ -90,6 +90,7 @@ public class SseMcpClient extends AbstractMcpClient {
     private Property<Boolean> logResponses = Property.ofValue(false);
 
     @Override
+    @SuppressWarnings("removal")
     protected McpTransport buildMcpTransport(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         return new HttpMcpTransport.Builder()
             .sseUrl(runContext.render(sseUrl).as(String.class, additionalVariables).orElseThrow())
