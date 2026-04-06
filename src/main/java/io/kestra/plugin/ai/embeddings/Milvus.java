@@ -22,6 +22,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -69,6 +70,7 @@ public class Milvus extends EmbeddingStoreProvider {
         description = "Milvus auth token. Required if authentication is enabled; omit for local deployments without auth."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> token;
 
     @Schema(
@@ -80,102 +82,119 @@ public class Milvus extends EmbeddingStoreProvider {
             - HTTP: "http://host:9091"
             """
     )
+    @PluginProperty(group = "advanced")
     private Property<String> uri;
 
     @Schema(
         title = "Host",
         description = "Milvus host name (used when `uri` is not set). Default: \"localhost\"."
     )
+    @PluginProperty(group = "connection")
     private Property<String> host;
 
     @Schema(
         title = "Port",
         description = "Milvus port (used when `uri` is not set). Typical: 19530 (gRPC) or 9091 (HTTP). Default: 19530."
     )
+    @PluginProperty(group = "connection")
     private Property<Integer> port;
 
     @Schema(
         title = "Username",
         description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
     )
+    @PluginProperty(group = "connection")
     private Property<String> username;
 
     @Schema(
         title = "Password",
         description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
     )
+    @PluginProperty(group = "connection")
     private Property<String> password;
 
     @Schema(
         title = "Collection name",
         description = "Target collection. Created automatically if it does not exist. Default: \"default\"."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> collectionName;
 
     @Schema(
         title = "Consistency level",
         description = "Read/write consistency level. Common values include STRONG, BOUNDED, or EVENTUALLY (depends on client/version)."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> consistencyLevel;
 
     @Schema(
         title = "Index type",
         description = "Vector index type (e.g., IVF_FLAT, IVF_SQ8, HNSW). Depends on Milvus deployment and dataset."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> indexType;
 
     @Schema(
         title = "Metric type",
         description = "Similarity metric (e.g., L2, IP, COSINE). Should match the embedding provider’s expected metric."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> metricType;
 
     @Schema(
         title = "Retrieve embeddings on search",
         description = "If true, return stored embeddings along with matches. Default: false."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> retrieveEmbeddingsOnSearch;
 
     @Schema(
         title = "Database name",
         description = "Logical database to use. If not provided, the default database is used."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> databaseName;
 
     @Schema(
         title = "Auto flush on insert",
         description = "If true, flush after insert operations. Setting it to false can improve throughput."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> autoFlushOnInsert;
 
     @Schema(
         title = "Auto flush on delete",
         description = "If true, flush after delete operations."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> autoFlushOnDelete;
 
     @Schema(
         title = "ID field name",
         description = "Field name for document IDs. Default depends on collection schema."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> idFieldName;
 
     @Schema(
         title = "Text field name",
         description = "Field name for original text. Default depends on collection schema."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> textFieldName;
 
     @Schema(
         title = "Metadata field name",
         description = "Field name for metadata. Default depends on collection schema."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> metadataFieldName;
 
     @Schema(
         title = "Vector field name",
         description = "Field name for the embedding vector. Must match the index definition and embedding dimensionality."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> vectorFieldName;
 
     @Override

@@ -38,31 +38,38 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
         title = "LLM output for `TEXT` response format",
         description = "The result of the LLM completion for response format of type `TEXT` (default), null otherwise."
     )
+    @PluginProperty(group = "destination")
     private String textOutput;
 
     @Schema(
         title = "LLM output for `JSON` response format",
         description = "The result of the LLM completion for response format of type `JSON`, null otherwise."
     )
+    @PluginProperty(group = "destination")
     private Map<String, Object> jsonOutput;
 
     @Schema(title = "Token usage")
+    @PluginProperty(group = "advanced")
     private TokenUsage tokenUsage;
 
     @Schema(title = "Finish reason")
+    @PluginProperty(group = "advanced")
     private FinishReason finishReason;
 
     @Schema(title = "Tool executions")
+    @PluginProperty(group = "advanced")
     private List<ToolExecution> toolExecutions;
 
     @Schema(title = "Intermediate responses")
+    @PluginProperty(group = "advanced")
     private List<AIResponse> intermediateResponses;
 
     @Schema(title = "Request duration in milliseconds")
+    @PluginProperty(group = "execution")
     private Long requestDuration;
 
     @Schema(title = "URIs of the generated files in Kestra's internal storage")
-    @PluginProperty(additionalProperties = URI.class)
+    @PluginProperty(additionalProperties = URI.class, group = "destination")
     private final Map<String, URI> outputFiles;
 
     @Schema(
@@ -71,9 +78,11 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
             Contains the model's internal reasoning or 'thinking' text, if the model supports it and 'returnThinking' is enabled.
             This may include intermediate reasoning steps, such as chain-of-thought explanations. Null if thinking is not supported, not enabled, or not returned by the model."""
     )
+    @PluginProperty(group = "advanced")
     private final String thinking;
 
     @Schema(title = "Content sources used during RAG retrieval")
+    @PluginProperty(group = "advanced")
     private final List<ContentSource> sources;
 
     @Schema(
@@ -81,12 +90,14 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
         description = "True when an input or output guardrail expression evaluated to false. When true, `guardrailViolationMessage` contains the rule's configured message and no LLM output is available."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private final boolean guardrailViolated = false;
 
     @Schema(
         title = "Guardrail violation message",
         description = "The message from the first guardrail rule that failed. Null when no guardrail was violated."
     )
+    @PluginProperty(group = "advanced")
     private final String guardrailViolationMessage;
 
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
@@ -159,12 +170,14 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
             title = "Extracted text segment",
             description = "A snippet of text relevant to the user's query, typically a sentence, paragraph, or other discrete unit of text."
         )
+        @PluginProperty(group = "advanced")
         private String content;
 
         @Schema(
             title = "Source metadata",
             description = "Key-value pairs providing context about the origin of the content, such as URLs, document titles, or other relevant attributes."
         )
+        @PluginProperty(group = "advanced")
         private Map<String, Object> metadata;
 
         public static ContentSource from(Content content) {
@@ -184,21 +197,27 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Builder
     public static class AIResponse {
         @Schema(title = "Response identifier")
+        @PluginProperty(group = "advanced")
         private String id;
 
         @Schema(title = "Generated text completion", description = "The result of the text completion")
+        @PluginProperty(group = "advanced")
         private String completion;
 
         @Schema(title = "Token usage")
+        @PluginProperty(group = "advanced")
         private TokenUsage tokenUsage;
 
         @Schema(title = "Finish reason")
+        @PluginProperty(group = "advanced")
         private FinishReason finishReason;
 
         @Schema(title = "Tool execution requests")
+        @PluginProperty(group = "advanced")
         private List<ToolExecutionRequest> toolExecutionRequests;
 
         @Schema(title = "Request duration in milliseconds")
+        @PluginProperty(group = "execution")
         private Long requestDuration;
 
         static AIResponse from(RunContext runContext, ChatResponse chatResponse) throws JsonProcessingException {
@@ -220,12 +239,15 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
         @Builder
         public static class ToolExecutionRequest {
             @Schema(title = "Tool execution request identifier")
+            @PluginProperty(group = "advanced")
             private String id;
 
             @Schema(title = "Tool name")
+            @PluginProperty(group = "advanced")
             private String name;
 
             @Schema(title = "Tool request arguments")
+            @PluginProperty(group = "advanced")
             private Map<String, Object> arguments;
 
             static ToolExecutionRequest from(dev.langchain4j.agent.tool.ToolExecutionRequest toolExecutionRequest) throws JsonProcessingException {

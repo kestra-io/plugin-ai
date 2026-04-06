@@ -21,6 +21,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -67,6 +68,7 @@ public class LocalAI extends ModelProvider {
 
     @Schema(title = "API base URL")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> baseUrl;
 
     @Override

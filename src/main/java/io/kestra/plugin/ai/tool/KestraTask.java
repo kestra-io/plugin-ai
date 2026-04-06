@@ -33,6 +33,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -82,6 +83,7 @@ public class KestraTask extends ToolProvider {
 
     @Schema(title = "List of Kestra runnable tasks")
     @NotNull
+    @PluginProperty(group = "main")
     private List<Task> tasks;
 
     @Override

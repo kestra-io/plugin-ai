@@ -29,6 +29,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -77,6 +78,7 @@ public class GitHubModels extends ModelProvider {
         description = "Personal Access Token (PAT) used to access GitHub Models."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> gitHubToken;
 
     @Override

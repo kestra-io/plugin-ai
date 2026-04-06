@@ -28,6 +28,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -76,13 +77,16 @@ public class OciGenAI extends ModelProvider {
     private static final String DEFAULT = "DEFAULT";
     @Schema(title = "OCID of OCI Compartment with the model")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> compartmentId;
 
     @Schema(title = "OCI Region to connect the client to")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> region;
 
     @Schema(title = "OCI SDK Authentication provider")
+    @PluginProperty(group = "connection")
     private Property<String> authProvider;
 
     @Override

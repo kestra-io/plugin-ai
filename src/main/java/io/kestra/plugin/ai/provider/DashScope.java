@@ -28,6 +28,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -77,6 +78,7 @@ public class DashScope extends ModelProvider {
         : DASHSCOPE_INTL_URL;
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Schema(
@@ -89,6 +91,7 @@ public class DashScope extends ModelProvider {
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<String> baseUrl = Property.ofValue(DASHSCOPE_BASE_URL);
 
     @Schema(
@@ -98,14 +101,17 @@ public class DashScope extends ModelProvider {
                 1.0 means no penalty. Value range: (0, +inf)
             """
     )
+    @PluginProperty(group = "advanced")
     private Property<Float> repetitionPenalty;
 
     @Schema(
         title = "Whether the model uses Internet search results for reference when generating text or not"
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> enableSearch;
 
     @Schema(title = "The maximum number of tokens returned by this request")
+    @PluginProperty(group = "execution")
     private Property<Integer> maxTokens;
 
     @Override

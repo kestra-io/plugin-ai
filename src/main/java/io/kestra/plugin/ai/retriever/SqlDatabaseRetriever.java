@@ -78,34 +78,40 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
 
     @Schema(title = "Type of database to connect to (PostgreSQL, MySQL, or H2)")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<DatabaseType> databaseType;
 
     @Schema(title = "JDBC connection URL to the target database")
+    @PluginProperty(group = "connection")
     private Property<String> jdbcUrl;
 
     @Schema(title = "Database username")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> username;
 
     @Schema(title = "Database password")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> password;
 
     @Schema(title = "Optional JDBC driver class name – automatically resolved if not provided.")
+    @PluginProperty(group = "advanced")
     private Property<String> driver;
 
     @Schema(title = "Maximum number of database connections in the pool")
     @Builder.Default
+    @PluginProperty(group = "execution")
     private Property<Integer> maxPoolSize = Property.ofValue(2);
 
     @Schema(title = "Language model provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Language model configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 

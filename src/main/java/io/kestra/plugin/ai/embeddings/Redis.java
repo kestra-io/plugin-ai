@@ -23,6 +23,7 @@ import lombok.experimental.SuperBuilder;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisPooled;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -63,14 +64,17 @@ public class Redis extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The database server host")
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
     @Schema(title = "The database server port")
+    @PluginProperty(group = "main")
     private Property<Integer> port;
 
     @Schema(title = "The index name")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> indexName = Property.ofValue("embedding-index");
 
     @Override

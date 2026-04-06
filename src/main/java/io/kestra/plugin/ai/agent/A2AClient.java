@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -48,10 +49,12 @@ import lombok.experimental.SuperBuilder;
 public class A2AClient extends Task implements RunnableTask<A2AClient.Output> {
     @Schema(title = "Server URL", description = "The URL of the remote agent A2A server")
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> serverUrl;
 
     @Schema(title = "Text prompt", description = "The input prompt for the language model")
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> prompt;
 
     @Override

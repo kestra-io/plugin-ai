@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -66,14 +67,17 @@ import lombok.experimental.SuperBuilder;
 public class StdioMcpClient extends AbstractMcpClient {
     @Schema(title = "MCP client command, as a list of command parts")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<List<String>> command;
 
     @Schema(title = "Environment variables")
+    @PluginProperty(group = "execution")
     private Property<Map<String, String>> env;
 
     @Schema(title = "Log events")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Boolean> logEvents = Property.ofValue(false);
 
     @Override

@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -58,11 +59,13 @@ import lombok.experimental.SuperBuilder;
 public class TavilyWebSearch extends ContentRetrieverProvider {
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Schema(title = "Maximum number of results to return")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Integer> maxResults = Property.ofValue(3);
 
     @Override

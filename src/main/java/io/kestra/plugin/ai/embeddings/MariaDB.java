@@ -26,6 +26,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -68,24 +69,30 @@ public class MariaDB extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The username")
+    @PluginProperty(group = "main")
     private Property<String> username;
     @NotNull
     @Schema(title = "The password")
+    @PluginProperty(group = "main")
     private Property<String> password;
 
     @NotNull
     @Schema(title = "Database URL of the MariaDB database (e.g., jdbc:mariadb://host:port/dbname)")
+    @PluginProperty(group = "main")
     private Property<String> databaseUrl;
     @NotNull
     @Schema(title = "Whether to create the table if it doesn't exist")
+    @PluginProperty(group = "main")
     private Property<Boolean> createTable;
 
     @NotNull
     @Schema(title = "Name of the table where embeddings will be stored")
+    @PluginProperty(group = "main")
     private Property<String> tableName;
 
     @NotNull
     @Schema(title = "Name of the column used as the unique ID in the database")
+    @PluginProperty(group = "main")
     private Property<String> fieldName;
 
     @Schema(
@@ -95,6 +102,7 @@ public class MariaDB extends EmbeddingStoreProvider {
               Required only when using COLUMN_PER_KEY storage mode.
             """
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> columnDefinitions;
 
     @Schema(
@@ -104,6 +112,7 @@ public class MariaDB extends EmbeddingStoreProvider {
              Used only with COLUMN_PER_KEY storage mode.
             """
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> indexes;
 
     @Schema(
@@ -116,6 +125,7 @@ public class MariaDB extends EmbeddingStoreProvider {
             """
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> metadataStorageMode = Property.ofValue(MetadataStorageMode.COLUMN_PER_KEY.name());
 
     @Override

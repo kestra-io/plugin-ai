@@ -30,6 +30,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -76,14 +77,17 @@ import lombok.experimental.SuperBuilder;
 public class GoogleVertexAI extends ModelProvider {
     @Schema(title = "Endpoint URL")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> endpoint;
 
     @Schema(title = "Project location")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> location;
 
     @Schema(title = "Project ID")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> project;
 
     @Override

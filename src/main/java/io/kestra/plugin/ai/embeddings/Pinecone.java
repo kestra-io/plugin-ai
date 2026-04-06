@@ -20,6 +20,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -62,21 +63,26 @@ public class Pinecone extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The API key")
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @NotNull
     @Schema(title = "The cloud provider")
+    @PluginProperty(group = "main")
     private Property<String> cloud;
 
     @NotNull
     @Schema(title = "The cloud provider region")
+    @PluginProperty(group = "main")
     private Property<String> region;
 
     @NotNull
     @Schema(title = "The index")
+    @PluginProperty(group = "main")
     private Property<String> index;
 
     @Schema(title = "The namespace (default will be used if not provided)")
+    @PluginProperty(group = "connection")
     private Property<String> namespace;
 
     @Override

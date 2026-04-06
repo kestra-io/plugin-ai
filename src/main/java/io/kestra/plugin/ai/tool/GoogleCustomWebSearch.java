@@ -22,6 +22,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -69,10 +70,12 @@ import lombok.experimental.SuperBuilder;
 public class GoogleCustomWebSearch extends ToolProvider {
     @Schema(title = "Custom search engine ID (cx)")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> csi;
 
     @Schema(title = "API key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Override

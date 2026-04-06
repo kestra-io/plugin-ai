@@ -28,6 +28,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -77,12 +78,14 @@ public class Anthropic extends ModelProvider {
     private static final String ENABLED = "enabled";
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
     @Schema(
         title = "Maximum Tokens",
         description = """
             Specifies the maximum number of tokens that the model is allowed to generate in its response."""
     )
+    @PluginProperty(group = "execution")
     private Property<Integer> maxTokens;
 
     @Override

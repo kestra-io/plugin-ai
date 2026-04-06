@@ -21,6 +21,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -62,21 +63,26 @@ public class Tablestore extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "Endpoint URL", description = "The base URL for the Tablestore database endpoint.")
+    @PluginProperty(group = "main")
     private Property<String> endpoint;
 
     @NotNull
     @Schema(title = "Instance Name", description = "The name of the Tablestore database instance.")
+    @PluginProperty(group = "main")
     private Property<String> instanceName;
 
     @NotNull
     @Schema(title = "Access Key ID", description = "The access key ID used for authentication with the database.")
+    @PluginProperty(group = "main")
     private Property<String> accessKeyId;
 
     @NotNull
     @Schema(title = "Access Key Secret", description = "The access key secret used for authentication with the database.")
+    @PluginProperty(group = "main")
     private Property<String> accessKeySecret;
 
     @Schema(title = "Metadata Schema List", description = "Optional list of metadata field schemas for the collection.")
+    @PluginProperty(group = "advanced")
     private Property<List<FieldSchema>> metadataSchemaList;
 
     @Override

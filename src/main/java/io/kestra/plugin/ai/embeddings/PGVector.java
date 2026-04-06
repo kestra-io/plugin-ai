@@ -18,6 +18,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -61,26 +62,32 @@ import lombok.experimental.SuperBuilder;
 public class PGVector extends EmbeddingStoreProvider {
     @NotNull
     @Schema(title = "The database server host")
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
     @Schema(title = "The database server port")
+    @PluginProperty(group = "main")
     private Property<Integer> port;
 
     @NotNull
     @Schema(title = "The database user")
+    @PluginProperty(group = "main")
     private Property<String> user;
 
     @NotNull
     @Schema(title = "The database password")
+    @PluginProperty(group = "main")
     private Property<String> password;
 
     @NotNull
     @Schema(title = "The database name")
+    @PluginProperty(group = "main")
     private Property<String> database;
 
     @NotNull
     @Schema(title = "The table to store embeddings in")
+    @PluginProperty(group = "main")
     private Property<String> table;
 
     @Schema(
@@ -88,6 +95,7 @@ public class PGVector extends EmbeddingStoreProvider {
         description = "An IVFFlat index divides vectors into lists, and then searches a subset of those lists closest to the query vector. It has faster build times and uses less memory than HNSW but has lower query performance (in terms of speed-recall tradeoff)."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Boolean> useIndex = Property.ofValue(false);
 
     @Override

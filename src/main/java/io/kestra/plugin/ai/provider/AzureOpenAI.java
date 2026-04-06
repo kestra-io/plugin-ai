@@ -33,6 +33,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -79,22 +80,28 @@ import lombok.experimental.SuperBuilder;
 public class AzureOpenAI extends ModelProvider {
 
     @Schema(title = "API Key")
+    @PluginProperty(group = "connection")
     private Property<String> apiKey;
 
     @Schema(title = "API endpoint", description = "The Azure OpenAI endpoint in the format: https://{resource}.openai.azure.com/")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> endpoint;
 
     @Schema(title = "API version")
+    @PluginProperty(group = "advanced")
     private Property<String> serviceVersion;
 
     @Schema(title = "Tenant ID")
+    @PluginProperty(group = "connection")
     private Property<String> tenantId;
 
     @Schema(title = "Client ID")
+    @PluginProperty(group = "connection")
     private Property<String> clientId;
 
     @Schema(title = "Client secret")
+    @PluginProperty(group = "connection")
     private Property<String> clientSecret;
 
     @Override

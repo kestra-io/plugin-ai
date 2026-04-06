@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -67,25 +68,30 @@ import lombok.experimental.SuperBuilder;
 public class StreamableHttpMcpClient extends AbstractMcpClient {
     @Schema(title = "URL of the MCP server")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> url;
 
     @Schema(title = "Connection timeout duration")
+    @PluginProperty(group = "execution")
     private Property<Duration> timeout;
 
     @Schema(
         title = "Custom headers",
         description = "Useful, for example, for adding authentication tokens via the `Authorization` header."
     )
+    @PluginProperty(group = "advanced")
     private Property<Map<String, String>> headers;
 
     @Schema(title = "Log requests")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Boolean> logRequests = Property.ofValue(false);
 
     @Schema(title = "Log responses")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Boolean> logResponses = Property.ofValue(false);
 
     @Override

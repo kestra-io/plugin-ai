@@ -21,6 +21,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -65,10 +66,12 @@ import lombok.experimental.SuperBuilder;
 public class WatsonxAI extends ModelProvider {
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Schema(title = "Project Id")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> projectId;
 
     @Override

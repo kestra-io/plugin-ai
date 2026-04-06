@@ -22,6 +22,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -68,6 +69,7 @@ import lombok.experimental.SuperBuilder;
 public class WorkersAI extends ModelProvider {
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Schema(
@@ -75,6 +77,7 @@ public class WorkersAI extends ModelProvider {
         description = "Unique identifier assigned to an account"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> accountId;
 
     @Override

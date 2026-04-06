@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.jackson.Jacksonized;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @Builder
@@ -19,6 +20,7 @@ public class Guardrails {
             Each rule's Pebble expression has access to the `message` variable (the user message text).
             The first failing rule halts execution and returns a guardrail violation in the task output."""
     )
+    @PluginProperty(group = "advanced")
     private List<GuardrailRule> input;
 
     @Schema(
@@ -29,5 +31,6 @@ public class Guardrails {
             `finishReason`, `inputTokenCount`, and `outputTokenCount`.
             The first failing rule halts and returns a guardrail violation in the task output."""
     )
+    @PluginProperty(group = "advanced")
     private List<GuardrailRule> output;
 }
