@@ -31,6 +31,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -40,6 +41,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 public abstract class OpenAICompliantProvider extends ModelProvider {
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Override

@@ -28,6 +28,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -75,6 +76,7 @@ import lombok.experimental.SuperBuilder;
 public class Ollama extends ModelProvider {
     @Schema(title = "Model endpoint")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> endpoint;
 
     @Override

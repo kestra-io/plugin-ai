@@ -25,6 +25,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -72,22 +73,27 @@ public class PostgreSQL extends MemoryProvider {
 
     @NotNull
     @Schema(title = "PostgreSQL host", description = "The hostname of your PostgreSQL server")
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @Schema(title = "PostgreSQL port", description = "The port of your PostgreSQL server")
     @Builder.Default
+    @PluginProperty(group = "connection")
     private Property<Integer> port = Property.ofValue(5432);
 
     @NotNull
     @Schema(title = "Database name", description = "The name of the PostgreSQL database")
+    @PluginProperty(group = "main")
     private Property<String> database;
 
     @NotNull
     @Schema(title = "Database user", description = "The username to connect to PostgreSQL")
+    @PluginProperty(group = "main")
     private Property<String> user;
 
     @NotNull
     @Schema(title = "Database password", description = "The password to connect to PostgreSQL")
+    @PluginProperty(group = "main")
     private Property<String> password;
 
     @Schema(
@@ -95,6 +101,7 @@ public class PostgreSQL extends MemoryProvider {
         description = "The name of the table used to store chat memory. Defaults to 'chat_memory'."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> tableName = Property.ofValue("chat_memory");
 
     @Override

@@ -18,6 +18,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -29,14 +30,17 @@ import lombok.experimental.SuperBuilder;
 public abstract class MemoryProvider extends AdditionalPlugin {
     @Schema(title = "Maximum number of messages to keep in memory. If memory is full, the oldest messages will be removed in a FIFO manner. The last system message is always kept.")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Integer> messages = Property.ofValue(10);
 
     @Schema(title = "Memory duration - defaults to 1h")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Duration> ttl = Property.ofValue(Duration.ofHours(1));
 
     @Schema(title = "Memory ID - defaults to the value of the `system.correlationId` label. This means that a memory is valid for the entire flow execution including its subflows.")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> memoryId = Property.ofExpression("{{ labels.system.correlationId }}");
 
     @Schema(
@@ -47,6 +51,7 @@ public abstract class MemoryProvider extends AdditionalPlugin {
             You can also set `drop: BEFORE_TASKRUN` to drop the memory before the taskrun."""
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Drop> drop = Property.ofValue(Drop.NEVER);
 
     public abstract ChatMemory chatMemory(RunContext runContext) throws IllegalVariableEvaluationException, IOException;

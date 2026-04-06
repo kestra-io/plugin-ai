@@ -95,6 +95,7 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The name of the index to store embeddings")
+    @PluginProperty(group = "main")
     private Property<String> indexName;
 
     @Override
@@ -130,36 +131,40 @@ public class Elasticsearch extends EmbeddingStoreProvider {
             title = "List of HTTP Elasticsearch servers",
             description = "Must be a URI like `https://example.com:9200` with scheme and port"
         )
-        @PluginProperty(dynamic = true)
+        @PluginProperty(dynamic = true, group = "main")
         @NotNull
         @NotEmpty
         private List<String> hosts;
 
         @Schema(title = "Basic authorization configuration")
-        @PluginProperty
+        @PluginProperty(group = "advanced")
         private BasicAuth basicAuth;
 
         @Schema(
             title = "List of HTTP headers to be sent with every request",
             description = "Each item is a `key: value` string, e.g., `Authorization: Token XYZ`"
         )
+        @PluginProperty(group = "advanced")
         private Property<List<String>> headers;
 
         @Schema(
             title = "Path prefix for all HTTP requests",
             description = "If set to `/my/path`, each client request becomes `/my/path/` + endpoint. Useful when Elasticsearch is behind a proxy providing a base path; do not use otherwise."
         )
+        @PluginProperty(group = "advanced")
         private Property<String> pathPrefix;
 
         @Schema(
             title = "Treat responses with deprecation warnings as failures"
         )
+        @PluginProperty(group = "advanced")
         private Property<Boolean> strictDeprecationMode;
 
         @Schema(
             title = "Trust all SSL CA certificates",
             description = "Use this if the server uses a self-signed SSL certificate"
         )
+        @PluginProperty(group = "advanced")
         private Property<Boolean> trustAllSsl;
 
         @SuperBuilder
@@ -167,9 +172,11 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         @Getter
         public static class BasicAuth {
             @Schema(title = "Basic authorization username")
+            @PluginProperty(group = "connection")
             private Property<String> username;
 
             @Schema(title = "Basic authorization password")
+            @PluginProperty(group = "connection")
             private Property<String> password;
         }
 

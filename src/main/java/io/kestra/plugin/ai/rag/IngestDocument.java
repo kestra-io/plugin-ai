@@ -105,40 +105,44 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         description = "Must be configured with an embedding model."
     )
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Embedding store provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private EmbeddingStoreProvider embeddings;
 
     @Schema(
         title = "Path in the task working directory containing documents to ingest",
         description = "Each document in the directory will be ingested into the embedding store. Ingestion is recursive and protected against path traversal (CWE-22)."
     )
+    @PluginProperty(group = "source")
     private Property<String> fromPath;
 
     @Schema(title = "List of internal storage URIs for documents")
-    @PluginProperty(internalStorageURI = true)
+    @PluginProperty(internalStorageURI = true, group = "connection")
     private Property<List<String>> fromInternalURIs;
 
     @Schema(title = "List of document URLs from external sources")
+    @PluginProperty(group = "connection")
     private Property<List<String>> fromExternalURLs;
 
     @Schema(title = "List of inline documents")
-    @PluginProperty
+    @PluginProperty(group = "source")
     private List<InlineDocument> fromDocuments;
 
     @Schema(title = "Additional metadata to add to all ingested documents")
+    @PluginProperty(group = "advanced")
     private Property<Map<String, String>> metadata;
 
     @Schema(title = "Document splitter")
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private DocumentSplitter documentSplitter;
 
     @Schema(title = "Drop the store before ingestion (useful for testing)")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Boolean> drop = Property.ofValue(Boolean.FALSE);
 
     @Schema(
@@ -296,6 +300,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         private Property<String> content;
 
         @Schema(title = "Document metadata")
+        @PluginProperty(group = "advanced")
         private Property<Map<String, Object>> metadata;
     }
 

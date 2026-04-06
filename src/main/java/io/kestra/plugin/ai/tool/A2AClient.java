@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -76,6 +77,7 @@ public class A2AClient extends ToolProvider {
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     protected Property<String> name = Property.ofValue("tool");
 
     @Schema(
@@ -83,10 +85,12 @@ public class A2AClient extends ToolProvider {
         description = "The description will be used to instruct the LLM what the tool is doing."
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> description;
 
     @Schema(title = "Server URL", description = "The URL of the remote agent A2A server")
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> serverUrl;
 
     @Override

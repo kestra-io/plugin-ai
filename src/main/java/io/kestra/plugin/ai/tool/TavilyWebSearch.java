@@ -22,6 +22,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -68,6 +69,7 @@ import lombok.experimental.SuperBuilder;
 public class TavilyWebSearch extends ToolProvider {
     @Schema(title = "Tavily API Key - you can obtain one from [the Tavily website](https://www.tavily.com/#pricing)")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Override

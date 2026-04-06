@@ -24,6 +24,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import redis.clients.jedis.Jedis;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -104,6 +105,7 @@ public class Redis extends MemoryProvider {
         title = "Redis host",
         description = "The hostname of your Redis server (e.g., localhost or redis-server)"
     )
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @Schema(
@@ -111,6 +113,7 @@ public class Redis extends MemoryProvider {
         description = "The port of your Redis server"
     )
     @Builder.Default
+    @PluginProperty(group = "connection")
     private Property<Integer> port = Property.ofValue(6379);
 
     @Override

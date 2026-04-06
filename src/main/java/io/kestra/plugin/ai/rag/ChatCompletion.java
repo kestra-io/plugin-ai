@@ -267,40 +267,42 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
 
     @Schema(title = "System message", description = "Instruction that sets the assistant's role, tone, and constraints for this task.")
+    @PluginProperty(group = "advanced")
     protected Property<String> systemMessage;
 
     @Schema(title = "User prompt", description = "The user input for this run. May be templated from flow inputs.")
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> prompt;
 
     @Schema(
         title = "Embedding store",
         description = "Optional when at least one entry is provided in `contentRetrievers`."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private EmbeddingStoreProvider embeddings;
 
     @Schema(
         title = "Embedding model provider",
         description = "Optional. If not set, the embedding model is created from `chatProvider`. Ensure the chosen chat provider supports embeddings."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private ModelProvider embeddingProvider;
 
     @Schema(title = "Chat model provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider chatProvider;
 
     @Schema(title = "Chat configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration chatConfiguration = ChatConfiguration.empty();
 
     @Schema(title = "Content retriever configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     private ContentRetrieverConfiguration contentRetrieverConfiguration = ContentRetrieverConfiguration.builder().build();
 
@@ -308,15 +310,18 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         title = "Additional content retrievers",
         description = "Some content retrievers like WebSearch can also be used as tools, but using them as content retrievers will ensure that they are always called whereas tools are only used when the LLM decides to."
     )
+    @PluginProperty(group = "advanced")
     private Property<List<ContentRetrieverProvider>> contentRetrievers;
 
     @Schema(title = "Optional tools the LLM may call to augment its response")
+    @PluginProperty(group = "destination")
     private List<ToolProvider> tools;
 
     @Schema(
         title = "Chat memory",
         description = "Stores conversation history and injects it into context on subsequent runs."
     )
+    @PluginProperty(group = "execution")
     private MemoryProvider memory;
 
     @Schema(

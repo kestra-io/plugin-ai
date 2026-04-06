@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -61,18 +62,22 @@ public class Qdrant extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The API key")
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @NotNull
     @Schema(title = "The database server host")
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
     @Schema(title = "The database server port")
+    @PluginProperty(group = "main")
     private Property<Integer> port;
 
     @NotNull
     @Schema(title = "The collection name")
+    @PluginProperty(group = "main")
     private Property<String> collectionName;
 
     @Override

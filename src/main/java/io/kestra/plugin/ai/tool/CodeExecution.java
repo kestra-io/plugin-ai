@@ -20,6 +20,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -62,6 +63,7 @@ public class CodeExecution extends ToolProvider {
         description = "You can obtain it from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing)."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Override

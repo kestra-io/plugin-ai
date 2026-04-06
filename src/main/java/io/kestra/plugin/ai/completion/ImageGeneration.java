@@ -91,11 +91,12 @@ public class ImageGeneration extends Task implements RunnableTask<ImageGeneratio
 
     @Schema(title = "Image prompt", description = "The input prompt for the image generation model")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> prompt;
 
     @Schema(title = "Language Model Provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Override

@@ -150,6 +150,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
 
     @Schema(title = "Text prompt", description = "Text input for structured JSON extraction. Use either `prompt` or `contentBlocks`.")
     @Nullable
+    @PluginProperty(group = "main")
     private Property<String> prompt;
 
     @Schema(
@@ -161,26 +162,29 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
 
     @Schema(title = "System message", description = "Optional system instruction for the model.")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> systemMessage = Property.ofValue(
         "You are a structured JSON extraction assistant. Always respond with valid JSON."
     );
 
     @Schema(title = "Schema Name", description = "The name of the JSON schema for structured extraction")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> schemaName;
 
     @Schema(title = "JSON Fields", description = "List of fields to extract from the text")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<List<String>> jsonFields;
 
     @Schema(title = "Language Model Provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Chat configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 

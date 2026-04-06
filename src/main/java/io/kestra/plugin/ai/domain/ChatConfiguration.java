@@ -15,6 +15,7 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @Builder
@@ -23,36 +24,42 @@ public class ChatConfiguration {
         title = "Temperature",
         description = "Controls randomness in generation. Typical range is 0.0–1.0. Lower values (e.g., 0.2) make outputs more focused and deterministic, while higher values (e.g., 0.7–1.0) increase creativity and variability."
     )
+    @PluginProperty(group = "advanced")
     private Property<Double> temperature;
 
     @Schema(
         title = "Top-K",
         description = "Limits sampling to the top K most likely tokens at each step. Typical values are between 20 and 100. Smaller values reduce randomness; larger values allow more diverse outputs."
     )
+    @PluginProperty(group = "advanced")
     private Property<Integer> topK;
 
     @Schema(
         title = "Top-P (nucleus sampling)",
         description = "Selects from the smallest set of tokens whose cumulative probability is ≤ topP. Typical values are 0.8–0.95. Lower values make the output more focused, higher values increase diversity."
     )
+    @PluginProperty(group = "advanced")
     private Property<Double> topP;
 
     @Schema(
         title = "Seed",
         description = "Optional random seed for reproducibility. Provide a positive integer (e.g., 42, 1234). Using the same seed with identical settings produces repeatable outputs."
     )
+    @PluginProperty(group = "advanced")
     private Property<Integer> seed;
 
     @Schema(
         title = "Log LLM requests",
         description = "If true, prompts and configuration sent to the LLM will be logged at INFO level."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> logRequests;
 
     @Schema(
         title = "Log LLM responses",
         description = "If true, raw responses from the LLM will be logged at INFO level."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> logResponses;
 
     @Schema(
@@ -62,6 +69,7 @@ public class ChatConfiguration {
             Some providers allow requesting JSON or schema-constrained outputs, but support varies and may be incompatible with tool use.
             When using a JSON schema, the output will be returned under the key `jsonOutput`."""
     )
+    @PluginProperty(group = "processing")
     private ResponseFormat responseFormat;
 
     @Schema(
@@ -71,6 +79,7 @@ public class ChatConfiguration {
             before producing a final output; this is useful for complex tasks like multi-step problem solving or decision making, but may
             increase token usage and response time, and is only applicable to compatible models."""
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> thinkingEnabled;
 
     @Schema(
@@ -79,6 +88,7 @@ public class ChatConfiguration {
             Specifies the maximum number of tokens allocated as a budget for internal reasoning processes, such as generating intermediate
             thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output."""
     )
+    @PluginProperty(group = "advanced")
     private Property<Integer> thinkingBudgetTokens;
 
     @Schema(
@@ -88,6 +98,7 @@ public class ChatConfiguration {
             the reasoning content is extracted from the response and made available in the AiMessage object.
             It Does not trigger the thinking process itself—only affects whether the output is parsed and returned."""
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> returnThinking;
 
     @Schema(
@@ -95,6 +106,7 @@ public class ChatConfiguration {
         example = "1024"
     )
     @Nullable
+    @PluginProperty(group = "connection")
     private Property<Integer> maxToken;
 
     @Schema(
@@ -104,6 +116,7 @@ public class ChatConfiguration {
             This can significantly reduce latency and cost for repeated calls with the same system prompt or tools.
             Currently supported by Anthropic only; other providers silently ignore this setting."""
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> promptCaching;
 
     public dev.langchain4j.model.chat.request.ResponseFormat computeResponseFormat(RunContext runContext) throws IllegalVariableEvaluationException {
@@ -140,6 +153,7 @@ public class ChatConfiguration {
         )
         @NotNull
         @Builder.Default
+        @PluginProperty(group = "main")
         private Property<ResponseFormatType> type = Property.ofValue(ResponseFormatType.TEXT);
 
         @Schema(
@@ -166,6 +180,7 @@ public class ChatConfiguration {
                 guide the model about the expected output structure via the prompt and validate downstream.
                 """
         )
+        @PluginProperty(group = "connection")
         private Property<Map<String, Object>> jsonSchema;
 
         @Schema(
@@ -175,6 +190,7 @@ public class ChatConfiguration {
                 Example: "Classify a customer ticket into category and priority."
                 """
         )
+        @PluginProperty(group = "advanced")
         private Property<String> jsonSchemaDescription;
 
         @Schema(
@@ -182,6 +198,7 @@ public class ChatConfiguration {
             description = "When true, providers that support it enforce strict JSON schema output when `type` is `JSON`."
         )
         @Builder.Default
+        @PluginProperty(group = "advanced")
         private Property<Boolean> strictJson = Property.ofValue(false);
 
         dev.langchain4j.model.chat.request.ResponseFormat to(RunContext runContext) throws IllegalVariableEvaluationException {

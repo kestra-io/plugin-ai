@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -56,5 +57,6 @@ public class HuggingFace extends OpenAICompliantProvider {
 
     @Schema(title = "API base URL")
     @Builder.Default
+    @PluginProperty(group = "connection")
     private Property<String> baseUrl = Property.ofValue(BASE_URL);
 }

@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -97,51 +98,66 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
 )
 public class DockerMcpClient extends AbstractMcpClient {
     @Schema(title = "MCP client command, as a list of command parts")
+    @PluginProperty(group = "advanced")
     private Property<List<String>> command;
 
     @Schema(title = "Environment variables")
+    @PluginProperty(group = "execution")
     private Property<Map<String, String>> env;
 
     @Schema(title = "Container image")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> image;
 
     @Schema(title = "Whether to log events")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Boolean> logEvents = Property.ofValue(false);
 
     @Schema(title = "Docker host")
+    @PluginProperty(group = "connection")
     private Property<String> dockerHost;
 
     @Schema(title = "Docker configuration")
+    @PluginProperty(group = "advanced")
     private Property<String> dockerConfig;
 
     @Schema(title = "Docker context")
+    @PluginProperty(group = "advanced")
     private Property<String> dockerContext;
 
     @Schema(title = "Docker certificate path")
+    @PluginProperty(group = "advanced")
     private Property<String> dockerCertPath;
 
     @Schema(title = "Whether Docker should verify TLS certificates")
+    @PluginProperty(group = "advanced")
     private Property<Boolean> dockerTlsVerify;
 
     @Schema(title = "Container registry email")
+    @PluginProperty(group = "advanced")
     private Property<String> registryEmail;
 
     @Schema(title = "Container registry password")
+    @PluginProperty(group = "connection")
     private Property<String> registryPassword;
 
     @Schema(title = "Container registry username")
+    @PluginProperty(group = "connection")
     private Property<String> registryUsername;
 
     @Schema(title = "Container registry URL")
+    @PluginProperty(group = "connection")
     private Property<String> registryUrl;
 
     @Schema(title = "API version")
+    @PluginProperty(group = "advanced")
     private Property<String> apiVersion;
 
     @Schema(title = "Volume binds")
+    @PluginProperty(group = "advanced")
     private Property<List<String>> binds;
 
     @Override

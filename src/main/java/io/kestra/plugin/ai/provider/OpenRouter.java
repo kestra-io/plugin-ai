@@ -29,6 +29,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -78,6 +79,7 @@ public class OpenRouter extends ModelProvider {
 
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Override

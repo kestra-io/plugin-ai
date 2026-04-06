@@ -27,6 +27,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -68,6 +69,7 @@ public class KestraKVStore extends EmbeddingStoreProvider {
 
     @Schema(title = "The name of the KV pair to use")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> kvName = Property.ofExpression("{{ flow.id }}-embedding-store");
 
     @Override

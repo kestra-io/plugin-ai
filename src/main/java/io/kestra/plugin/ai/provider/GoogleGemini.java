@@ -29,6 +29,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -113,9 +114,11 @@ public class GoogleGemini extends ModelProvider {
         title = "API Key",
         description = "Required unless certificate-based authentication is configured with `clientPem` (optionally with `caPem`)."
     )
+    @PluginProperty(group = "connection")
     private Property<String> apiKey;
 
     @Schema(title = "The configuration for embeddingModel")
+    @PluginProperty(group = "advanced")
     private EmbeddingModelConfiguration embeddingModelConfiguration;
 
     @Override
@@ -219,18 +222,22 @@ public class GoogleGemini extends ModelProvider {
             title = "The headline or name of the document (passed to the model as metadata).",
             description = "If set, this help improving retrieval quality by providing context for a document."
         )
+        @PluginProperty(group = "connection")
         private Property<String> titleMetadataKey;
 
         @Schema(title = "Used to convey intended downstream application to help the model produce better embeddings.")
         private Property<GoogleAiEmbeddingModel.TaskType> taskType;
 
         @Schema(title = "Maximum number of retries for failed requests")
+        @PluginProperty(group = "execution")
         private Property<Integer> maxRetries;
 
         @Schema(title = "Timeout in seconds for each request")
+        @PluginProperty(group = "execution")
         private Property<Duration> timeout;
 
         @Schema(title = "Used to specify output embedding size", description = "If set, output embeddings will be truncated to the size specified.")
+        @PluginProperty(group = "advanced")
         private Property<Integer> outputDimensionality;
     }
 }

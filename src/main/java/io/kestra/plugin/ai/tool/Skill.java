@@ -121,7 +121,7 @@ public class Skill extends ToolProvider {
             pointing to Kestra internal storage."""
     )
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private List<SkillDefinition> skills;
 
     @Override
@@ -213,30 +213,33 @@ public class Skill extends ToolProvider {
     public static class SkillDefinition {
         @Schema(title = "Name of the skill")
         @NotNull
+        @PluginProperty(group = "main")
         private Property<String> name;
 
         @Schema(title = "Description of the skill used by the LLM to decide when to activate it")
         @NotNull
+        @PluginProperty(group = "main")
         private Property<String> description;
 
         @Schema(
             title = "Inline content of the skill",
             description = "Mutually exclusive with 'contentUri'. At least one of 'content' or 'contentUri' must be set."
         )
+        @PluginProperty(group = "advanced")
         private Property<String> content;
 
         @Schema(
             title = "URI to the skill content in Kestra internal storage",
             description = "Mutually exclusive with 'content'. At least one of 'content' or 'contentUri' must be set."
         )
-        @PluginProperty(internalStorageURI = true)
+        @PluginProperty(internalStorageURI = true, group = "advanced")
         private Property<String> contentUri;
 
         @Schema(
             title = "Additional resources attached to this skill",
             description = "Resources the agent can read separately using the 'read_skill_resource' tool."
         )
-        @PluginProperty
+        @PluginProperty(group = "advanced")
         private List<ResourceDefinition> resources;
     }
 
@@ -246,10 +249,12 @@ public class Skill extends ToolProvider {
     public static class ResourceDefinition {
         @Schema(title = "Relative path of the resource within the skill")
         @NotNull
+        @PluginProperty(group = "main")
         private Property<String> relativePath;
 
         @Schema(title = "Content of the resource")
         @NotNull
+        @PluginProperty(group = "main")
         private Property<String> content;
     }
 }

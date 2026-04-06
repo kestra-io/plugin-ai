@@ -17,6 +17,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -57,10 +58,12 @@ public class Chroma extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The database base URL")
+    @PluginProperty(group = "main")
     private Property<String> baseUrl;
 
     @NotNull
     @Schema(title = "The collection name")
+    @PluginProperty(group = "main")
     private Property<String> collectionName;
 
     @Override

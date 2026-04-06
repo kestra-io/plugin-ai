@@ -189,22 +189,26 @@ public class KestraFlow extends ToolProvider {
             The LLM needs a tool description to identify whether to call it.
             If the flow has a description, the tool will use it. Otherwise, the description property must be explicitly defined."""
     )
+    @PluginProperty(group = "advanced")
     private Property<String> description;
 
     @Schema(title = "Namespace of the flow that should be called")
+    @PluginProperty(group = "connection")
     private Property<String> namespace;
 
     @Schema(title = "Flow ID of the flow that should be called")
+    @PluginProperty(group = "advanced")
     private Property<String> flowId;
 
     @Schema(title = "Revision of the flow that should be called")
+    @PluginProperty(group = "advanced")
     private Property<Integer> revision;
 
     @Schema(
         title = "Input values that should be passed to flow's execution",
         description = "Any inputs passed by the LLM will override those defined here."
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "advanced")
     private Map<String, Object> inputs;
 
     @Schema(
@@ -224,12 +228,14 @@ public class KestraFlow extends ToolProvider {
             By default, labels are not inherited. If you set this option to `true`, the flow execution will inherit all labels from the agent's execution.
             Any labels passed by the LLM will override those defined here."""
     )
+    @PluginProperty(group = "advanced")
     private final Property<Boolean> inheritLabels = Property.ofValue(false);
 
     @Schema(
         title = "Schedule the flow execution at a later date",
         description = "If the LLM sets a scheduleDate, it will override the one defined here."
     )
+    @PluginProperty(group = "advanced")
     private Property<ZonedDateTime> scheduleDate;
 
     @Override

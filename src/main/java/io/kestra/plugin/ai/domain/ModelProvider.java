@@ -45,6 +45,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.Collections;
 import java.util.List;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -56,24 +57,28 @@ import java.util.List;
 public abstract class ModelProvider extends AdditionalPlugin {
     @Schema(title = "Model name")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> modelName;
 
     @Schema(
         title = "Base URL",
         description = "Custom base URL to override the default endpoint (useful for local tests, WireMock, or enterprise gateways)."
     )
+    @PluginProperty(group = "connection")
     protected Property<String> baseUrl;
 
     @Schema(
         title = "Client PEM certificate content",
         description = "PEM client certificate as text, used to authenticate the connection to enterprise AI endpoints."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> clientPem;
 
     @Schema(
         title = "CA PEM certificate content",
         description = "CA certificate as text, used to verify SSL/TLS connections when using custom endpoints."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> caPem;
 
     public abstract ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException;

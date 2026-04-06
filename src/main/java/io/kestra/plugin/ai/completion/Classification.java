@@ -99,6 +99,7 @@ public class Classification extends Task implements RunnableTask<Classification.
 
     @Schema(title = "Text prompt", description = "Text input to classify. Use either `prompt` or `contentBlocks`.")
     @Nullable
+    @PluginProperty(group = "main")
     private Property<String> prompt;
 
     @Schema(
@@ -113,22 +114,24 @@ public class Classification extends Task implements RunnableTask<Classification.
         description = "Instruction message for the model. Defaults to a standard classification instruction using the provided classes."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> systemMessage = Property.ofExpression(
         "Respond by only one of the following classes by typing just the exact class name: {{ classes }}"
     );
 
     @Schema(title = "Classification Options", description = "The list of possible classification categories")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<List<String>> classes;
 
     @Schema(title = "Language Model Provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Chat configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 

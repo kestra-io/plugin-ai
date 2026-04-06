@@ -29,6 +29,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -73,6 +74,7 @@ public class ZhiPuAI extends ModelProvider {
 
     @Schema(title = "API Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Schema(
@@ -80,15 +82,19 @@ public class ZhiPuAI extends ModelProvider {
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<String> baseUrl = Property.ofValue(BASE_URL);
 
     @Schema(title = "With the stop parameter, the model will automatically stop generating text when it is about to contain the specified string or token_id")
+    @PluginProperty(group = "advanced")
     private Property<List<String>> stops;
 
     @Schema(title = "The maximum retry times to request")
+    @PluginProperty(group = "execution")
     private Property<Integer> maxRetries;
 
     @Schema(title = "The maximum number of tokens returned by this request")
+    @PluginProperty(group = "connection")
     private Property<Integer> maxToken;
 
     @Override

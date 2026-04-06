@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder(toBuilder = true)
@@ -23,11 +24,14 @@ public class LangfuseObservability extends Observability {
         title = "Langfuse OTLP endpoint",
         description = "Langfuse OTLP endpoint (for example: https://us.cloud.langfuse.com/api/public/otel)."
     )
+    @PluginProperty(group = "connection")
     private Property<String> endpoint;
 
     @Schema(title = "Langfuse public key")
+    @PluginProperty(group = "connection")
     private Property<String> publicKey;
 
     @Schema(title = "Langfuse secret key")
+    @PluginProperty(group = "connection")
     private Property<String> secretKey;
 }

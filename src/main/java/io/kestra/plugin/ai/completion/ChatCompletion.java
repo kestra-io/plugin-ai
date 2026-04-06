@@ -239,21 +239,23 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         description = "The list of chat messages for the current conversation. A `ChatMessage` can either be text (using `content`) or a multi-block multimodal message (using `contentBlocks`). There can be only one system message, and the last message must be a user message."
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<List<ChatMessage>> messages;
 
     @Schema(title = "Language Model Provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Chat configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
     @Schema(title = "Tools that the LLM may use to augment its response")
     @Nullable
+    @PluginProperty(group = "destination")
     private List<ToolProvider> tools;
 
     @Schema(

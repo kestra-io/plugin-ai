@@ -20,6 +20,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -66,12 +67,14 @@ public class Weaviate extends EmbeddingStoreProvider {
         description = "Weaviate API key. Omit for local deployments without auth."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> apiKey;
 
     @Schema(
         title = "Scheme",
         description = "Cluster scheme: \"https\" (recommended) or \"http\"."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> scheme;
 
     @Schema(
@@ -79,60 +82,70 @@ public class Weaviate extends EmbeddingStoreProvider {
         description = "Cluster host name without protocol, e.g., \"abc123.weaviate.network\"."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @Schema(
         title = "Port",
         description = "Optional port (e.g., 443 for https, 80 for http). Leave unset to use provider defaults."
     )
+    @PluginProperty(group = "connection")
     private Property<Integer> port;
 
     @Schema(
         title = "Object class",
         description = "Weaviate class to store objects in (must start with an uppercase letter). Defaults to \"Default\" if not set."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> objectClass;
 
     @Schema(
         title = "Consistency level",
         description = "Write consistency: ONE, QUORUM (default), or ALL."
     )
+    @PluginProperty(group = "advanced")
     private Property<ConsistencyLevel> consistencyLevel;
 
     @Schema(
         title = "Avoid duplicates",
         description = "If true (default), a hash-based ID is derived from each text segment to prevent duplicates. If false, a random ID is used."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> avoidDups;
 
     @Schema(
         title = "Metadata field name",
         description = "Field used to store metadata. Defaults to \"_metadata\" if not set."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> metadataFieldName;
 
     @Schema(
         title = "Metadata keys",
         description = "The list of metadata keys to store - if not provided, it will default to an empty list."
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> metadataKeys;
 
     @Schema(
         title = "Use gRPC for batch inserts",
         description = "If true, use gRPC for batch inserts. HTTP remains required for search operations."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> useGrpcForInserts;
 
     @Schema(
         title = "Secure gRPC",
         description = "Whether the gRPC connection is secured (TLS)."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> securedGrpc;
 
     @Schema(
         title = "gRPC port",
         description = "Port for gRPC if enabled (e.g., 50051)."
     )
+    @PluginProperty(group = "connection")
     private Property<Integer> grpcPort;
 
     @Override

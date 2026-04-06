@@ -95,28 +95,32 @@ public class Search extends Task implements RunnableTask<Search.Output> {
 
     @Schema(title = "Query string")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> query;
 
     @Schema(title = "Maximum number of results")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<Integer> maxResults;
 
     @Schema(title = "Minimum similarity score")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<Double> minScore;
 
     @Schema(title = "Embedding model provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Embedding store provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private EmbeddingStoreProvider embeddings;
 
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "processing")
     protected Property<FetchType> fetchType = Property.ofValue(NONE);
 
     @Override

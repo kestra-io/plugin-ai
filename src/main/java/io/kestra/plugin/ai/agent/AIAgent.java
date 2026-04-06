@@ -677,39 +677,45 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFilesInterface {
 
     @Schema(title = "System message", description = "The system message for the language model")
+    @PluginProperty(group = "advanced")
     protected Property<String> systemMessage;
 
     @Schema(title = "Text prompt", description = "The input prompt for the language model")
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> prompt;
 
     @Schema(title = "Language model provider")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider provider;
 
     @Schema(title = "Language model configuration")
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
     @Schema(title = "Tools that the LLM may use to augment its response")
+    @PluginProperty(group = "destination")
     private List<ToolProvider> tools;
 
     @Schema(title = "Maximum sequential tools invocations")
+    @PluginProperty(group = "execution")
     private Property<Integer> maxSequentialToolsInvocations;
 
     @Schema(
         title = "Content retrievers",
         description = "Some content retrievers, like WebSearch, can also be used as tools. However, when configured as content retrievers, they will always be used, whereas tools are only invoked when the LLM decides to use them."
     )
+    @PluginProperty(group = "advanced")
     private Property<List<ContentRetrieverProvider>> contentRetrievers;
 
     @Schema(
         title = "Agent memory",
         description = "Agent memory will store messages and add them as history to the LLM context."
     )
+    @PluginProperty(group = "execution")
     private MemoryProvider memory;
 
     @Schema(
@@ -730,6 +736,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
     @PluginProperty
     private Guardrails guardrails;
 
+    @PluginProperty(group = "destination")
     private Property<List<String>> outputFiles;
 
     @Override

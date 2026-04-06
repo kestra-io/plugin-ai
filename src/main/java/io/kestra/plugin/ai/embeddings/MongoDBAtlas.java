@@ -31,6 +31,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -74,37 +75,47 @@ import lombok.experimental.SuperBuilder;
 public class MongoDBAtlas extends EmbeddingStoreProvider {
 
     @Schema(title = "The username")
+    @PluginProperty(group = "connection")
     private Property<String> username;
 
     @Schema(title = "The password")
+    @PluginProperty(group = "connection")
     private Property<String> password;
 
     @NotNull
     @Schema(title = "The scheme (e.g., mongodb+srv)")
+    @PluginProperty(group = "main")
     private Property<String> scheme;
 
     @NotNull
     @Schema(title = "The host")
+    @PluginProperty(group = "main")
     private Property<String> host;
 
     @Schema(title = "The database")
+    @PluginProperty(group = "connection")
     private Property<String> database;
 
     @Schema(title = "The connection string options")
+    @PluginProperty(group = "advanced")
     private Property<Map<String, Object>> options;
 
     @NotNull
     @Schema(title = "The collection name")
+    @PluginProperty(group = "main")
     private Property<String> collectionName;
 
     @NotNull
     @Schema(title = "The index name")
+    @PluginProperty(group = "main")
     private Property<String> indexName;
 
     @Schema(title = "The metadata field names")
+    @PluginProperty(group = "advanced")
     private Property<List<String>> metadataFieldNames;
 
     @Schema(title = "Create the index")
+    @PluginProperty(group = "advanced")
     private Property<Boolean> createIndex;
 
     @Override

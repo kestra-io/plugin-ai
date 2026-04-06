@@ -33,6 +33,7 @@ import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -81,15 +82,18 @@ public class AmazonBedrock extends ModelProvider {
 
     @Schema(title = "AWS Access Key ID")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> accessKeyId;
 
     @Schema(title = "AWS Secret Access Key")
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> secretAccessKey;
 
     @Schema(title = "Amazon Bedrock Embedding Model Type")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<AmazonBedrockEmbeddingModelType> modelType = Property.ofValue(AmazonBedrockEmbeddingModelType.COHERE);
 
     @Override

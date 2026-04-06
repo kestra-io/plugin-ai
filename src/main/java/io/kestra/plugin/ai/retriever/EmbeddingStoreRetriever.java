@@ -122,7 +122,7 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
         description = "The embedding store to retrieve relevant content from"
     )
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private EmbeddingStoreProvider embeddings;
 
     @Schema(
@@ -130,12 +130,13 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
         description = "Provider used to generate embeddings for the query. Must support embedding generation."
     )
     @NotNull
-    @PluginProperty
+    @PluginProperty(group = "main")
     private ModelProvider embeddingProvider;
 
     @Schema(title = "Maximum number of results to return from the embedding store")
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Integer> maxResults = Property.ofValue(3);
 
     @Schema(
@@ -144,6 +145,7 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "main")
     private Property<Double> minScore = Property.ofValue(0.0);
 
     @Override
