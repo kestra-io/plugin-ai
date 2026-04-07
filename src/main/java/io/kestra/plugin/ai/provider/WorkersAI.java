@@ -1,5 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+import java.util.List;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -11,6 +14,7 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.workersai.WorkersAiChatModel;
@@ -81,7 +85,7 @@ public class WorkersAI extends ModelProvider {
     private Property<String> accountId;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         return WorkersAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .accountId(runContext.render(this.accountId).as(String.class).orElseThrow())
@@ -90,7 +94,7 @@ public class WorkersAI extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return WorkersAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .accountId(runContext.render(this.accountId).as(String.class).orElseThrow())
@@ -99,7 +103,7 @@ public class WorkersAI extends ModelProvider {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return WorkersAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .accountId(runContext.render(this.accountId).as(String.class).orElseThrow())

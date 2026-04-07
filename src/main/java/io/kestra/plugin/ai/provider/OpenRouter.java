@@ -83,12 +83,12 @@ public class OpenRouter extends ModelProvider {
     private Property<String> apiKey;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         var allListeners = new ArrayList<ChatModelListener>();
         allListeners.add(new TimingChatModelListener());
         allListeners.addAll(additionalListeners);
@@ -116,7 +116,7 @@ public class OpenRouter extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -125,7 +125,7 @@ public class OpenRouter extends ModelProvider {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return OpenAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())

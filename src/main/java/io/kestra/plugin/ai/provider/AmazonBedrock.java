@@ -97,12 +97,12 @@ public class AmazonBedrock extends ModelProvider {
     private Property<AmazonBedrockEmbeddingModelType> modelType = Property.ofValue(AmazonBedrockEmbeddingModelType.COHERE);
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
             throw new IllegalArgumentException("Amazon Bedrock models do not support setting the seed.");
         }
@@ -144,12 +144,12 @@ public class AmazonBedrock extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         throw new UnsupportedOperationException("Amazon Bedrock is currently not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var modelType = runContext.render(this.modelType).as(AmazonBedrockEmbeddingModelType.class).orElseThrow();
         var modelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
         var bedrockRuntimeClient = BedrockRuntimeClient.builder()

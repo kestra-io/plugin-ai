@@ -31,7 +31,6 @@ import io.kestra.core.plugins.AdditionalPlugin;
 import io.kestra.core.plugins.serdes.PluginDeserializer;
 import io.kestra.core.runners.RunContext;
 
-import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -81,19 +80,58 @@ public abstract class ModelProvider extends AdditionalPlugin {
     @PluginProperty(group = "advanced")
     private Property<String> caPem;
 
-    public abstract ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException;
+    // --- Public API: classloader-guarded template methods ---
 
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration);
+    @FunctionalInterface
+    protected interface ClassLoaderCallable<T> {
+        T call() throws IllegalVariableEvaluationException;
     }
 
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, timeout);
+    protected <T> T withPluginClassLoader(ClassLoaderCallable<T> callable) throws IllegalVariableEvaluationException {
+        ClassLoader previous = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
+        try {
+            return callable.call();
+        } finally {
+            Thread.currentThread().setContextClassLoader(previous);
+        }
     }
 
-    public abstract ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException;
+    public final ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return withPluginClassLoader(() -> buildChatModel(runContext, configuration));
+    }
 
-    public abstract EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException;
+    public final ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
+        return withPluginClassLoader(() -> buildChatModel(runContext, configuration, timeout));
+    }
+
+    public final ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+        return withPluginClassLoader(() -> buildChatModel(runContext, configuration, timeout, additionalListeners));
+    }
+
+    public final ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+        return withPluginClassLoader(() -> buildImageModel(runContext));
+    }
+
+    public final EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+        return withPluginClassLoader(() -> buildEmbeddingModel(runContext));
+    }
+
+    // --- Protected build methods: implement these in subclasses ---
+
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120));
+    }
+
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, timeout, Collections.emptyList());
+    }
+
+    protected abstract ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException;
+
+    protected abstract ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException;
+
+    protected abstract EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException;
 
     protected JdkHttpClientBuilder buildHttpClientWithPemIfAvailable(RunContext runContext) throws IllegalVariableEvaluationException {
 
@@ -112,8 +150,7 @@ public abstract class ModelProvider extends AdditionalPlugin {
 
             HttpClient.Builder httpClient = withPemCertificate(clientPemStream, caPemStream);
 
-            return ((JdkHttpClientBuilder) HttpClientBuilderLoader.loadHttpClientBuilder())
-                .httpClientBuilder(httpClient);
+            return new JdkHttpClientBuilder().httpClientBuilder(httpClient);
 
         } catch (Exception e) {
             runContext.logger().error("Error while setting up mTLS HTTP client: {}", e.getMessage(), e);

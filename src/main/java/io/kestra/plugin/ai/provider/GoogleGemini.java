@@ -122,12 +122,12 @@ public class GoogleGemini extends ModelProvider {
     private EmbeddingModelConfiguration embeddingModelConfiguration;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         var allListeners = new ArrayList<ChatModelListener>();
         allListeners.add(new TimingChatModelListener());
         allListeners.addAll(additionalListeners);
@@ -166,12 +166,12 @@ public class GoogleGemini extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) {
+    protected ImageModel buildImageModel(RunContext runContext) {
         throw new UnsupportedOperationException("Gemini is currently not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var rApiKey = resolveAuth(runContext);
         GoogleAiEmbeddingModel.GoogleAiEmbeddingModelBuilder builder = GoogleAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())

@@ -91,12 +91,12 @@ public class GoogleVertexAI extends ModelProvider {
     private Property<String> project;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (this.endpoint != null) {
             throw new IllegalArgumentException("The `endpoint` property cannot be used for the Chat Model which uses Gemini only.");
         }
@@ -125,7 +125,7 @@ public class GoogleVertexAI extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return VertexAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .endpoint(runContext.render(this.endpoint).as(String.class).orElse(null))
@@ -135,7 +135,7 @@ public class GoogleVertexAI extends ModelProvider {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return VertexAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .endpoint(runContext.render(this.endpoint).as(String.class).orElse(null))

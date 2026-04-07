@@ -82,13 +82,13 @@ public class GitHubModels extends ModelProvider {
     private Property<String> gitHubToken;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration)
         throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
         throws IllegalVariableEvaluationException {
 
         var allListeners = new ArrayList<ChatModelListener>();
@@ -117,12 +117,12 @@ public class GitHubModels extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) {
+    protected ImageModel buildImageModel(RunContext runContext) {
         throw new UnsupportedOperationException("GitHub Models is not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext)
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext)
         throws IllegalVariableEvaluationException {
 
         var logRequests = runContext.render(Property.ofValue(false)).as(Boolean.class).orElse(false);

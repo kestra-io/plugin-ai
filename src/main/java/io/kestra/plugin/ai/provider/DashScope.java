@@ -115,13 +115,13 @@ public class DashScope extends ModelProvider {
     private Property<Integer> maxTokens;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration)
         throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
         throws IllegalVariableEvaluationException {
         if (configuration.getLogRequests() != null) {
             throw new IllegalArgumentException(
@@ -158,7 +158,7 @@ public class DashScope extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return WanxImageModel.builder()
             .modelName(
                 runContext.render(this.getModelName()).as(String.class).orElse(WanxModelName.WANX_V1)
@@ -169,7 +169,7 @@ public class DashScope extends ModelProvider {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext)
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext)
         throws IllegalVariableEvaluationException {
         return QwenEmbeddingModel.builder()
             .modelName(

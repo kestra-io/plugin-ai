@@ -1,6 +1,8 @@
 package io.kestra.plugin.ai.provider;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
 
 import org.apache.commons.lang3.Strings;
 
@@ -20,6 +22,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiChatModel;
 import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiCohereChatModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -90,7 +93,7 @@ public class OciGenAI extends ModelProvider {
     private Property<String> authProvider;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         var rModelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
         if (Strings.CI.contains(rModelName, "cohere")) {
             return buildCohereChatModel(runContext, configuration, rModelName);
@@ -99,12 +102,12 @@ public class OciGenAI extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) {
+    protected ImageModel buildImageModel(RunContext runContext) {
         throw new UnsupportedOperationException("OciGenAI is currently not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         throw new UnsupportedOperationException("OciGenAI is currently not supported for image generation.");
     }
 

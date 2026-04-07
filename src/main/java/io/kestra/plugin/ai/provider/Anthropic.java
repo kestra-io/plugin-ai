@@ -89,12 +89,12 @@ public class Anthropic extends ModelProvider {
     private Property<Integer> maxTokens;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return buildChatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
             throw new IllegalArgumentException("Anthropic models do not support setting the seed.");
         }
@@ -147,12 +147,12 @@ public class Anthropic extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) {
+    protected ImageModel buildImageModel(RunContext runContext) {
         throw new UnsupportedOperationException("Anthropic is currently not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         throw new UnsupportedOperationException("Anthropic is currently not supported for embedding models.");
     }
 
