@@ -80,8 +80,6 @@ public abstract class ModelProvider extends AdditionalPlugin {
     @PluginProperty(group = "advanced")
     private Property<String> caPem;
 
-    // --- Public API: classloader-guarded template methods ---
-
     @FunctionalInterface
     protected interface ClassLoaderCallable<T> {
         T call() throws IllegalVariableEvaluationException;
@@ -116,8 +114,6 @@ public abstract class ModelProvider extends AdditionalPlugin {
     public final EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return withPluginClassLoader(() -> buildEmbeddingModel(runContext));
     }
-
-    // --- Protected build methods: implement these in subclasses ---
 
     protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
         return buildChatModel(runContext, configuration, Duration.ofSeconds(120));
