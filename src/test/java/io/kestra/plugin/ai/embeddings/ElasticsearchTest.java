@@ -30,7 +30,7 @@ class ElasticsearchTest extends ContainerTest {
 
     @BeforeAll
     static void startElasticsearch() {
-        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:8.17.2"))
+        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:9.0.0"))
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withExposedPorts(9200);
