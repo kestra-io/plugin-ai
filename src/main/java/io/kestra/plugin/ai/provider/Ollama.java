@@ -103,6 +103,7 @@ public class Ollama extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .think(runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false) ? true : null)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
+            .timeout(timeout)
             .listeners(allListeners);
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);

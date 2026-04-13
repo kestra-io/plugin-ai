@@ -131,7 +131,8 @@ public class Anthropic extends ModelProvider {
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .cacheSystemMessages(runContext.render(configuration.getPromptCaching()).as(Boolean.class).orElse(null))
-            .cacheTools(runContext.render(configuration.getPromptCaching()).as(Boolean.class).orElse(null));
+            .cacheTools(runContext.render(configuration.getPromptCaching()).as(Boolean.class).orElse(null))
+            .timeout(timeout);
 
         JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
         if (httpClientBuilder != null) {

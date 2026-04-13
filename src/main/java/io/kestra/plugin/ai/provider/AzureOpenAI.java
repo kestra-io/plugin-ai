@@ -138,7 +138,8 @@ public class AzureOpenAI extends ModelProvider {
             .logRequestsAndResponses(logRequestAndResponses)
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(allListeners)
-            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
+            .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .timeout(timeout);
 
         if (apiKey != null) {
             return defaultBuilder
