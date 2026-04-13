@@ -14,6 +14,9 @@ plugins {
 
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
+def langchain4jVersion = "1.13.0"
+def langchain4jBetaVersion = "1.13.0-beta23"
+
 repositories {
     mavenLocal()
     mavenCentral()
@@ -58,58 +61,59 @@ dependencies {
     }
     compileOnly 'com.github.docker-java:docker-java-transport-httpclient5'
 
-    // Langchain4j model providers
-    implementation "dev.langchain4j:langchain4j"
-    implementation "dev.langchain4j:langchain4j-anthropic"
-    implementation "dev.langchain4j:langchain4j-azure-open-ai"
-    implementation "dev.langchain4j:langchain4j-bedrock"
-    implementation "dev.langchain4j:langchain4j-google-ai-gemini"
-    implementation "dev.langchain4j:langchain4j-mistral-ai"
-    implementation "dev.langchain4j:langchain4j-ollama"
-    implementation "dev.langchain4j:langchain4j-open-ai"
-    implementation "dev.langchain4j:langchain4j-vertex-ai"
-    implementation "dev.langchain4j:langchain4j-vertex-ai-gemini"
-    implementation 'dev.langchain4j:langchain4j-workers-ai'
-    implementation 'dev.langchain4j:langchain4j-local-ai'
-    implementation 'dev.langchain4j:langchain4j-community-oci-genai'
-    implementation 'dev.langchain4j:langchain4j-mariadb'
-    implementation "dev.langchain4j:langchain4j-tablestore"
-    implementation "dev.langchain4j:langchain4j-community-dashscope"
-    implementation "dev.langchain4j:langchain4j-community-zhipu-ai"
-    implementation "dev.langchain4j:langchain4j-watsonx"
+    // Langchain4j model providers (stable)
+    implementation "dev.langchain4j:langchain4j:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-anthropic:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-azure-open-ai:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-bedrock:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-google-ai-gemini:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-mistral-ai:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-ollama:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-open-ai:${langchain4jVersion}"
+    // Langchain4j model providers (beta)
+    implementation "dev.langchain4j:langchain4j-vertex-ai:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-vertex-ai-gemini:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-workers-ai:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-local-ai:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-community-oci-genai:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-mariadb:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-tablestore:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-community-dashscope:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-community-zhipu-ai:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-watsonx:${langchain4jBetaVersion}"
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
     implementation "org.apache.tika:tika-core:3.3.0"
 
-    implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0"
+    implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0:${langchain4jBetaVersion}"
 
     // Langchain4j embeddings stores
-    implementation "dev.langchain4j:langchain4j-chroma"
-    implementation "dev.langchain4j:langchain4j-elasticsearch"
-    implementation "dev.langchain4j:langchain4j-mongodb-atlas"
-    implementation "dev.langchain4j:langchain4j-milvus"
-    implementation "dev.langchain4j:langchain4j-pinecone"
-    implementation "dev.langchain4j:langchain4j-pgvector"
-    implementation "dev.langchain4j:langchain4j-community-redis"
-    implementation "dev.langchain4j:langchain4j-qdrant"
-    implementation "dev.langchain4j:langchain4j-weaviate"
+    implementation "dev.langchain4j:langchain4j-chroma:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-elasticsearch:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-mongodb-atlas:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-milvus:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-pinecone:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-pgvector:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-community-redis:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-qdrant:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-weaviate:${langchain4jBetaVersion}"
 
     // tools
-    implementation "dev.langchain4j:langchain4j-web-search-engine-google-custom"
-    implementation "dev.langchain4j:langchain4j-web-search-engine-tavily"
-    implementation "dev.langchain4j:langchain4j-mcp"
-    implementation "dev.langchain4j:langchain4j-mcp-docker"
+    implementation "dev.langchain4j:langchain4j-web-search-engine-google-custom:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-web-search-engine-tavily:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-mcp:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-mcp-docker:${langchain4jBetaVersion}"
 
     // retrievers
-    implementation "dev.langchain4j:langchain4j-experimental-sql"
+    implementation "dev.langchain4j:langchain4j-experimental-sql:${langchain4jBetaVersion}"
     compileOnly "com.zaxxer:HikariCP"
 
     // agents
-    implementation "dev.langchain4j:langchain4j-agentic"
-    implementation "dev.langchain4j:langchain4j-agentic-a2a"
+    implementation "dev.langchain4j:langchain4j-agentic:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-agentic-a2a:${langchain4jBetaVersion}"
 
     // skills
-    implementation "dev.langchain4j:langchain4j-skills:1.13.0-beta23"
+    implementation "dev.langchain4j:langchain4j-skills:${langchain4jBetaVersion}"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
@@ -170,7 +174,7 @@ dependencies {
 
     // Embeddings stores
     testImplementation 'com.redis.testcontainers:testcontainers-redis:1.6.4'
-    testImplementation "dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2"
+    testImplementation "dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:${langchain4jBetaVersion}"
     testImplementation 'org.testcontainers:chromadb:1.21.4'
     testImplementation 'org.testcontainers:milvus:1.21.4'
     testImplementation 'org.testcontainers:mongodb:1.21.4'
