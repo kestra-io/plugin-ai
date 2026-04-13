@@ -109,7 +109,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-agentic-a2a"
 
     // skills
-    implementation "dev.langchain4j:langchain4j-skills:1.13.0-beta23-SNAPSHOT"
+    implementation "dev.langchain4j:langchain4j-skills:1.13.0-beta23"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
