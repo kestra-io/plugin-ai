@@ -53,6 +53,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
+    implementation "io.kestra:kestra-api-client:1.0.11"
 
     // compileOnly as it comes from Kestra script library
     compileOnly('com.github.docker-java:docker-java') {

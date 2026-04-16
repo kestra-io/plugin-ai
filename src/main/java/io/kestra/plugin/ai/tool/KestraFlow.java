@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai.tool;
 
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -12,14 +13,9 @@ import io.kestra.core.models.Label;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
-import io.kestra.core.models.executions.Execution;
-import io.kestra.core.models.flows.FlowInterface;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.queues.QueueFactoryInterface;
-import io.kestra.core.queues.QueueInterface;
-import io.kestra.core.runners.DefaultRunContext;
-import io.kestra.core.runners.FlowMetaStoreInterface;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.runners.SDK;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.serializers.ListOrMapOfLabelDeserializer;
 import io.kestra.core.serializers.ListOrMapOfLabelSerializer;
@@ -28,6 +24,9 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.core.utils.MapUtils;
 import io.kestra.core.validations.NoSystemLabelValidation;
 import io.kestra.plugin.ai.domain.ToolProvider;
+import io.kestra.sdk.KestraClient;
+import io.kestra.sdk.internal.ApiException;
+import io.kestra.sdk.model.FlowWithSource;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -38,7 +37,6 @@ import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
-import io.micronaut.inject.qualifiers.Qualifiers;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -238,6 +236,73 @@ public class KestraFlow extends ToolProvider {
     @PluginProperty(group = "advanced")
     private Property<ZonedDateTime> scheduleDate;
 
+    @Schema(
+        title = "Override Kestra API endpoint",
+        description = """
+            URL used for calls to the Kestra API. When null, renders `{{ kestra.url }}` from configuration; if still empty, defaults to `http://localhost:8080`."""
+    )
+    @PluginProperty(group = "connection")
+    private Property<String> kestraUrl;
+
+    @Schema(
+        title = "Select API authentication",
+        description = "Use either an API token or HTTP Basic (username/password); do not provide both."
+    )
+    @PluginProperty(group = "connection")
+    private Auth auth;
+
+    @Schema(title = "Override target tenant", description = "Tenant identifier applied to API calls; defaults to the current execution tenant.")
+    @PluginProperty(group = "connection")
+    private Property<String> tenantId;
+
+    private KestraClient kestraClient(RunContext runContext) throws IllegalVariableEvaluationException {
+        String rKestraUrl = runContext.render(kestraUrl).as(String.class)
+            .orElseGet(() -> {
+                try {
+                    return runContext.render("{{ kestra.url }}");
+                } catch (IllegalVariableEvaluationException e) {
+                    return "http://localhost:8080";
+                }
+            });
+        String normalizedUrl = rKestraUrl.trim().replaceAll("/+$", "");
+        var builder = KestraClient.builder();
+        builder.url(normalizedUrl);
+        if (auth != null) {
+            String rApiToken = runContext.render(auth.apiToken).as(String.class).orElse(null);
+            if (rApiToken != null) {
+                return builder.tokenAuth(rApiToken).build();
+            }
+            Optional<String> maybeUsername = runContext.render(auth.username).as(String.class);
+            Optional<String> maybePassword = runContext.render(auth.password).as(String.class);
+            if (maybeUsername.isPresent() && maybePassword.isPresent()) {
+                return builder.basicAuth(maybeUsername.get(), maybePassword.get()).build();
+            }
+            if (runContext.render(auth.auto).as(Boolean.class).orElse(Boolean.TRUE)) {
+                Optional<SDK.Auth> autoAuth = runContext.sdk().defaultAuthentication();
+                if (autoAuth.isPresent()) {
+                    if (autoAuth.get().apiToken().isPresent()) {
+                        return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
+                    }
+                    if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
+                        return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
+                    }
+                }
+            }
+            throw new IllegalArgumentException("No authentication method provided");
+        } else {
+            Optional<SDK.Auth> autoAuth = runContext.sdk().defaultAuthentication();
+            if (autoAuth.isPresent()) {
+                if (autoAuth.get().apiToken().isPresent()) {
+                    return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
+                }
+                if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
+                    return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
+                }
+            }
+        }
+        return builder.build();
+    }
+
     @Override
     public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         boolean hasDefinedFlow = this.namespace != null && this.flowId != null;
@@ -256,6 +321,12 @@ public class KestraFlow extends ToolProvider {
             .map(entry -> new Label(entry.getKey(), entry.getValue().toString()))
             .toList();
         List<Label> rLabels = ListUtils.emptyOnNull(labels).stream().map(throwFunction(label -> new Label(runContext.render(label.key()), runContext.render(label.value())))).toList();
+
+        // resolve tenant id: explicit property overrides, otherwise fall back to current execution's tenant
+        String rTenantId = runContext.render(this.tenantId).as(String.class, additionalVariables)
+            .orElse(Objects.toString(runContext.flowInfo().tenantId(), ""));
+
+        var client = kestraClient(runContext);
 
         var jsonSchema = JsonObjectSchema.builder()
             .addProperty(
@@ -282,23 +353,24 @@ public class KestraFlow extends ToolProvider {
             var rFlowId = runContext.render(this.flowId).as(String.class, additionalVariables).orElseThrow();
             var rRevision = runContext.render(this.revision).as(Integer.class, additionalVariables);
 
-            var defaultRunContext = (DefaultRunContext) runContext;
-            var flowMetaStoreInterface = defaultRunContext.services().additionalService(FlowMetaStoreInterface.class);
-            var flowInfo = runContext.flowInfo();
-            var flowInterface = flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), rNamespace, rFlowId, rRevision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
-                .orElseThrow(() -> new IllegalArgumentException("Unable to find flow at '" + rFlowId + "' in namespace '" + rNamespace + "'"));
+            FlowWithSource flowWithSource;
+            try {
+                flowWithSource = client.flows().flow(rNamespace, rFlowId, false, false, rTenantId, rRevision.orElse(null));
+            } catch (ApiException e) {
+                throw new IllegalArgumentException("Unable to find flow '" + rFlowId + "' in namespace '" + rNamespace + "'", e);
+            }
 
-            var rDescription = runContext.render(this.description).as(String.class, additionalVariables).orElse(flowInterface.getDescription());
+            var rDescription = runContext.render(this.description).as(String.class, additionalVariables).orElse(flowWithSource.getDescription());
             if (rDescription == null) {
                 throw new IllegalArgumentException(
                     "A description is required either in the tool's description property or in the flow description. "
-                        + "Flow " + flowInterface.getNamespace() + "." + flowInterface.getId()
+                        + "Flow " + flowWithSource.getNamespace() + "." + flowWithSource.getId()
                         + " does not have a description, and the tool's description is empty."
                 );
             }
 
             jsonSchema.description(rDescription);
-            if (!ListUtils.isEmpty(flowInterface.getInputs())) {
+            if (!ListUtils.isEmpty(flowWithSource.getInputs())) {
                 jsonSchema.addProperty(
                     "inputs", JsonArraySchema.builder().items(
                         JsonObjectSchema.builder()
@@ -310,8 +382,8 @@ public class KestraFlow extends ToolProvider {
                 );
                 // check if there are any mandatory inputs
                 if (
-                    flowInterface.getInputs().stream()
-                        .anyMatch(input -> input.getRequired() && input.getDefaults() == null && !rInputs.containsKey(input.getId()))
+                    flowWithSource.getInputs().stream()
+                        .anyMatch(input -> Boolean.TRUE.equals(input.getRequired()) && input.getDefaults() == null && !rInputs.containsKey(input.getId()))
                 ) {
                     jsonSchema.required("inputs");
                 }
@@ -319,11 +391,11 @@ public class KestraFlow extends ToolProvider {
 
             return Map.of(
                 ToolSpecification.builder()
-                    .name("kestra_flow_" + IdUtils.fromPartsAndSeparator('_', flowInterface.getNamespace().replace('.', '_'), flowInterface.getId()))
+                    .name("kestra_flow_" + IdUtils.fromPartsAndSeparator('_', flowWithSource.getNamespace().replace('.', '_'), flowWithSource.getId()))
                     .description(TOOL_DEFINED_DESCRIPTION)
                     .parameters(jsonSchema.build())
                     .build(),
-                new KestraDefinedFlowToolExecutor(defaultRunContext, flowInterface, rInputs, rInheritedLabels, executionLabels, rLabels)
+                new KestraDefinedFlowToolExecutor(runContext, client, rTenantId, flowWithSource, rInputs, rInheritedLabels, executionLabels, rLabels)
             );
         } else {
             jsonSchema.description(TOOL_LLM_DESCRIPTION);
@@ -347,65 +419,74 @@ public class KestraFlow extends ToolProvider {
                     .description(TOOL_LLM_DESCRIPTION)
                     .parameters(jsonSchema.build())
                     .build(),
-                new KestraLLMFlowToolExecutor((DefaultRunContext) runContext, rInputs, rInheritedLabels, executionLabels, rLabels)
+                new KestraLLMFlowToolExecutor(runContext, client, rTenantId, rInputs, rInheritedLabels, executionLabels, rLabels)
             );
         }
     }
 
     static class KestraDefinedFlowToolExecutor extends AbstractKestraFlowToolExecutor {
-        private final FlowInterface flowInterface;
+        private final FlowWithSource flowWithSource;
 
-        KestraDefinedFlowToolExecutor(DefaultRunContext runContext, FlowInterface flowInterface, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels,
+        KestraDefinedFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, FlowWithSource flowWithSource, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels,
             List<Label> taskLabels) {
-            super(runContext, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
+            super(runContext, client, tenantId, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
 
-            this.flowInterface = flowInterface;
+            this.flowWithSource = flowWithSource;
         }
 
         @Override
-        protected FlowInterface getFlow(Map<String, Object> parameters) {
-            return flowInterface;
+        protected FlowWithSource getFlow(Map<String, Object> parameters) {
+            return flowWithSource;
         }
     }
 
     static class KestraLLMFlowToolExecutor extends AbstractKestraFlowToolExecutor {
-        private final DefaultRunContext runContext;
+        private final KestraClient client;
+        private final String tenantId;
 
-        KestraLLMFlowToolExecutor(DefaultRunContext runContext, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
-            super(runContext, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
+        KestraLLMFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
+            super(runContext, client, tenantId, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
 
-            this.runContext = runContext;
+            this.client = client;
+            this.tenantId = tenantId;
         }
 
         @Override
-        protected FlowInterface getFlow(Map<String, Object> parameters) {
+        protected FlowWithSource getFlow(Map<String, Object> parameters) {
             var namespace = (String) parameters.get("namespace");
             var flowId = (String) parameters.get("flowId");
-            var revision = Optional.ofNullable((Integer) parameters.get("revision"));
-
-            var flowMetaStoreInterface = runContext.services().additionalService(FlowMetaStoreInterface.class);
-            var flowInfo = runContext.flowInfo();
-            return flowMetaStoreInterface.findByIdFromTask(flowInfo.tenantId(), namespace, flowId, revision, flowInfo.tenantId(), flowInfo.namespace(), flowInfo.id())
-                .orElseThrow(() -> new ToolExecutionException("Flow not found: " + namespace + "." + flowId));
+            // revision may come back as Double from JSON parsing, so use Number cast
+            var revision = Optional.ofNullable(parameters.get("revision"))
+                .map(v -> ((Number) v).intValue())
+                .orElse(null);
+            try {
+                return client.flows().flow(namespace, flowId, false, false, tenantId, revision);
+            } catch (ApiException e) {
+                throw new ToolExecutionException("Flow not found: " + namespace + "." + flowId, e);
+            }
         }
     }
 
     static abstract class AbstractKestraFlowToolExecutor implements ToolExecutor {
-        private final DefaultRunContext runContext;
+        private final RunContext runContext;
+        private final KestraClient client;
+        private final String tenantId;
         private final Map<String, Object> predefinedInputs;
         private final boolean inheritedLabels;
         private final List<Label> executionLabels;
         private final List<Label> taskLabels;
 
-        AbstractKestraFlowToolExecutor(DefaultRunContext runContext, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
+        AbstractKestraFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
             this.runContext = runContext;
+            this.client = client;
+            this.tenantId = tenantId;
             this.predefinedInputs = predefinedInputs;
             this.inheritedLabels = inheritedLabels;
             this.executionLabels = executionLabels;
             this.taskLabels = taskLabels;
         }
 
-        protected abstract FlowInterface getFlow(Map<String, Object> parameters);
+        protected abstract FlowWithSource getFlow(Map<String, Object> parameters);
 
         @Override
         @SuppressWarnings("unchecked")
@@ -416,9 +497,9 @@ public class KestraFlow extends ToolProvider {
 
                 var scheduledDate = Optional.ofNullable((String) flowParameters.get("scheduleDate")).map(d -> ZonedDateTime.parse(d));
 
-                var flowInterface = getFlow(flowParameters);
+                var flowWithSource = getFlow(flowParameters);
 
-                List<Label> newLabels = inheritedLabels ? new ArrayList<>(filterLabels(executionLabels, flowInterface)) : new ArrayList<>(systemLabels(executionLabels));
+                List<Label> newLabels = inheritedLabels ? new ArrayList<>(filterLabels(executionLabels, flowWithSource)) : new ArrayList<>(systemLabels(executionLabels));
                 newLabels.addAll(taskLabels);
 
                 // merge LLM provided labels with tool predefined one
@@ -428,6 +509,11 @@ public class KestraFlow extends ToolProvider {
                     .toList();
                 var predefinedLabelsToAdd = newLabels.stream().filter(l1 -> labelList.stream().noneMatch(l2 -> l1.key().equals(l2.key()))).toList();
                 var finalLabels = ListUtils.concat(labelList, predefinedLabelsToAdd);
+
+                // build final labels as "key:value" strings for the SDK
+                var sdkLabels = finalLabels.stream()
+                    .map(l -> l.key() + ":" + l.value())
+                    .toList();
 
                 // merge LLM provided inputs with tool predefined one
                 var inputs = (List<Map<String, Object>>) flowParameters.get("inputs");
@@ -439,31 +525,39 @@ public class KestraFlow extends ToolProvider {
                 );
                 var finalInputs = MapUtils.merge(predefinedInputs, inputMap);
                 // check mandatory inputs to fail the tool execution instead of triggering a flow that would fail anyway
-                ListUtils.emptyOnNull(flowInterface.getInputs()).forEach(input ->
-                {
-                    if (input.getRequired() && input.getDefaults() == null && !finalInputs.containsKey(input.getId())) {
+                ListUtils.emptyOnNull(flowWithSource.getInputs()).forEach(input -> {
+                    if (Boolean.TRUE.equals(input.getRequired()) && input.getDefaults() == null && !finalInputs.containsKey(input.getId())) {
                         throw new ToolArgumentsException("You need to provide an input with the id '" + input.getId() + "'.");
                     }
                 });
 
-                var execution = Execution.newExecution(flowInterface, (f, e) -> finalInputs, finalLabels, scheduledDate);
+                var response = client.executions().createExecution(
+                    flowWithSource.getNamespace(),
+                    flowWithSource.getId(),
+                    false,
+                    tenantId,
+                    sdkLabels,
+                    flowWithSource.getRevision(),
+                    scheduledDate.map(ZonedDateTime::toOffsetDateTime).orElse(null),
+                    null,
+                    null,
+                    new HashMap<>(finalInputs)
+                );
 
-                var executionQueue = (QueueInterface<Execution>) runContext.getApplicationContext().getBean(QueueInterface.class, Qualifiers.byName(QueueFactoryInterface.EXECUTION_NAMED));
-                executionQueue.emit(execution);
-
-                return JacksonMapper.ofJson().writeValueAsString(execution);
+                return JacksonMapper.ofJson().writeValueAsString(response);
             } catch (Exception e) {
                 throw new ToolExecutionException(e);
             }
         }
 
-        private List<Label> filterLabels(List<Label> labels, FlowInterface flow) {
+        private List<Label> filterLabels(List<Label> labels, FlowWithSource flow) {
             if (ListUtils.isEmpty(flow.getLabels())) {
                 return labels;
             }
 
+            // flow.getLabels() returns io.kestra.sdk.model.Label which uses getKey()/getValue()
             return labels.stream()
-                .filter(label -> flow.getLabels().stream().noneMatch(flowLabel -> flowLabel.key().equals(label.key())))
+                .filter(label -> flow.getLabels().stream().noneMatch(flowLabel -> flowLabel.getKey().equals(label.key())))
                 .toList();
         }
 
@@ -472,5 +566,26 @@ public class KestraFlow extends ToolProvider {
                 .filter(label -> label.key().startsWith(Label.SYSTEM_PREFIX))
                 .toList();
         }
+    }
+
+    @Builder
+    @Getter
+    public static class Auth {
+        @Schema(title = "API token for bearer auth")
+        @PluginProperty(group = "connection")
+        private Property<String> apiToken;
+
+        @Schema(title = "Username for HTTP Basic auth")
+        @PluginProperty(group = "connection")
+        private Property<String> username;
+
+        @Schema(title = "Password for HTTP Basic auth")
+        @PluginProperty(group = "connection")
+        private Property<String> password;
+
+        @Schema(title = "Automatically retrieve credentials from Kestra's configuration if available")
+        @Builder.Default
+        @PluginProperty(group = "advanced")
+        private Property<Boolean> auto = Property.ofValue(Boolean.TRUE);
     }
 }
