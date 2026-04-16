@@ -3,14 +3,12 @@ package io.kestra.plugin.ai.tool;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.Label;
-import io.kestra.core.models.flows.GenericFlow;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.repositories.ExecutionRepositoryInterface;
-import io.kestra.core.repositories.FlowRepositoryInterface;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
@@ -19,11 +17,12 @@ import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
 
-import dev.langchain4j.model.chat.request.ResponseFormatType;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.model.output.FinishReason;
-import io.micronaut.data.model.Pageable;
 import jakarta.inject.Inject;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @KestraTest(startRunner = true)
@@ -31,24 +30,43 @@ class KestraFlowTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Inject
-    private FlowRepositoryInterface flowRepository;
+    private WireMockServer wireMock;
 
-    @Inject
-    private ExecutionRepositoryInterface executionRepository;
+    @BeforeEach
+    void setUp() {
+        wireMock = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
+        wireMock.start();
+    }
+
+    @AfterEach
+    void tearDown() {
+        wireMock.stop();
+    }
+
+    private String flowJson(String namespace, String flowId, Integer revision, String description, String inputsJson) {
+        return """
+            {"id":"%s","namespace":"%s","revision":%d%s%s}
+            """.formatted(
+            flowId,
+            namespace,
+            revision != null ? revision : 1,
+            description != null ? ",\"description\":\"" + description + "\"" : "",
+            inputsJson != null ? ",\"inputs\":" + inputsJson : ""
+        );
+    }
+
+    private String executionJson(String id, String namespace, String flowId) {
+        return """
+            {"id":"%s","namespace":"%s","flowId":"%s","state":{"current":"CREATED"}}
+            """.formatted(id, namespace, flowId);
+    }
 
     @Test
     void helloWorld() throws Exception {
-        String flowYaml = """
-            id: hello-world
-            namespace: company.team
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello World! 🚀
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        wireMock.stubFor(get(urlPathMatching("/api/v1/.*/flows/company\\.team/hello-world"))
+            .willReturn(okJson(flowJson("company.team", "hello-world", 1, null, null))));
+        wireMock.stubFor(post(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world"))
+            .willReturn(okJson(executionJson("test-exec-123", "company.team", "hello-world"))));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -69,7 +87,11 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world")).description(Property.ofValue("A flow that say Hello World"))
+                    KestraFlow.builder()
+                        .namespace(Property.ofValue("company.team"))
+                        .flowId(Property.ofValue("hello-world"))
+                        .description(Property.ofValue("A flow that say Hello World"))
+                        .kestraUrl(Property.ofValue("http://localhost:" + wireMock.port()))
                         .build()
                 )
             )
@@ -94,28 +116,16 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow_company_team_hello-world");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
 
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(output.getTextOutput()).contains(executions.getFirst().getId());
-
-        flowRepository.delete(flow);
-        executionRepository.delete(executions.getFirst());
+        wireMock.verify(postRequestedFor(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world")));
+        assertThat(output.getTextOutput()).contains("test-exec-123");
     }
 
     @Test
     void descriptionFromTheFlow() throws Exception {
-        String flowYaml = """
-            id: hello-world-with-description
-            namespace: company.team
-            description: A flow that say Hello World
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello World! 🚀
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        wireMock.stubFor(get(urlPathMatching("/api/v1/.*/flows/company\\.team/hello-world-with-description"))
+            .willReturn(okJson(flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null))));
+        wireMock.stubFor(post(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world-with-description"))
+            .willReturn(okJson(executionJson("test-exec-456", "company.team", "hello-world-with-description"))));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -136,7 +146,11 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-description")).build()
+                    KestraFlow.builder()
+                        .namespace(Property.ofValue("company.team"))
+                        .flowId(Property.ofValue("hello-world-with-description"))
+                        .kestraUrl(Property.ofValue("http://localhost:" + wireMock.port()))
+                        .build()
                 )
             )
             .messages(
@@ -152,7 +166,7 @@ class KestraFlowTest {
                 ChatConfiguration.builder()
                     .temperature(Property.ofValue(0.1))
                     .seed(Property.ofValue(123456789))
-                    .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
+                    .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(dev.langchain4j.model.chat.request.ResponseFormatType.JSON)).build())
                     .build()
             )
             .build();
@@ -169,35 +183,16 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow_company_team_hello-world-with-description");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
 
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world-with-description", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(output.getJsonOutput()).containsEntry("id", executions.getFirst().getId());
-
-        flowRepository.delete(flow);
-        executionRepository.delete(executions.getFirst());
+        wireMock.verify(postRequestedFor(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world-with-description")));
     }
 
     @Test
     void inputsAndLabels() throws Exception {
-        String flowYaml = """
-            id: hello-world-with-input
-            namespace: company.team
-
-            labels:
-            - key: existing
-              value: label
-
-            inputs:
-            - id: name
-              type: STRING
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello {{inputs.name}}
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        String inputsJson = "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":false}]";
+        wireMock.stubFor(get(urlPathMatching("/api/v1/.*/flows/company\\.team/hello-world-with-input"))
+            .willReturn(okJson(flowJson("company.team", "hello-world-with-input", 1, null, inputsJson))));
+        wireMock.stubFor(post(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world-with-input"))
+            .willReturn(okJson(executionJson("test-exec-789", "company.team", "hello-world-with-input"))));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -218,8 +213,12 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-input"))
-                        .description(Property.ofValue("A flow that say Hello World")).build()
+                    KestraFlow.builder()
+                        .namespace(Property.ofValue("company.team"))
+                        .flowId(Property.ofValue("hello-world-with-input"))
+                        .description(Property.ofValue("A flow that say Hello World"))
+                        .kestraUrl(Property.ofValue("http://localhost:" + wireMock.port()))
+                        .build()
                 )
             )
             .messages(
@@ -245,30 +244,15 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow_company_team_hello-world-with-input");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
 
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world-with-input", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(executions.getFirst().getLabels()).hasSize(3);
-        assertThat(executions.getFirst().getLabels()).contains(
-            new Label("existing", "label"),
-            new Label("llm", "true")
-        );
-
-        flowRepository.delete(flow);
+        wireMock.verify(postRequestedFor(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world-with-input")));
     }
 
     @Test
     void helloWorldFromLLM() throws Exception {
-        String flowYaml = """
-            id: hello-world
-            namespace: company.team
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello World! 🚀
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        wireMock.stubFor(get(urlPathMatching("/api/v1/.*/flows/company\\.team/hello-world"))
+            .willReturn(okJson(flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null))));
+        wireMock.stubFor(post(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world"))
+            .willReturn(okJson(executionJson("test-exec-llm", "company.team", "hello-world"))));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -289,7 +273,9 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().build()
+                    KestraFlow.builder()
+                        .kestraUrl(Property.ofValue("http://localhost:" + wireMock.port()))
+                        .build()
                 )
             )
             .messages(
@@ -314,12 +300,7 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
 
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(output.getTextOutput()).contains(executions.getFirst().getId());
-
-        flowRepository.delete(flow);
-        executionRepository.delete(executions.getFirst());
+        wireMock.verify(postRequestedFor(urlPathMatching("/api/v1/.*/executions/company\\.team/hello-world")));
+        assertThat(output.getTextOutput()).contains("test-exec-llm");
     }
 }

@@ -278,7 +278,24 @@ public class KestraFlow extends ToolProvider {
                 return builder.basicAuth(maybeUsername.get(), maybePassword.get()).build();
             }
             if (runContext.render(auth.auto).as(Boolean.class).orElse(Boolean.TRUE)) {
-                Optional<SDK.Auth> autoAuth = runContext.sdk().defaultAuthentication();
+                SDK sdk = runContext.sdk();
+                if (sdk != null) {
+                    Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
+                    if (autoAuth.isPresent()) {
+                        if (autoAuth.get().apiToken().isPresent()) {
+                            return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
+                        }
+                        if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
+                            return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
+                        }
+                    }
+                }
+            }
+            throw new IllegalArgumentException("No authentication method provided");
+        } else {
+            SDK sdk = runContext.sdk();
+            if (sdk != null) {
+                Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
                 if (autoAuth.isPresent()) {
                     if (autoAuth.get().apiToken().isPresent()) {
                         return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
@@ -286,17 +303,6 @@ public class KestraFlow extends ToolProvider {
                     if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
                         return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
                     }
-                }
-            }
-            throw new IllegalArgumentException("No authentication method provided");
-        } else {
-            Optional<SDK.Auth> autoAuth = runContext.sdk().defaultAuthentication();
-            if (autoAuth.isPresent()) {
-                if (autoAuth.get().apiToken().isPresent()) {
-                    return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
-                }
-                if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
-                    return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
                 }
             }
         }
