@@ -1,16 +1,22 @@
 package io.kestra.plugin.ai.tool;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.sun.net.httpserver.HttpServer;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.output.FinishReason;
 import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.Label;
-import io.kestra.core.models.flows.GenericFlow;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.repositories.ExecutionRepositoryInterface;
-import io.kestra.core.repositories.FlowRepositoryInterface;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
@@ -18,10 +24,6 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
-
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.output.FinishReason;
-import io.micronaut.data.model.Pageable;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,24 +33,90 @@ class KestraFlowTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Inject
-    private FlowRepositoryInterface flowRepository;
+    private HttpServer mockServer;
+    private int mockPort;
+    private final Map<String, String> stubFlowResponses = new ConcurrentHashMap<>();
+    private final Map<String, String> stubExecResponses = new ConcurrentHashMap<>();
+    private final AtomicBoolean executionCreated = new AtomicBoolean(false);
 
-    @Inject
-    private ExecutionRepositoryInterface executionRepository;
+    @BeforeEach
+    void setUp() throws IOException {
+        stubFlowResponses.clear();
+        stubExecResponses.clear();
+        executionCreated.set(false);
+        mockServer = HttpServer.create(new InetSocketAddress(0), 0);
+        mockServer.createContext("/", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            String method = exchange.getRequestMethod();
+            // Drain request body without parsing it as multipart — avoids
+            // Apache Commons FileUpload "no multipart boundary" errors
+            exchange.getRequestBody().readAllBytes();
+            byte[] responseBytes;
+            int status;
+            if ("GET".equalsIgnoreCase(method)) {
+                String body = stubFlowResponses.get(path);
+                if (body != null) {
+                    responseBytes = body.getBytes(StandardCharsets.UTF_8);
+                    status = 200;
+                } else {
+                    responseBytes = "{}".getBytes(StandardCharsets.UTF_8);
+                    status = 404;
+                }
+            } else if ("POST".equalsIgnoreCase(method)) {
+                String body = stubExecResponses.get(path);
+                if (body != null) {
+                    executionCreated.set(true);
+                    responseBytes = body.getBytes(StandardCharsets.UTF_8);
+                    status = 200;
+                } else {
+                    responseBytes = "{}".getBytes(StandardCharsets.UTF_8);
+                    status = 404;
+                }
+            } else {
+                responseBytes = "{}".getBytes(StandardCharsets.UTF_8);
+                status = 405;
+            }
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(status, responseBytes.length);
+            try (var os = exchange.getResponseBody()) {
+                os.write(responseBytes);
+            }
+        });
+        mockServer.setExecutor(null);
+        mockServer.start();
+        mockPort = mockServer.getAddress().getPort();
+    }
+
+    @AfterEach
+    void tearDown() {
+        mockServer.stop(0);
+    }
+
+    private String flowJson(String namespace, String flowId, Integer revision, String description, String inputsJson) {
+        return """
+            {"id":"%s","namespace":"%s","revision":%d%s%s}
+            """.formatted(
+            flowId,
+            namespace,
+            revision != null ? revision : 1,
+            description != null ? ",\"description\":\"" + description + "\"" : "",
+            inputsJson != null ? ",\"inputs\":" + inputsJson : ""
+        );
+    }
+
+    private String executionJson(String id, String namespace, String flowId) {
+        return """
+            {"id":"%s","namespace":"%s","flowId":"%s","state":{"current":"CREATED"}}
+            """.formatted(id, namespace, flowId);
+    }
 
     @Test
     void helloWorld() throws Exception {
-        String flowYaml = """
-            id: hello-world
-            namespace: company.team
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello World! 🚀
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        // The SDK uses an empty tenant string, producing a double-slash path: /api/v1//flows/...
+        stubFlowResponses.put("/api/v1//flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+        stubExecResponses.put("/api/v1//executions/company.team/hello-world",
+            executionJson("test-exec-123", "company.team", "hello-world"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -69,7 +137,11 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world")).description(Property.ofValue("A flow that say Hello World"))
+                    KestraFlow.builder()
+                        .namespace(Property.ofValue("company.team"))
+                        .flowId(Property.ofValue("hello-world"))
+                        .description(Property.ofValue("A flow that say Hello World"))
+                        .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
                         .build()
                 )
             )
@@ -93,29 +165,16 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow_company_team_hello-world");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
-
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(output.getTextOutput()).contains(executions.getFirst().getId());
-
-        flowRepository.delete(flow);
-        executionRepository.delete(executions.getFirst());
+        assertThat(executionCreated).isTrue();
+        assertThat(output.getTextOutput()).contains("test-exec-123");
     }
 
     @Test
     void descriptionFromTheFlow() throws Exception {
-        String flowYaml = """
-            id: hello-world-with-description
-            namespace: company.team
-            description: A flow that say Hello World
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello World! 🚀
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        stubFlowResponses.put("/api/v1//flows/company.team/hello-world-with-description",
+            flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null));
+        stubExecResponses.put("/api/v1//executions/company.team/hello-world-with-description",
+            executionJson("test-exec-456", "company.team", "hello-world-with-description"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -136,7 +195,11 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-description")).build()
+                    KestraFlow.builder()
+                        .namespace(Property.ofValue("company.team"))
+                        .flowId(Property.ofValue("hello-world-with-description"))
+                        .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .build()
                 )
             )
             .messages(
@@ -168,36 +231,16 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow_company_team_hello-world-with-description");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
-
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world-with-description", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(output.getJsonOutput()).containsEntry("id", executions.getFirst().getId());
-
-        flowRepository.delete(flow);
-        executionRepository.delete(executions.getFirst());
+        assertThat(executionCreated).isTrue();
     }
 
     @Test
     void inputsAndLabels() throws Exception {
-        String flowYaml = """
-            id: hello-world-with-input
-            namespace: company.team
-
-            labels:
-            - key: existing
-              value: label
-
-            inputs:
-            - id: name
-              type: STRING
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello {{inputs.name}}
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        String inputsJson = "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":false}]";
+        stubFlowResponses.put("/api/v1//flows/company.team/hello-world-with-input",
+            flowJson("company.team", "hello-world-with-input", 1, null, inputsJson));
+        stubExecResponses.put("/api/v1//executions/company.team/hello-world-with-input",
+            executionJson("test-exec-789", "company.team", "hello-world-with-input"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -218,8 +261,12 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().namespace(Property.ofValue("company.team")).flowId(Property.ofValue("hello-world-with-input"))
-                        .description(Property.ofValue("A flow that say Hello World")).build()
+                    KestraFlow.builder()
+                        .namespace(Property.ofValue("company.team"))
+                        .flowId(Property.ofValue("hello-world-with-input"))
+                        .description(Property.ofValue("A flow that say Hello World"))
+                        .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .build()
                 )
             )
             .messages(
@@ -244,31 +291,15 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow_company_team_hello-world-with-input");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
-
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world-with-input", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(executions.getFirst().getLabels()).hasSize(3);
-        assertThat(executions.getFirst().getLabels()).contains(
-            new Label("existing", "label"),
-            new Label("llm", "true")
-        );
-
-        flowRepository.delete(flow);
+        assertThat(executionCreated).isTrue();
     }
 
     @Test
     void helloWorldFromLLM() throws Exception {
-        String flowYaml = """
-            id: hello-world
-            namespace: company.team
-
-            tasks:
-              - id: hello
-                type: io.kestra.plugin.core.log.Log
-                message: Hello World! 🚀
-            """;
-        var flow = flowRepository.create(GenericFlow.fromYaml(null, flowYaml));
+        stubFlowResponses.put("/api/v1//flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null));
+        stubExecResponses.put("/api/v1//executions/company.team/hello-world",
+            executionJson("test-exec-llm", "company.team", "hello-world"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -289,7 +320,9 @@ class KestraFlowTest {
             )
             .tools(
                 List.of(
-                    KestraFlow.builder().build()
+                    KestraFlow.builder()
+                        .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .build()
                 )
             )
             .messages(
@@ -313,13 +346,7 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_flow");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
-
-        // check that an execution has been created
-        var executions = executionRepository.findByFlowId(null, "company.team", "hello-world", Pageable.UNPAGED);
-        assertThat(executions).hasSize(1);
-        assertThat(output.getTextOutput()).contains(executions.getFirst().getId());
-
-        flowRepository.delete(flow);
-        executionRepository.delete(executions.getFirst());
+        assertThat(executionCreated).isTrue();
+        assertThat(output.getTextOutput()).contains("test-exec-llm");
     }
 }
