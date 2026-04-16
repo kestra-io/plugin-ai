@@ -255,6 +255,21 @@ public class KestraFlow extends ToolProvider {
     @PluginProperty(group = "connection")
     private Property<String> tenantId;
 
+    private Optional<KestraClient> tryAutoAuth(KestraClient.Builder builder, RunContext runContext) {
+        SDK sdk = runContext.sdk();
+        if (sdk == null) return Optional.empty();
+        Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
+        if (autoAuth.isPresent()) {
+            if (autoAuth.get().apiToken().isPresent()) {
+                return Optional.of(builder.tokenAuth(autoAuth.get().apiToken().get()).build());
+            }
+            if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
+                return Optional.of(builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build());
+            }
+        }
+        return Optional.empty();
+    }
+
     private KestraClient kestraClient(RunContext runContext) throws IllegalVariableEvaluationException {
         String rKestraUrl = runContext.render(kestraUrl).as(String.class)
             .orElseGet(() -> {
@@ -278,35 +293,13 @@ public class KestraFlow extends ToolProvider {
                 return builder.basicAuth(maybeUsername.get(), maybePassword.get()).build();
             }
             if (runContext.render(auth.auto).as(Boolean.class).orElse(Boolean.TRUE)) {
-                SDK sdk = runContext.sdk();
-                if (sdk != null) {
-                    Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
-                    if (autoAuth.isPresent()) {
-                        if (autoAuth.get().apiToken().isPresent()) {
-                            return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
-                        }
-                        if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
-                            return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
-                        }
-                    }
-                }
+                return tryAutoAuth(builder, runContext)
+                    .orElseThrow(() -> new IllegalArgumentException("No authentication method provided"));
             }
             throw new IllegalArgumentException("No authentication method provided");
         } else {
-            SDK sdk = runContext.sdk();
-            if (sdk != null) {
-                Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
-                if (autoAuth.isPresent()) {
-                    if (autoAuth.get().apiToken().isPresent()) {
-                        return builder.tokenAuth(autoAuth.get().apiToken().get()).build();
-                    }
-                    if (autoAuth.get().username().isPresent() && autoAuth.get().password().isPresent()) {
-                        return builder.basicAuth(autoAuth.get().username().get(), autoAuth.get().password().get()).build();
-                    }
-                }
-            }
+            return tryAutoAuth(builder, runContext).orElse(builder.build());
         }
-        return builder.build();
     }
 
     @Override
@@ -333,6 +326,13 @@ public class KestraFlow extends ToolProvider {
             .orElse(Objects.toString(runContext.flowInfo().tenantId(), ""));
 
         var client = kestraClient(runContext);
+
+        var inputsSchema = JsonArraySchema.builder().items(
+            JsonObjectSchema.builder()
+                .addStringProperty("id", "The input id.")
+                .addStringProperty("value", "The input value.")
+                .build()
+        ).description("The list of inputs.").build();
 
         var jsonSchema = JsonObjectSchema.builder()
             .addProperty(
@@ -377,15 +377,7 @@ public class KestraFlow extends ToolProvider {
 
             jsonSchema.description(rDescription);
             if (!ListUtils.isEmpty(flowWithSource.getInputs())) {
-                jsonSchema.addProperty(
-                    "inputs", JsonArraySchema.builder().items(
-                        JsonObjectSchema.builder()
-                            .addStringProperty("id", "The input id.")
-                            .addStringProperty("value", "The input value.")
-                            .build()
-                    ).description("The list of inputs.")
-                        .build()
-                );
+                jsonSchema.addProperty("inputs", inputsSchema);
                 // check if there are any mandatory inputs
                 if (
                     flowWithSource.getInputs().stream()
@@ -408,15 +400,7 @@ public class KestraFlow extends ToolProvider {
             jsonSchema.addProperty("namespace", JsonStringSchema.builder().build());
             jsonSchema.addProperty("flowId", JsonStringSchema.builder().build());
             jsonSchema.addProperty("revision", JsonNumberSchema.builder().build());
-            jsonSchema.addProperty(
-                "inputs", JsonArraySchema.builder().items(
-                    JsonObjectSchema.builder()
-                        .addStringProperty("id", "The input id.")
-                        .addStringProperty("value", "The input value.")
-                        .build()
-                ).description("The list of inputs.")
-                    .build()
-            );
+            jsonSchema.addProperty("inputs", inputsSchema);
             jsonSchema.required("namespace", "flowId");
 
             return Map.of(
@@ -447,14 +431,8 @@ public class KestraFlow extends ToolProvider {
     }
 
     static class KestraLLMFlowToolExecutor extends AbstractKestraFlowToolExecutor {
-        private final KestraClient client;
-        private final String tenantId;
-
         KestraLLMFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
             super(runContext, client, tenantId, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
-
-            this.client = client;
-            this.tenantId = tenantId;
         }
 
         @Override
@@ -475,8 +453,8 @@ public class KestraFlow extends ToolProvider {
 
     static abstract class AbstractKestraFlowToolExecutor implements ToolExecutor {
         private final RunContext runContext;
-        private final KestraClient client;
-        private final String tenantId;
+        protected final KestraClient client;
+        protected final String tenantId;
         private final Map<String, Object> predefinedInputs;
         private final boolean inheritedLabels;
         private final List<Label> executionLabels;
