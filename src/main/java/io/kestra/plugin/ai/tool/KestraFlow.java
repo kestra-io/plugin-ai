@@ -255,7 +255,7 @@ public class KestraFlow extends ToolProvider {
     @PluginProperty(group = "connection")
     private Property<String> tenantId;
 
-    private Optional<KestraClient> tryAutoAuth(KestraClient.Builder builder, RunContext runContext) {
+    private Optional<KestraClient> tryAutoAuth(KestraClient.KestraClientBuilder builder, RunContext runContext) {
         SDK sdk = runContext.sdk();
         if (sdk == null) return Optional.empty();
         Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
