@@ -229,6 +229,18 @@ import java.util.List;
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) total token count"
+        ),
+        @Metric(
+            name = "ai.agent.tool.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of AI tool invocations during agent execution, tagged by tool class name"
+        ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times a chat model is obtained from a provider, tagged by provider class name"
         )
     },
     aliases = { "io.kestra.plugin.langchain4j.ChatCompletion", "io.kestra.plugin.langchain4j.completion.ChatCompletion" }
@@ -309,8 +321,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             // Generate AI response
+            var chatModel = this.provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners());
+            runContext.metric(Counter.of("ai.provider.calls", 1, "provider", this.provider.getClass().getName()));
             var builder = AiServices.builder(Assistant.class)
-                .chatModel(this.provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners()))
+                .chatModel(chatModel)
                 .registerListeners(observabilityListeners.aiServiceListeners())
                 .systemMessageProvider(
                     chatMemoryId -> chatMessages.stream()

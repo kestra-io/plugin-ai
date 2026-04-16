@@ -30,7 +30,15 @@ public final class AIUtils {
         }
 
         Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
-        toolProviders.forEach(throwConsumer(provider -> tools.putAll(provider.tool(runContext, additionalVariables))));
+        toolProviders.forEach(throwConsumer(provider -> {
+            String toolClass = provider.getClass().getName();
+            provider.tool(runContext, additionalVariables).forEach((spec, executor) ->
+                tools.put(spec, (toolExecutionRequest, memoryId) -> {
+                    runContext.metric(Counter.of("ai.agent.tool.calls", 1, "tool", toolClass));
+                    return executor.execute(toolExecutionRequest, memoryId);
+                })
+            );
+        }));
         return tools;
     }
 

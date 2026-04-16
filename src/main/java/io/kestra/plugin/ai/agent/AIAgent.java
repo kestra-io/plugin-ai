@@ -671,6 +671,18 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) total token count"
+        ),
+        @Metric(
+            name = "ai.agent.tool.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of AI tool invocations during agent execution, tagged by tool class name"
+        ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times a chat model is obtained from a provider, tagged by provider class name"
         )
     }
 )
@@ -752,8 +764,10 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
 
         try {
+            var chatModel = provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners());
+            runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
             AiServices<Agent> agent = AiServices.builder(Agent.class)
-                .chatModel(provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners()))
+                .chatModel(chatModel)
                 .registerListeners(observabilityListeners.aiServiceListeners())
                 .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
                 .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))

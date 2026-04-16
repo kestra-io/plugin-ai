@@ -260,6 +260,24 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) total token count"
+        ),
+        @Metric(
+            name = "ai.agent.tool.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of AI tool invocations during agent execution, tagged by tool class name"
+        ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times a chat or embedding model is obtained from a provider, tagged by provider class name"
+        ),
+        @Metric(
+            name = "ai.embedding.store.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding store is used, tagged by store class name"
         )
     },
     aliases = "io.kestra.plugin.langchain4j.rag.ChatCompletion"
@@ -341,8 +359,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
 
         try {
+            var chatModel = chatProvider.chatModel(runContext, chatConfiguration, taskTimeout);
+            runContext.metric(Counter.of("ai.provider.calls", 1, "provider", chatProvider.getClass().getName()));
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatProvider.chatModel(runContext, chatConfiguration, taskTimeout))
+                .chatModel(chatModel)
                 .retrievalAugmentor(buildRetrievalAugmentor(runContext))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
@@ -414,10 +434,14 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             throwFunction(
                 embeddings ->
                 {
-                    var embeddingModel = Optional.ofNullable(embeddingProvider).orElse(chatProvider).embeddingModel(runContext);
+                    var actualProvider = Optional.ofNullable(embeddingProvider).orElse(chatProvider);
+                    var embeddingModel = actualProvider.embeddingModel(runContext);
+                    runContext.metric(Counter.of("ai.provider.calls", 1, "provider", actualProvider.getClass().getName()));
+                    var embeddingStore = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
+                    runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
                     return EmbeddingStoreContentRetriever.builder()
                         .embeddingModel(embeddingModel)
-                        .embeddingStore(embeddings.embeddingStore(runContext, embeddingModel.dimension(), false))
+                        .embeddingStore(embeddingStore)
                         .maxResults(contentRetrieverConfiguration.getMaxResults())
                         .minScore(contentRetrieverConfiguration.getMinScore())
                         .build();

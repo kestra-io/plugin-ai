@@ -8,8 +8,10 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -61,6 +63,14 @@ import lombok.experimental.SuperBuilder;
                         password: "{{ secret('DB_PASSWORD') }}"
                     prompt: "What are the top 5 customers by revenue?"
                 """
+        )
+    },
+    metrics = {
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times a chat model is obtained from a provider, tagged by provider class name"
         )
     }
 )
@@ -149,6 +159,7 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
 
         DataSource dataSource = new HikariDataSource(config);
         ChatModel chatModel = provider.chatModel(runContext, configuration);
+        runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
 
         return SqlDatabaseContentRetriever.builder()
             .dataSource(dataSource)

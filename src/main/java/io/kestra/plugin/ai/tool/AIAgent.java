@@ -6,8 +6,10 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
@@ -75,6 +77,20 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                               apiKey: "{{ secret('GEMINI_API_KEY') }}\""""
             }
         ),
+    },
+    metrics = {
+        @Metric(
+            name = "ai.agent.tool.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of AI tool invocations during nested agent execution, tagged by tool class name"
+        ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times a chat model is obtained from a provider, tagged by provider class name"
+        )
     }
 )
 @JsonDeserialize
@@ -140,8 +156,10 @@ public class AIAgent extends ToolProvider {
     public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws Exception {
         toolProviders = ListUtils.emptyOnNull(tools);
 
+        var chatModel = provider.chatModel(runContext, configuration);
+        runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
         AiServices<AgentTool> agent = AiServices.builder(AgentTool.class)
-            .chatModel(provider.chatModel(runContext, configuration))
+            .chatModel(chatModel)
             .tools(AIUtils.buildTools(runContext, additionalVariables, toolProviders))
             .maxSequentialToolsInvocations(runContext.render(maxSequentialToolsInvocations).as(Integer.class).orElse(Integer.MAX_VALUE))
             .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
