@@ -15,7 +15,8 @@ import io.kestra.plugin.ai.domain.ToolProvider;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.service.tool.ToolExecutionContext;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
@@ -43,7 +44,7 @@ public final class AIUtils {
                     }
 
                     @Override
-                    public String executeWithContext(ToolExecutionRequest request, ToolExecutionContext context) {
+                    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
                         runContext.metric(Counter.of("ai.agent.tool.calls", 1, "tool", toolClass));
                         return executor.executeWithContext(request, context);
                     }
