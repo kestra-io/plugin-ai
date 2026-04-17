@@ -13,7 +13,9 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.service.tool.ToolExecutionContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
@@ -33,9 +35,18 @@ public final class AIUtils {
         toolProviders.forEach(throwConsumer(provider -> {
             String toolClass = provider.getClass().getName();
             provider.tool(runContext, additionalVariables).forEach((spec, executor) ->
-                tools.put(spec, (toolExecutionRequest, memoryId) -> {
-                    runContext.metric(Counter.of("ai.agent.tool.calls", 1, "tool", toolClass));
-                    return executor.execute(toolExecutionRequest, memoryId);
+                tools.put(spec, new ToolExecutor() {
+                    @Override
+                    public String execute(ToolExecutionRequest request, Object memoryId) {
+                        runContext.metric(Counter.of("ai.agent.tool.calls", 1, "tool", toolClass));
+                        return executor.execute(request, memoryId);
+                    }
+
+                    @Override
+                    public String executeWithContext(ToolExecutionRequest request, ToolExecutionContext context) {
+                        runContext.metric(Counter.of("ai.agent.tool.calls", 1, "tool", toolClass));
+                        return executor.executeWithContext(request, context);
+                    }
                 })
             );
         }));
