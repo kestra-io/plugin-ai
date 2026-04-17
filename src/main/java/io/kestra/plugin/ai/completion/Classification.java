@@ -91,6 +91,12 @@ import java.util.Map;
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) total token count"
+        ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times a chat model is obtained from a provider, tagged by provider class name"
         )
     },
     aliases = { "io.kestra.plugin.langchain4j.Classification", "io.kestra.plugin.langchain4j.completion.Classification" }
@@ -168,6 +174,7 @@ public class Classification extends Task implements RunnableTask<Classification.
 
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
         ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
+        runContext.metric(Counter.of("ai.provider.calls", 1, "provider", this.provider.getClass().getName()));
         ChatResponse response = model.chat(chatMessages);
 
         logger.debug("Generated Classification: {}", response.aiMessage().text());

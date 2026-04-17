@@ -83,6 +83,18 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
             unit = "records",
             description = "The number of rows fetch from the embedding store."
         ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding model is obtained from a provider, tagged by provider class name"
+        ),
+        @Metric(
+            name = "ai.embedding.store.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding store is used, tagged by store class name"
+        )
     },
     aliases = "io.kestra.plugin.langchain4j.rag.Search"
 )
@@ -126,7 +138,9 @@ public class Search extends Task implements RunnableTask<Search.Output> {
     @Override
     public Output run(RunContext runContext) throws Exception {
         var embeddingModel = provider.embeddingModel(runContext);
+        runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
         var store = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
+        runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
         var renderedQuery = runContext.render(query).as(String.class).orElseThrow();
         var embedding = embeddingModel.embed(renderedQuery).content();

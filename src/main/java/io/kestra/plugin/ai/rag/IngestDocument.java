@@ -95,6 +95,18 @@ import lombok.experimental.SuperBuilder;
             type = Counter.TYPE,
             unit = "token",
             description = "Large Language Model (LLM) total token count"
+        ),
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding model is obtained from a provider, tagged by provider class name"
+        ),
+        @Metric(
+            name = "ai.embedding.store.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding store is used, tagged by store class name"
         )
     },
     aliases = "io.kestra.plugin.langchain4j.rag.IngestDocument"
@@ -158,11 +170,13 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
 
         var embeddingModel = provider.embeddingModel(runContext);
+        runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
         var embeddingStore = embeddings.embeddingStore(
             runContext,
             embeddingModel.dimension(),
             runContext.render(drop).as(Boolean.class).orElseThrow()
         );
+        runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
         var builder = EmbeddingStoreIngestor.builder()
             .embeddingModel(embeddingModel)

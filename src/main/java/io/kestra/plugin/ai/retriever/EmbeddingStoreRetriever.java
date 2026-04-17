@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ContentRetrieverProvider;
@@ -113,6 +115,20 @@ import lombok.experimental.SuperBuilder;
                     prompt: What are the latest trends in data orchestration?
                 """
         )
+    },
+    metrics = {
+        @Metric(
+            name = "ai.provider.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding model is obtained from a provider, tagged by provider class name"
+        ),
+        @Metric(
+            name = "ai.embedding.store.calls",
+            type = Counter.TYPE,
+            unit = "calls",
+            description = "Number of times an embedding store is used, tagged by store class name"
+        )
     }
 )
 public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
@@ -151,10 +167,13 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
     @Override
     public ContentRetriever contentRetriever(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
         var embeddingModel = embeddingProvider.embeddingModel(runContext);
+        runContext.metric(Counter.of("ai.provider.calls", 1, "provider", embeddingProvider.getClass().getName()));
+        var embeddingStore = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
+        runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
         return EmbeddingStoreContentRetriever.builder()
             .embeddingModel(embeddingModel)
-            .embeddingStore(embeddings.embeddingStore(runContext, embeddingModel.dimension(), false))
+            .embeddingStore(embeddingStore)
             .maxResults(runContext.render(this.maxResults).as(Integer.class).orElse(3))
             .minScore(runContext.render(this.minScore).as(Double.class).orElse(0.0))
             .build();
