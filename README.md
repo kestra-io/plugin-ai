@@ -35,7 +35,7 @@
 </p>
 <p align="center" style="color:grey;"><i>Get started in 4 minutes with Kestra.</i></p>
 
-# Kestra Ai Plugin
+# Kestra AI Plugin
 
 ## Why
 
