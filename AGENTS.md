@@ -7,8 +7,9 @@
 
 ## Why
 
-- This plugin integrates Kestra with Agent.
-- It provides tasks that run AI agents combining system prompts, user input, tools, content retrievers, and optional memory to produce grounded responses.
+- What user problem does this solve? Teams need to orchestrate generative AI in Kestra with LangChain4j, covering chat completions, agents, RAG, tools, and shared providers from orchestrated workflows instead of relying on manual console work, ad hoc scripts, or disconnected schedulers.
+- Why would a team adopt this plugin in a workflow? It keeps AI steps in the same Kestra flow as upstream preparation, approvals, retries, notifications, and downstream systems.
+- What operational/business outcome does it enable? It reduces manual handoffs and fragmented tooling while improving reliability, traceability, and delivery speed for processes that depend on AI.
 
 ## How
 
