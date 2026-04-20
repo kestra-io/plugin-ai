@@ -131,13 +131,24 @@ public class KestraTask extends ToolProvider {
         var properties = (Map<String, Object>) schema.get("properties");
         var required = (List<String>) schema.get("required");
 
+        var requiredFields = ListUtils.emptyOnNull(required);
+
+        // Only expose a field to the LLM if it's a "..." placeholder (agent must fill it) or if it's
+        // unset AND required (mandatory fields the user forgot to set must still be asked of the agent).
+        // Unset optional fields are hidden to prevent the LLM from hallucinating values for them.
         properties = MapUtils.emptyOnNull(properties).entrySet().stream()
-            .filter(entry -> !taskProperties.containsKey(entry.getKey()) || taskProperties.get(entry.getKey()).equals("...")) // "..." is the placeholder for the LLM agent
+            .filter(entry -> {
+                var key = entry.getKey();
+                if (!taskProperties.containsKey(key)) {
+                    return requiredFields.contains(key);
+                }
+                return "...".equals(taskProperties.get(key));
+            })
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         schema.put("properties", properties);
 
-        required = ListUtils.emptyOnNull(required).stream()
-            .filter(entry -> !taskProperties.containsKey(entry) || taskProperties.get(entry).equals("...")) // "..." is the placeholder for the LLM agent
+        required = requiredFields.stream()
+            .filter(entry -> !taskProperties.containsKey(entry) || "...".equals(taskProperties.get(entry)))
             .toList();
         schema.put("required", required);
     }

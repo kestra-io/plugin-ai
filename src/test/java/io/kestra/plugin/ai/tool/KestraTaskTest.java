@@ -280,7 +280,7 @@ class KestraTaskTest extends ContainerTest {
                 List.of(
                     KestraTask.builder().tasks(
                         List.of(
-                            MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).build()
+                            MyAwesomeTask.builder().id("awesome").type(MyAwesomeTask.class.getName()).string(Property.ofValue("...")).optional(Property.ofValue("...")).build()
                         )
                     ).build()
                 )
