@@ -2,9 +2,12 @@ package io.kestra.plugin.ai.tool;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import io.kestra.plugin.core.log.Fetch;
+import io.kestra.plugin.kestra.logs.Fetch;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import io.kestra.core.junit.annotations.KestraTest;
@@ -209,6 +212,29 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void fetchTask() throws Exception {
+        Map<String, String> stubFlowResponses = new ConcurrentHashMap<>();
+
+        stubFlowResponses.put(
+            "/api/v1//logs/task1",
+            """
+            {"taskId":"task1","log":"log-from-task1"}
+            """
+        );
+
+        stubFlowResponses.put(
+            "/api/v1//logs/task2",
+            """
+            {"taskId":"task2","log":"log-from-task2"}
+            """
+        );
+
+        stubFlowResponses.put(
+            "/api/v1//logs/task3",
+            """
+            {"taskId":"task3","log":"log-from-task3"}
+            """
+        );
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
