@@ -24,7 +24,10 @@ import io.kestra.plugin.ai.rag.IngestDocument;
 
 import jakarta.inject.Inject;
 
+import dev.langchain4j.exception.RateLimitException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 @KestraTest
 class MariaDBTest extends ContainerTest {
@@ -81,9 +84,12 @@ class MariaDBTest extends ContainerTest {
             .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
             .build();
 
-        IngestDocument.Output output = task.run(runContext);
-        assertThat(output.getIngestedDocuments()).isEqualTo(1);
-
+        try {
+            IngestDocument.Output output = task.run(runContext);
+            assertThat(output.getIngestedDocuments()).isEqualTo(1);
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test
@@ -130,9 +136,13 @@ class MariaDBTest extends ContainerTest {
             .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
             .build();
 
-        IngestDocument.Output output = task.run(runContext);
-        assertThat(output.getIngestedDocuments()).isEqualTo(1);
-        assertThat(getPrimaryKeyColumn(tableName)).isEqualTo("id");
+        try {
+            IngestDocument.Output output = task.run(runContext);
+            assertThat(output.getIngestedDocuments()).isEqualTo(1);
+            assertThat(getPrimaryKeyColumn(tableName)).isEqualTo("id");
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     private String getPrimaryKeyColumn(String tableName) throws Exception {

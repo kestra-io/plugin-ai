@@ -27,7 +27,10 @@ import io.kestra.plugin.ai.tool.CodeExecution;
 
 import jakarta.inject.Inject;
 
+import dev.langchain4j.exception.RateLimitException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 @KestraTest
 class ChatCompletionTest extends ContainerTest {
@@ -265,39 +268,43 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        IngestDocument.Output ingestOutput = ingest.run(runContext);
-        assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
-        var rag = ChatCompletion.builder()
-            .chatProvider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddingProvider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-001"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddings(KestraKVStore.builder().build())
-            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
-            .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .build();
+        try {
+            IngestDocument.Output ingestOutput = ingest.run(runContext);
+            assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
+            var rag = ChatCompletion.builder()
+                .chatProvider(
+                    GoogleGemini.builder()
+                        .type(GoogleGemini.class.getName())
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .build()
+                )
+                .embeddingProvider(
+                    GoogleGemini.builder()
+                        .type(GoogleGemini.class.getName())
+                        .modelName(Property.ofValue("gemini-embedding-001"))
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .build()
+                )
+                .embeddings(KestraKVStore.builder().build())
+                .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+                .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .build();
 
-        var ragOutput = rag.run(runContext);
+            var ragOutput = rag.run(runContext);
 
-        assertThat(ragOutput.getTextOutput()).isNotNull();
-        assertThat(ragOutput.getTextOutput()).containsIgnoringCase("Paris");
-        assertThat(ragOutput.getSources()).isNotNull();
-        assertThat(ragOutput.getSources()).isNotEmpty();
+            assertThat(ragOutput.getTextOutput()).isNotNull();
+            assertThat(ragOutput.getTextOutput()).containsIgnoringCase("Paris");
+            assertThat(ragOutput.getSources()).isNotNull();
+            assertThat(ragOutput.getSources()).isNotEmpty();
 
-        boolean foundParisSource = ragOutput.getSources().stream()
-            .anyMatch(source -> source.getContent().contains("Paris") && source.getContent().contains("capital"));
-        assertThat(foundParisSource).isTrue();
-        assertThat(ragOutput.getSources().getFirst().getMetadata()).isNotNull();
+            boolean foundParisSource = ragOutput.getSources().stream()
+                .anyMatch(source -> source.getContent().contains("Paris") && source.getContent().contains("capital"));
+            assertThat(foundParisSource).isTrue();
+            assertThat(ragOutput.getSources().getFirst().getMetadata()).isNotNull();
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".*")

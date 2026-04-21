@@ -18,7 +18,10 @@ import io.kestra.plugin.ai.rag.IngestDocument;
 
 import jakarta.inject.Inject;
 
+import dev.langchain4j.exception.RateLimitException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 class TablestoreTest {
     private final String TABLESTORE_ENDPOINT = System.getenv("TABLESTORE_ENDPOINT");
@@ -75,7 +78,11 @@ class TablestoreTest {
             .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
             .build();
 
-        IngestDocument.Output output = task.run(runContext);
-        assertThat(output.getIngestedDocuments()).isEqualTo(1);
+        try {
+            IngestDocument.Output output = task.run(runContext);
+            assertThat(output.getIngestedDocuments()).isEqualTo(1);
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 }

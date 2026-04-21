@@ -27,6 +27,7 @@ import io.kestra.plugin.core.execution.SetVariables;
 import io.kestra.plugin.core.http.Request;
 import io.kestra.plugin.core.log.Log;
 
+import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.output.FinishReason;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -38,6 +39,7 @@ import lombok.experimental.SuperBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 @KestraTest
 class KestraTaskTest extends ContainerTest {
@@ -190,15 +192,19 @@ class KestraTaskTest extends ContainerTest {
             )
             .build();
 
-        var output = chat.run(runContext);
-        assertThat(output.getTextOutput()).contains("main components");
-        assertThat(output.getToolExecutions()).isNotEmpty();
-        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_request");
-        assertThat(output.getIntermediateResponses()).isNotEmpty();
-        assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
-        assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
-        assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_request");
-        assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
+        try {
+            var output = chat.run(runContext);
+            assertThat(output.getTextOutput()).contains("main components");
+            assertThat(output.getToolExecutions()).isNotEmpty();
+            assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_request");
+            assertThat(output.getIntermediateResponses()).isNotEmpty();
+            assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
+            assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
+            assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_request");
+            assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test

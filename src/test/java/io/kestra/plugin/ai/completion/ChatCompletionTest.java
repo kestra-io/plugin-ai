@@ -308,6 +308,10 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
         }, "status code: 400");
 
+        if (exception instanceof RateLimitException) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
+
         // Verify error message contains 404 details
         assertThat(exception.getMessage(), containsString("Unable to submit request because thinking is not supported by this model."));
     }
@@ -343,13 +347,17 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
+        try {
+            ChatCompletion.Output output = task.run(runContext);
 
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getSources(), notNullValue());
-        assertTrue(output.getSources().isEmpty());
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getSources(), notNullValue());
+            assertTrue(output.getSources().isEmpty());
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
     }
 
     @Test
@@ -383,11 +391,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
+        try {
+            ChatCompletion.Output output = task.run(runContext);
 
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
     }
 
     @Test
