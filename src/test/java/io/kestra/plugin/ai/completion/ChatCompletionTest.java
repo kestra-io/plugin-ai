@@ -27,6 +27,7 @@ import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.provider.*;
 
+import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.workersai.WorkersAiChatModelName;
@@ -39,6 +40,7 @@ import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 @KestraTest
 class ChatCompletionTest extends ContainerTest {
@@ -137,13 +139,17 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
+        try {
+            ChatCompletion.Output output = task.run(runContext);
 
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getSources(), notNullValue());
-        assertTrue(output.getSources().isEmpty());
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getSources(), notNullValue());
+            assertTrue(output.getSources().isEmpty());
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test
@@ -175,14 +181,18 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
+        try {
+            ChatCompletion.Output output = task.run(runContext);
 
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getSources(), notNullValue());
-        assertTrue(output.getSources().isEmpty());
-        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getSources(), notNullValue());
+            assertTrue(output.getSources().isEmpty());
+            assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test
@@ -214,11 +224,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getThinking(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getThinking(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test
@@ -249,11 +263,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getThinking(), isEmptyOrNullString());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getThinking(), isEmptyOrNullString());
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test

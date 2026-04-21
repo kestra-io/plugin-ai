@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import dev.langchain4j.exception.RateLimitException;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.kestra.core.junit.annotations.KestraTest;
@@ -31,6 +33,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
@@ -69,15 +72,18 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        // WHEN
-        JSONStructuredExtraction.Output runOutput = task.run(runContext);
+        // WHEN / THEN
+        try {
+            JSONStructuredExtraction.Output runOutput = task.run(runContext);
 
-        // THEN
-        assertThat(runOutput.getExtractedJson(), notNullValue());
+            assertThat(runOutput.getExtractedJson(), notNullValue());
 
-        JsonNode json = JacksonMapper.ofJson().readTree(runOutput.getExtractedJson());
-        assertThat(json.has("name"), is(true));
-        assertThat(json.has("date"), is(true));
+            JsonNode json = JacksonMapper.ofJson().readTree(runOutput.getExtractedJson());
+            assertThat(json.has("name"), is(true));
+            assertThat(json.has("date"), is(true));
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test

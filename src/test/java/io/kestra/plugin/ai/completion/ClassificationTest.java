@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import dev.langchain4j.exception.RateLimitException;
+
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -29,6 +31,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 @KestraTest
 class ClassificationTest extends ContainerTest {
@@ -66,11 +69,14 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        // WHEN
-        Classification.Output runOutput = task.run(runContext);
+        // WHEN / THEN
+        try {
+            Classification.Output runOutput = task.run(runContext);
 
-        // THEN
-        assertThat(runOutput.getClassification(), notNullValue());
+            assertThat(runOutput.getClassification(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: Gemini rate limited (429)");
+        }
     }
 
     @Test
