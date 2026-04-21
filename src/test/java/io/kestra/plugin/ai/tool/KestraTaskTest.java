@@ -169,7 +169,7 @@ class KestraTaskTest extends ContainerTest {
                         List.of(
                             Request.builder().id("request").type(Request.class.getName())
                                 .uri(Property.ofValue("..."))
-                                .headers((Property<Map<CharSequence, CharSequence>>) Property.ofValue("..."))
+                                .headers((Property<Map<CharSequence, CharSequence>>) (Property) Property.ofValue("..."))
                                 .build()
                         )
                     ).build()
