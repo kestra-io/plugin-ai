@@ -25,7 +25,7 @@ repositories {
     }
 }
 
-final targetJavaVersion = JavaVersion.VERSION_21
+final targetJavaVersion = JavaVersion.VERSION_25
 
 java {
     sourceCompatibility = targetJavaVersion
@@ -183,6 +183,9 @@ dependencies {
 
     // Memories
     testImplementation "org.testcontainers:postgresql:1.21.4"
+
+    // Kestra plugin
+    testImplementation "io.kestra.plugin:plugin-kestra:1.9.0"
 }
 
 /**********************************************************************************************************************\
