@@ -143,6 +143,7 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    @SuppressWarnings("unchecked")
     void httpRequest() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -166,7 +167,10 @@ class KestraTaskTest extends ContainerTest {
                 List.of(
                     KestraTask.builder().tasks(
                         List.of(
-                            Request.builder().id("request").type(SetVariables.class.getName()).uri(Property.ofValue("...")).build()
+                            Request.builder().id("request").type(Request.class.getName())
+                                .uri(Property.ofValue("..."))
+                                .headers((Property<Map<CharSequence, CharSequence>>) Property.ofValue("..."))
+                                .build()
                         )
                     ).build()
                 )
