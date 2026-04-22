@@ -75,7 +75,7 @@ public class GoogleCustomWebSearch extends ToolProvider {
 
     @Schema(title = "API key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Override

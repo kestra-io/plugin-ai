@@ -73,7 +73,7 @@ public class MariaDB extends EmbeddingStoreProvider {
     private Property<String> username;
     @NotNull
     @Schema(title = "The password")
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @NotNull

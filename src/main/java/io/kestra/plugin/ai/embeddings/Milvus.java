@@ -70,7 +70,7 @@ public class Milvus extends EmbeddingStoreProvider {
         description = "Milvus auth token. Required if authentication is enabled; omit for local deployments without auth."
     )
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> token;
 
     @Schema(
@@ -110,7 +110,7 @@ public class Milvus extends EmbeddingStoreProvider {
         title = "Password",
         description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
     @Schema(

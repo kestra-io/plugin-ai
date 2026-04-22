@@ -67,7 +67,7 @@ public class Weaviate extends EmbeddingStoreProvider {
         description = "Weaviate API key. Omit for local deployments without auth."
     )
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(

@@ -79,7 +79,7 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
     private Property<String> username;
 
     @Schema(title = "The password")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
     @NotNull

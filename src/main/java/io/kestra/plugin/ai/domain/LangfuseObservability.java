@@ -32,6 +32,6 @@ public class LangfuseObservability extends Observability {
     private Property<String> publicKey;
 
     @Schema(title = "Langfuse secret key")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> secretKey;
 }

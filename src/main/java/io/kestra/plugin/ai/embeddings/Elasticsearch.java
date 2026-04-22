@@ -176,7 +176,7 @@ public class Elasticsearch extends EmbeddingStoreProvider {
             private Property<String> username;
 
             @Schema(title = "Basic authorization password")
-            @PluginProperty(group = "connection")
+            @PluginProperty(secret = true, group = "connection")
             private Property<String> password;
         }
 

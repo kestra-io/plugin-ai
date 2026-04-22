@@ -114,7 +114,7 @@ public class GoogleGemini extends ModelProvider {
         title = "API Key",
         description = "Required unless certificate-based authentication is configured with `clientPem` (optionally with `caPem`)."
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> apiKey;
 
     @Schema(title = "The configuration for embeddingModel")

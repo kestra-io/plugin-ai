@@ -63,7 +63,7 @@ public class CodeExecution extends ToolProvider {
         description = "You can obtain it from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing)."
     )
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Override

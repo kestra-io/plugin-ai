@@ -69,7 +69,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class TavilyWebSearch extends ToolProvider {
     @Schema(title = "Tavily API Key - you can obtain one from [the Tavily website](https://www.tavily.com/#pricing)")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Override

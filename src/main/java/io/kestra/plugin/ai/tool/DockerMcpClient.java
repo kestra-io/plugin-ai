@@ -141,7 +141,7 @@ public class DockerMcpClient extends AbstractMcpClient {
     private Property<String> registryEmail;
 
     @Schema(title = "Container registry password")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> registryPassword;
 
     @Schema(title = "Container registry username")

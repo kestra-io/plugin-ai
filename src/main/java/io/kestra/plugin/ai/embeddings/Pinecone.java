@@ -63,7 +63,7 @@ public class Pinecone extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The API key")
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @NotNull

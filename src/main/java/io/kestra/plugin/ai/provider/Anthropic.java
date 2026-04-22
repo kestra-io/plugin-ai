@@ -78,7 +78,7 @@ public class Anthropic extends ModelProvider {
     private static final String ENABLED = "enabled";
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
     @Schema(
         title = "Maximum Tokens",

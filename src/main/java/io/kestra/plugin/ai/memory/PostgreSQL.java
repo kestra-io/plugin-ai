@@ -93,7 +93,7 @@ public class PostgreSQL extends MemoryProvider {
 
     @NotNull
     @Schema(title = "Database password", description = "The password to connect to PostgreSQL")
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @Schema(

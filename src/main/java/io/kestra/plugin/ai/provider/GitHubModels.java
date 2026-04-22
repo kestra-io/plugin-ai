@@ -78,7 +78,7 @@ public class GitHubModels extends ModelProvider {
         description = "Personal Access Token (PAT) used to access GitHub Models."
     )
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> gitHubToken;
 
     @Override

@@ -80,7 +80,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class AzureOpenAI extends ModelProvider {
 
     @Schema(title = "API Key")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> apiKey;
 
     @Schema(title = "API endpoint", description = "The Azure OpenAI endpoint in the format: https://{resource}.openai.azure.com/")
@@ -101,7 +101,7 @@ public class AzureOpenAI extends ModelProvider {
     private Property<String> clientId;
 
     @Schema(title = "Client secret")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> clientSecret;
 
     @Override

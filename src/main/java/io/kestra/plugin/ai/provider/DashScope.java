@@ -78,7 +78,7 @@ public class DashScope extends ModelProvider {
         : DASHSCOPE_INTL_URL;
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
