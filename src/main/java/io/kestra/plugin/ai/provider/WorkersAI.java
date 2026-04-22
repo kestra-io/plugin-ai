@@ -69,7 +69,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class WorkersAI extends ModelProvider {
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(

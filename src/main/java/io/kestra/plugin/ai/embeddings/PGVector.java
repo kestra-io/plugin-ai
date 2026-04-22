@@ -77,7 +77,7 @@ public class PGVector extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "The database password")
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @NotNull

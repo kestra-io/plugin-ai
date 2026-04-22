@@ -59,7 +59,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class TavilyWebSearch extends ContentRetrieverProvider {
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(title = "Maximum number of results to return")

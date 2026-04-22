@@ -74,7 +74,7 @@ public class ZhiPuAI extends ModelProvider {
 
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
@@ -94,7 +94,7 @@ public class ZhiPuAI extends ModelProvider {
     private Property<Integer> maxRetries;
 
     @Schema(title = "The maximum number of tokens returned by this request")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<Integer> maxToken;
 
     @Override

@@ -79,7 +79,7 @@ public class MistralAI extends ModelProvider {
 
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Override

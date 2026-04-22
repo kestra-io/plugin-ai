@@ -82,12 +82,12 @@ public class AmazonBedrock extends ModelProvider {
 
     @Schema(title = "AWS Access Key ID")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> accessKeyId;
 
     @Schema(title = "AWS Secret Access Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> secretAccessKey;
 
     @Schema(title = "Amazon Bedrock Embedding Model Type")

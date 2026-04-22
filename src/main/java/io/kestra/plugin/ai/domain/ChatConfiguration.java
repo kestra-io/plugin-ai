@@ -88,7 +88,7 @@ public class ChatConfiguration {
             Specifies the maximum number of tokens allocated as a budget for internal reasoning processes, such as generating intermediate
             thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output."""
     )
-    @PluginProperty(group = "advanced")
+    @PluginProperty(secret = true, group = "advanced")
     private Property<Integer> thinkingBudgetTokens;
 
     @Schema(
@@ -106,7 +106,7 @@ public class ChatConfiguration {
         example = "1024"
     )
     @Nullable
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<Integer> maxToken;
 
     @Schema(

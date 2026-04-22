@@ -78,14 +78,14 @@ public class Anthropic extends ModelProvider {
     private static final String ENABLED = "enabled";
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
     @Schema(
         title = "Maximum Tokens",
         description = """
             Specifies the maximum number of tokens that the model is allowed to generate in its response."""
     )
-    @PluginProperty(group = "execution")
+    @PluginProperty(secret = true, group = "execution")
     private Property<Integer> maxTokens;
 
     @Override

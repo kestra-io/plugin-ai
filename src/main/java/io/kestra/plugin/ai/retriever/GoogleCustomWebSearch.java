@@ -65,7 +65,7 @@ public class GoogleCustomWebSearch extends ContentRetrieverProvider {
 
     @Schema(title = "API key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(title = "Maximum number of results")

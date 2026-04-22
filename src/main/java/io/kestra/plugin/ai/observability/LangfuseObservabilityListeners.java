@@ -472,7 +472,7 @@ public final class LangfuseObservabilityListeners implements AutoCloseable {
         }
 
         try {
-            return defaultRunContext.getApplicationContext().findBean(OpenTelemetry.class).orElse(null);
+            return defaultRunContext.services().additionalService(OpenTelemetry.class);
         } catch (Exception e) {
             runContext.logger().debug("Unable to resolve OpenTelemetry bean from run context", e);
             return null;

@@ -75,11 +75,11 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class MongoDBAtlas extends EmbeddingStoreProvider {
 
     @Schema(title = "The username")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> username;
 
     @Schema(title = "The password")
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
     @NotNull

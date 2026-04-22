@@ -78,7 +78,7 @@ public class DashScope extends ModelProvider {
         : DASHSCOPE_INTL_URL;
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
@@ -111,7 +111,7 @@ public class DashScope extends ModelProvider {
     private Property<Boolean> enableSearch;
 
     @Schema(title = "The maximum number of tokens returned by this request")
-    @PluginProperty(group = "execution")
+    @PluginProperty(secret = true, group = "execution")
     private Property<Integer> maxTokens;
 
     @Override

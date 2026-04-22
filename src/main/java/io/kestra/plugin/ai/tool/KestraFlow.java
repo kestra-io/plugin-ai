@@ -556,15 +556,15 @@ public class KestraFlow extends ToolProvider {
     @Getter
     public static class Auth {
         @Schema(title = "API token for bearer auth")
-        @PluginProperty(group = "connection")
+        @PluginProperty(secret = true, group = "connection")
         private Property<String> apiToken;
 
         @Schema(title = "Username for HTTP Basic auth")
-        @PluginProperty(group = "connection")
+        @PluginProperty(secret = true, group = "connection")
         private Property<String> username;
 
         @Schema(title = "Password for HTTP Basic auth")
-        @PluginProperty(group = "connection")
+        @PluginProperty(secret = true, group = "connection")
         private Property<String> password;
 
         @Schema(title = "Automatically retrieve credentials from Kestra's configuration if available")

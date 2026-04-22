@@ -73,12 +73,12 @@ public class Tablestore extends EmbeddingStoreProvider {
 
     @NotNull
     @Schema(title = "Access Key ID", description = "The access key ID used for authentication with the database.")
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> accessKeyId;
 
     @NotNull
     @Schema(title = "Access Key Secret", description = "The access key secret used for authentication with the database.")
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> accessKeySecret;
 
     @Schema(title = "Metadata Schema List", description = "Optional list of metadata field schemas for the collection.")

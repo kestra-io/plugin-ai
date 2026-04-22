@@ -97,12 +97,12 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
 
     @Schema(title = "Database username")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> username;
 
     @Schema(title = "Database password")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @Schema(title = "Optional JDBC driver class name – automatically resolved if not provided.")

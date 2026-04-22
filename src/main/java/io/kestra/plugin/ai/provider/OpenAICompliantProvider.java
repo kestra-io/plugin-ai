@@ -41,7 +41,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 public abstract class OpenAICompliantProvider extends ModelProvider {
     @Schema(title = "API Key")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Override

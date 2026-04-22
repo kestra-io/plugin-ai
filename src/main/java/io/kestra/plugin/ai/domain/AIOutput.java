@@ -49,7 +49,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     private Map<String, Object> jsonOutput;
 
     @Schema(title = "Token usage")
-    @PluginProperty(group = "advanced")
+    @PluginProperty(secret = true, group = "advanced")
     private TokenUsage tokenUsage;
 
     @Schema(title = "Finish reason")
@@ -205,7 +205,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
         private String completion;
 
         @Schema(title = "Token usage")
-        @PluginProperty(group = "advanced")
+        @PluginProperty(secret = true, group = "advanced")
         private TokenUsage tokenUsage;
 
         @Schema(title = "Finish reason")
