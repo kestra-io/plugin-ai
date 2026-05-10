@@ -684,7 +684,7 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionAnthropicAI_givenPromptCachingEnabled() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
+                "modelName", AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001,
                 "apiKey", ANTHROPIC_API_KEY,
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
@@ -716,7 +716,7 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionAnthropicAI() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
+                "modelName", AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001,
                 "apiKey", ANTHROPIC_API_KEY,
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
@@ -749,7 +749,7 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionAnthropicAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
+                "modelName", AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001,
                 "apiKey", ANTHROPIC_API_KEY,
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
@@ -785,7 +785,7 @@ class ChatCompletionTest extends ContainerTest {
     void testChatCompletionAnthropicAI_givenInvalidApiKey_shouldThrow4xxUnAuthorizedException() {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "modelName", AnthropicChatModelName.CLAUDE_3_HAIKU_20240307,
+                "modelName", AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001,
                 "apiKey", "DUMMY_ANTHROPIC_API_KEY",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
