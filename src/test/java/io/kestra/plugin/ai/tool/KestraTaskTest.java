@@ -1,9 +1,14 @@
 package io.kestra.plugin.ai.tool;
 
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.sun.net.httpserver.HttpServer;
+
+import io.kestra.plugin.kestra.AbstractKestraTask;
 import io.kestra.plugin.kestra.logs.Fetch;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -211,81 +216,99 @@ class KestraTaskTest extends ContainerTest {
     }
 
     @Test
-    @Disabled("Requires a real Kestra API server; the stubFlowResponses wiring is not implemented")
     void fetchTask() throws Exception {
         Map<String, String> stubFlowResponses = new ConcurrentHashMap<>();
 
-        stubFlowResponses.put(
-            "/api/v1//logs/task1",
-            """
-            {"taskId":"task1","log":"log-from-task1"}
-            """
-        );
+        stubFlowResponses.put("task1", "[{\"taskId\":\"task1\",\"message\":\"log-from-task1\",\"level\":\"INFO\"}]");
+        stubFlowResponses.put("task2", "[{\"taskId\":\"task2\",\"message\":\"log-from-task2\",\"level\":\"INFO\"}]");
+        stubFlowResponses.put("task3", "[{\"taskId\":\"task3\",\"message\":\"log-from-task3\",\"level\":\"INFO\"}]");
 
-        stubFlowResponses.put(
-            "/api/v1//logs/task2",
-            """
-            {"taskId":"task2","log":"log-from-task2"}
-            """
-        );
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/main/logs/executionId", exchange ->
+        {
+            String query = exchange.getRequestURI().getQuery() == null ? "" : exchange.getRequestURI().getQuery();
+            String taskId = "";
+            for (String pair : query.split("&")) {
+                if (pair.startsWith("taskId=")) {
+                    taskId = pair.substring("taskId=".length());
+                    break;
+                }
+            }
+            byte[] body = stubFlowResponses.getOrDefault(taskId, "[]").getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
 
-        stubFlowResponses.put(
-            "/api/v1//logs/task3",
-            """
-            {"taskId":"task3","log":"log-from-task3"}
-            """
-        );
+        try {
+            var kestraUrl = "http://localhost:" + server.getAddress().getPort();
 
-        RunContext runContext = runContextFactory.of(
-            Map.of(
-                "apiKey", "demo",
-                "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
-                "execution", Map.of("id", "executionId")
-            )
-        );
-
-        var chat = ChatCompletion.builder()
-            .provider(
-                OpenAI.builder()
-                    .type(OpenAI.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
-                    .build()
-            )
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .tools(
-                List.of(
-                    KestraTask.builder().tasks(
-                        List.of(
-                            Fetch.builder().id("fetch").type(Fetch.class.getName()).build()
-                        )
-                    ).build()
+            RunContext runContext = runContextFactory.of(
+                Map.of(
+                    "apiKey", "demo",
+                    "modelName", "gpt-4o-mini",
+                    "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                    "execution", Map.of("id", "executionId")
                 )
-            )
-            .messages(
-                Property.ofValue(
+            );
+
+            var chat = ChatCompletion.builder()
+                .provider(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build()
+                )
+                // Use a low temperature and a fixed seed so the completion would be more deterministic
+                .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .tools(
                     List.of(
-                        ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
-                        ChatMessage.builder().type(ChatMessageType.USER).content("I want to fetch logs from the following task ids: task1, task2 and task3").build()
+                        KestraTask.builder().tasks(
+                            List.of(
+                                Fetch.builder()
+                                    .id("fetch")
+                                    .type(Fetch.class.getName())
+                                    .kestraUrl(Property.ofValue(kestraUrl))
+                                    .tenantId(Property.ofValue("main"))
+                                    .executionId(Property.ofValue("executionId"))
+                                    .auth(AbstractKestraTask.Auth.builder()
+                                        .username(Property.ofValue("user"))
+                                        .password(Property.ofValue("pass"))
+                                        .auto(Property.ofValue(false))
+                                        .build())
+                                    .build()
+                            )
+                        ).build()
                     )
                 )
-            )
-            .build();
+                .messages(
+                    Property.ofValue(
+                        List.of(
+                            ChatMessage.builder().type(ChatMessageType.SYSTEM).content("You are an AI agent, please use the provided tool to fulfill the request.").build(),
+                            ChatMessage.builder().type(ChatMessageType.USER).content("I want to fetch logs from the following task ids: task1, task2 and task3").build()
+                        )
+                    )
+                )
+                .build();
 
-        var output = chat.run(runContext);
-        assertThat(output.getTextOutput()).contains("logs");
-        assertThat(output.getTextOutput()).contains("fetch");
-        assertThat(output.getTextOutput()).contains("task");
-        assertThat(output.getToolExecutions()).isNotEmpty();
-        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_fetch");
-        assertThat(output.getIntermediateResponses()).isNotEmpty();
-        assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
-        assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
-        assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_fetch");
-        assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
+            var output = chat.run(runContext);
+            assertThat(output.getTextOutput()).contains("logs");
+            assertThat(output.getTextOutput()).contains("fetch");
+            assertThat(output.getTextOutput()).contains("task");
+            assertThat(output.getToolExecutions()).isNotEmpty();
+            assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_fetch");
+            assertThat(output.getIntermediateResponses()).isNotEmpty();
+            assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
+            assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
+            assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_fetch");
+            assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
