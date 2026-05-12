@@ -14,7 +14,7 @@ plugins {
 
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
-def langchain4jVersion = "1.14.0"
+def langchain4jVersion = "1.14.1"
 def langchain4jBetaVersion = "1.13.0-beta23"
 
 repositories {
