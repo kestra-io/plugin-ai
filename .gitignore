@@ -18,3 +18,4 @@ src/test/resources/mtls
 **/allure-results
 bin/
 .factorypath
+src/main/resources/plugin-ui/
