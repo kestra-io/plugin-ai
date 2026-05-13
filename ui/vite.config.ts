@@ -15,6 +15,10 @@ export default defaultViteConfig({
                     heightWithExecution: 220,
                 },
             },
+            {
+                slotName: "topology-task-drawer",
+                path: "./src/components/AITopologyDetails.vue",
+            },
         ],
         "completion.ChatCompletion": [
             {
@@ -25,6 +29,10 @@ export default defaultViteConfig({
                     heightWithExecution: 180,
                 },
             },
+            {
+                slotName: "topology-task-drawer",
+                path: "./src/components/AITopologyDetails.vue",
+            },
         ],
         "rag.ChatCompletion": [
             {
@@ -34,6 +42,10 @@ export default defaultViteConfig({
                     height: 108,
                     heightWithExecution: 220,
                 },
+            },
+            {
+                slotName: "topology-task-drawer",
+                path: "./src/components/AITopologyDetails.vue",
             },
         ],
     },
