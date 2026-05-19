@@ -9,6 +9,8 @@ import javax.net.ssl.SSLContext;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -167,6 +169,15 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         @PluginProperty(group = "advanced")
         private Property<Boolean> trustAllSsl;
 
+        @Schema(
+            title = "Target Elasticsearch server major version",
+            description = "Major version used for `compatible-with` media-type headers (`Accept` and `Content-Type`). "
+                + "The bundled `elasticsearch-java` 9.x client defaults to `compatible-with=9`, which Elasticsearch 8 rejects. "
+                + "Set to `8` when targeting an Elasticsearch 8 cluster (the default), or `9` for Elasticsearch 9."
+        )
+        @PluginProperty(group = "advanced")
+        private Property<Integer> targetServerVersion;
+
         @SuperBuilder
         @NoArgsConstructor
         @Getter
@@ -235,7 +246,23 @@ public class Elasticsearch extends EmbeddingStoreProvider {
                 builder.setSSLHostnameVerifier(new NoopHostnameVerifier());
             }
 
+            // elasticsearch-java 9.x hard-codes compatible-with=9 in media-type headers, which
+            // Elasticsearch 8 clusters reject. Intercept every request and rewrite the version.
+            int targetVersion = runContext.render(this.targetServerVersion).as(Integer.class).orElse(8);
+            builder.addInterceptorFirst((HttpRequestInterceptor) (request, context) -> {
+                rewriteCompatibleWith(request, "Content-Type", targetVersion);
+                rewriteCompatibleWith(request, "Accept", targetVersion);
+            });
+
             return builder;
+        }
+
+        private static void rewriteCompatibleWith(HttpRequest request, String headerName, int version) {
+            Header header = request.getFirstHeader(headerName);
+            if (header != null && header.getValue().contains("compatible-with=")) {
+                request.removeHeaders(headerName);
+                request.addHeader(headerName, header.getValue().replaceFirst("compatible-with=\\d+", "compatible-with=" + version));
+            }
         }
 
         private HttpHost[] httpHosts(RunContext runContext) throws IllegalVariableEvaluationException {
