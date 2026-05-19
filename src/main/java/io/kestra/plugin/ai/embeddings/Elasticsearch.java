@@ -8,9 +8,12 @@ import java.util.Map;
 import javax.net.ssl.SSLContext;
 
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.entity.AbstractHttpEntity;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -249,10 +252,21 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
             // elasticsearch-java 9.x hard-codes compatible-with=9 in media-type headers, which
             // Elasticsearch 8 clusters reject. Intercept every request and rewrite the version.
+            // Content-Type is set on the HttpEntity (not the request headers), so we must rewrite
+            // it there; Accept is a plain request header and is handled by rewriteCompatibleWith.
             int targetVersion = runContext.render(this.targetServerVersion).as(Integer.class).orElse(8);
             builder.addInterceptorFirst((HttpRequestInterceptor) (request, context) -> {
                 rewriteCompatibleWith(request, "Content-Type", targetVersion);
                 rewriteCompatibleWith(request, "Accept", targetVersion);
+                if (request instanceof HttpEntityEnclosingRequest entityRequest) {
+                    HttpEntity entity = entityRequest.getEntity();
+                    if (entity instanceof AbstractHttpEntity abstractEntity) {
+                        Header ct = abstractEntity.getContentType();
+                        if (ct != null && ct.getValue().contains("compatible-with=")) {
+                            abstractEntity.setContentType(ct.getValue().replaceFirst("compatible-with=\\d+", "compatible-with=" + targetVersion));
+                        }
+                    }
+                }
             });
 
             return builder;
