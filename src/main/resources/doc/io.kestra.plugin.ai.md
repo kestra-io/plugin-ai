@@ -1,4 +1,4 @@
-# How to use the LangChain4J plugin
+# How to use the Kestra AI plugin
 
 Run AI completions, structured extraction, image generation, RAG pipelines, and autonomous agents from Kestra flows.
 
