@@ -8,6 +8,7 @@ import java.util.List;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -31,7 +32,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -54,8 +54,17 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
         return chatModel(runContext, configuration, timeout, Collections.emptyList());
     }
 
+    /**
+     * Resolves the API key to use when building models. Subclasses may override to provide a default
+     * (e.g. DockerModel returns "not-needed" since Docker Model Runner ignores the key).
+     */
+    protected String resolveApiKey(RunContext runContext) throws IllegalVariableEvaluationException {
+        return runContext.render(this.apiKey).as(String.class).orElseThrow();
+    }
+
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+        throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("OpenAI models do not support setting the topK parameter.");
         }
@@ -68,7 +77,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
         OpenAiChatModel.OpenAiChatModelBuilder chatModelBuilder = OpenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
+            .apiKey(resolveApiKey(runContext))
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
@@ -102,7 +111,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
+            .apiKey(resolveApiKey(runContext))
             .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .build();
     }
@@ -111,7 +120,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return OpenAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
+            .apiKey(resolveApiKey(runContext))
             .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
             .build();
     }
