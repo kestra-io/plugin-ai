@@ -27,8 +27,10 @@ import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
+import io.kestra.plugin.ai.tool.KestraTask;
 import io.kestra.plugin.ai.tool.Skill;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
+import io.kestra.plugin.core.log.Log;
 
 import jakarta.inject.Inject;
 
@@ -999,6 +1001,58 @@ class AIAgentTest {
         assertThat(output.getGuardrailViolationMessage()).contains("Message exceeds strict limit");
         assertThat(output.getGuardrailViolationMessage()).doesNotContain("Should never be reached");
         assertThat(output.getTextOutput()).isNull();
+    }
+
+    /**
+     * Regression test for https://github.com/kestra-io/plugin-ai/issues/324.
+     * <p>
+     * gemini-3.5-flash is a native thinking model: without an explicit thinking budget,
+     * the Gemini API attaches a {@code thought_signature} to every {@code functionCall} part.
+     * LangChain4j 1.14.1 cannot propagate that signature across conversation turns, so the
+     * follow-up request (carrying the tool result) was rejected with:
+     * {@code 400 INVALID_ARGUMENT – Function call is missing a thought_signature}.
+     * <p>
+     * The fix defaults {@code thinkingBudget} to 0 when thinking is not explicitly configured,
+     * which disables thinking and removes the {@code thought_signature} requirement.
+     */
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void withKestraTaskTool_gemini35Flash_shouldNotThrowThoughtSignatureError() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "apiKey", GOOGLE_API_KEY
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-3.5-flash"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .systemMessage(Property.ofValue("print the text output of the response to the user prompt using the tool kestra_task_log"))
+            .prompt(Property.ofValue("tell me a joke"))
+            .tools(
+                List.of(
+                    KestraTask.builder()
+                        .tasks(List.of(
+                            Log.builder()
+                                .id("log")
+                                .type(Log.class.getName())
+                                .message(Property.ofValue("..."))
+                                .build()
+                        ))
+                        .build()
+                )
+            )
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getToolExecutions()).isNotEmpty();
+        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_log");
     }
 
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
