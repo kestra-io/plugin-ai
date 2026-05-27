@@ -1061,6 +1061,53 @@ class AIAgentTest {
         assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_log");
     }
 
+    /**
+     * Backward-compatibility check: {@code returnThinking=true} (default) and
+     * {@code sendThinking=true} (always on) must be a no-op for models that never
+     * produce {@code thought_signature} values (gemini-2.0-flash).
+     * The tool-call flow must still complete successfully.
+     */
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void withKestraTaskTool_gemini20Flash_returnThinkingDefaultsShouldBeNoOp() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "apiKey", GOOGLE_API_KEY
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-2.0-flash"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .systemMessage(Property.ofValue("print the text output of the response to the user prompt using the tool kestra_task_log"))
+            .prompt(Property.ofValue("tell me a joke"))
+            .configuration(ChatConfiguration.empty())
+            .tools(
+                List.of(
+                    KestraTask.builder()
+                        .tasks(List.of(
+                            Log.builder()
+                                .id("log")
+                                .type(Log.class.getName())
+                                .message(Property.ofValue("..."))
+                                .build()
+                        ))
+                        .build()
+                )
+            )
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getToolExecutions()).isNotEmpty();
+        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_log");
+    }
+
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
     @Test
     void withSkillTool() throws Exception {
