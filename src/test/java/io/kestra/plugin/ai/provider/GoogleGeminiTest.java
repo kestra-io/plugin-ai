@@ -52,25 +52,37 @@ class GoogleGeminiTest {
 
     @Test
     void getThinkingConfig_shouldDefaultBudgetToZeroWhenNoConfigSet() throws Exception {
+        // Reproduces issue #324: gemini-3.5-flash is a native thinking model — without an
+        // explicit budget, the API attaches thought_signatures to function-call parts.
+        // LangChain4j cannot propagate them in multi-turn tool calls, causing a 400 error.
+        // Fix: default thinkingBudget to 0 so thinking is disabled unless the user opts in.
         var runContext = runContextFactory.of(Map.of());
+        var provider = GoogleGemini.builder()
+            .type(GoogleGemini.class.getName())
+            .modelName(Property.ofValue("gemini-3.5-flash"))
+            .apiKey(Property.ofValue("placeholder"))
+            .build();
         var config = ChatConfiguration.empty();
 
-        var thinkingConfig = GoogleGemini.getThinkingConfig(config, runContext);
+        var thinkingConfig = provider.getThinkingConfig(config, runContext);
 
         assertThat(thinkingConfig.includeThoughts()).isFalse();
-        // Budget must be 0 (not null) so thinking models like gemini-3.5-flash do not attach
-        // thought_signatures that LangChain4j cannot propagate in multi-turn tool calls.
         assertThat(thinkingConfig.thinkingBudget()).isEqualTo(0);
     }
 
     @Test
     void getThinkingConfig_shouldRespectExplicitBudget() throws Exception {
         var runContext = runContextFactory.of(Map.of());
+        var provider = GoogleGemini.builder()
+            .type(GoogleGemini.class.getName())
+            .modelName(Property.ofValue("gemini-3.5-flash"))
+            .apiKey(Property.ofValue("placeholder"))
+            .build();
         var config = ChatConfiguration.builder()
             .thinkingBudgetTokens(Property.ofValue(1024))
             .build();
 
-        var thinkingConfig = GoogleGemini.getThinkingConfig(config, runContext);
+        var thinkingConfig = provider.getThinkingConfig(config, runContext);
 
         assertThat(thinkingConfig.thinkingBudget()).isEqualTo(1024);
     }
@@ -78,11 +90,16 @@ class GoogleGeminiTest {
     @Test
     void getThinkingConfig_shouldRespectThinkingEnabledTrue() throws Exception {
         var runContext = runContextFactory.of(Map.of());
+        var provider = GoogleGemini.builder()
+            .type(GoogleGemini.class.getName())
+            .modelName(Property.ofValue("gemini-3.5-flash"))
+            .apiKey(Property.ofValue("placeholder"))
+            .build();
         var config = ChatConfiguration.builder()
             .thinkingEnabled(Property.ofValue(true))
             .build();
 
-        var thinkingConfig = GoogleGemini.getThinkingConfig(config, runContext);
+        var thinkingConfig = provider.getThinkingConfig(config, runContext);
 
         assertThat(thinkingConfig.includeThoughts()).isTrue();
         // When enabled=true but no budget set, budget stays null (let the model decide).
@@ -92,12 +109,17 @@ class GoogleGeminiTest {
     @Test
     void getThinkingConfig_shouldRespectExplicitThinkingEnabledWithBudget() throws Exception {
         var runContext = runContextFactory.of(Map.of());
+        var provider = GoogleGemini.builder()
+            .type(GoogleGemini.class.getName())
+            .modelName(Property.ofValue("gemini-3.5-flash"))
+            .apiKey(Property.ofValue("placeholder"))
+            .build();
         var config = ChatConfiguration.builder()
             .thinkingEnabled(Property.ofValue(true))
             .thinkingBudgetTokens(Property.ofValue(512))
             .build();
 
-        var thinkingConfig = GoogleGemini.getThinkingConfig(config, runContext);
+        var thinkingConfig = provider.getThinkingConfig(config, runContext);
 
         assertThat(thinkingConfig.includeThoughts()).isTrue();
         assertThat(thinkingConfig.thinkingBudget()).isEqualTo(512);

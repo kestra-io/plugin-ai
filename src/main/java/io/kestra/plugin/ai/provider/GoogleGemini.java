@@ -213,7 +213,7 @@ public class GoogleGemini extends ModelProvider {
         return rApiKey;
     }
 
-    static GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
+    GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
         var enabled = runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false);
         var maxTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
         // Default to 0 when thinking is not explicitly requested.
