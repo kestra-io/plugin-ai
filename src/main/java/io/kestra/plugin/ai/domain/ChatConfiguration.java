@@ -104,7 +104,11 @@ public class ChatConfiguration {
         description = """
             Controls whether to return the model's internal reasoning or 'thinking' text, if available. When enabled,
             the reasoning content is extracted from the response and made available in the AiMessage object.
-            It Does not trigger the thinking process itself—only affects whether the output is parsed and returned."""
+            Does not trigger the thinking process itself—only affects whether the output is parsed and returned.
+
+            For Google Gemini: defaults to `true` so that `thought_signature` values on function-call parts \
+            are captured and automatically re-sent in subsequent requests, preventing tool-call failures \
+            on native thinking models (e.g. gemini-3.5-flash)."""
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> returnThinking;

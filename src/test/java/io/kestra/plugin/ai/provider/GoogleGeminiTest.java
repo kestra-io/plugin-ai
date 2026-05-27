@@ -52,10 +52,11 @@ class GoogleGeminiTest {
 
     @Test
     void getThinkingConfig_shouldDefaultBudgetToZeroWhenNoConfigSet() throws Exception {
-        // Reproduces issue #324: gemini-3.5-flash is a native thinking model — without an
-        // explicit budget, the API attaches thought_signatures to function-call parts.
-        // LangChain4j cannot propagate them in multi-turn tool calls, causing a 400 error.
-        // Fix: default thinkingBudget to 0 so thinking is disabled unless the user opts in.
+        // Issue #324: gemini-3.5-flash attaches thought_signatures to function-call parts.
+        // Primary fix: returnThinking defaults to true (to capture the signature) and
+        // sendThinking is always enabled (to re-attach it in follow-up requests), preventing
+        // the 400 INVALID_ARGUMENT error from LangChain4j dropping the signature.
+        // Belt-and-suspenders: thinkingBudget defaults to 0 to minimise thinking overhead.
         var runContext = runContextFactory.of(Map.of());
         var provider = GoogleGemini.builder()
             .type(GoogleGemini.class.getName())

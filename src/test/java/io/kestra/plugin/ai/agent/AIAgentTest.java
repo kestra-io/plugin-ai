@@ -1006,14 +1006,19 @@ class AIAgentTest {
     /**
      * Regression test for https://github.com/kestra-io/plugin-ai/issues/324.
      * <p>
-     * gemini-3.5-flash is a native thinking model: without an explicit thinking budget,
-     * the Gemini API attaches a {@code thought_signature} to every {@code functionCall} part.
-     * LangChain4j 1.14.1 cannot propagate that signature across conversation turns, so the
-     * follow-up request (carrying the tool result) was rejected with:
+     * gemini-3.5-flash is a native thinking model: the Gemini API attaches a
+     * {@code thought_signature} to every {@code functionCall} part in its response.
+     * Without explicit handling, LangChain4j drops that signature when reconstructing
+     * the conversation history, causing the follow-up request (carrying the tool result)
+     * to be rejected with:
      * {@code 400 INVALID_ARGUMENT – Function call is missing a thought_signature}.
      * <p>
-     * The fix defaults {@code thinkingBudget} to 0 when thinking is not explicitly configured,
-     * which disables thinking and removes the {@code thought_signature} requirement.
+     * The fix sets {@code returnThinking=true} by default (to capture the signature into
+     * {@code AiMessage.attributes("thinking_signature")}) and always enables
+     * {@code sendThinking=true} (to re-attach the signature to function-call parts when
+     * building the next request), propagating it transparently for any thinking model.
+     * As a secondary optimisation, {@code thinkingBudget} defaults to {@code 0} to minimise
+     * thinking overhead when thinking is not explicitly requested.
      */
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
     @Test
@@ -1034,6 +1039,7 @@ class AIAgentTest {
             )
             .systemMessage(Property.ofValue("print the text output of the response to the user prompt using the tool kestra_task_log"))
             .prompt(Property.ofValue("tell me a joke"))
+            .configuration(ChatConfiguration.empty())
             .tools(
                 List.of(
                     KestraTask.builder()

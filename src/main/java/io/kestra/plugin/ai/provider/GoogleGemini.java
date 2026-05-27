@@ -42,10 +42,12 @@ import io.kestra.core.models.annotations.PluginProperty;
         Supports Gemini chat, embeddings, and images. Tools do not support JSON Schema `anyOf`, and tools cannot be combined with responseFormat; configure either but not both.
 
         Thinking models (e.g. gemini-3.5-flash) attach a `thought_signature` to every function-call part. \
-        LangChain4j does not yet propagate that signature across conversation turns, which causes the Gemini API \
-        to reject subsequent requests with `400 INVALID_ARGUMENT – Function call is missing a thought_signature`. \
-        To avoid this, thinking is disabled by default (`thinkingBudget = 0`) unless `thinkingEnabled: true` or \
-        `thinkingBudgetTokens > 0` is explicitly set."""
+        This provider automatically captures those signatures (`returnThinking` defaults to `true`) and re-attaches \
+        them to the conversation history for every follow-up request (`sendThinking` is always enabled), preventing \
+        the `400 INVALID_ARGUMENT – Function call is missing a thought_signature` error.
+
+        In addition, thinking is disabled by default (`thinkingBudget = 0`) to reduce token usage, \
+        unless `thinkingEnabled: true` or `thinkingBudgetTokens > 0` is explicitly set."""
 )
 @Plugin(
     examples = {
@@ -151,7 +153,14 @@ public class GoogleGemini extends ModelProvider {
             .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(allListeners)
             .thinkingConfig(getThinkingConfig(configuration, runContext))
-            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
+            // Default returnThinking to true so that thought_signatures on function-call parts
+            // are captured into AiMessage.attributes("thinking_signature").  Without this,
+            // the signature is silently dropped and every subsequent tool-call request fails
+            // with 400 INVALID_ARGUMENT on native thinking models (e.g. gemini-3.5-flash).
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(true))
+            // Always re-attach the captured signature when rebuilding the conversation history
+            // for follow-up requests.  This is a no-op for models that never produce signatures.
+            .sendThinking(true)
             .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .timeout(timeout);
 
