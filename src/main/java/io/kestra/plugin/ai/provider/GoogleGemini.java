@@ -39,7 +39,13 @@ import io.kestra.core.models.annotations.PluginProperty;
 @Schema(
     title = "Use Google Gemini models",
     description = """
-        Supports Gemini chat, embeddings, and images. Tools do not support JSON Schema `anyOf`, and tools cannot be combined with responseFormat; configure either but not both."""
+        Supports Gemini chat, embeddings, and images. Tools do not support JSON Schema `anyOf`, and tools cannot be combined with responseFormat; configure either but not both.
+
+        Thinking models (e.g. gemini-3.5-flash) attach a `thought_signature` to every function-call part. \
+        LangChain4j does not yet propagate that signature across conversation turns, which causes the Gemini API \
+        to reject subsequent requests with `400 INVALID_ARGUMENT – Function call is missing a thought_signature`. \
+        To avoid this, thinking is disabled by default (`thinkingBudget = 0`) unless `thinkingEnabled: true` or \
+        `thinkingBudgetTokens > 0` is explicitly set."""
 )
 @Plugin(
     examples = {
@@ -207,9 +213,16 @@ public class GoogleGemini extends ModelProvider {
         return rApiKey;
     }
 
-    private static GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
+    static GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
         var enabled = runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false);
         var maxTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
+        // Default to 0 when thinking is not explicitly requested.
+        // Gemini thinking models (e.g. gemini-3.5-flash) enable thinking when budget is null,
+        // and LangChain4j does not yet propagate thought_signatures in multi-turn conversations,
+        // causing tool calls to fail with 400 INVALID_ARGUMENT.
+        if (!enabled && maxTokens == null) {
+            maxTokens = 0;
+        }
         return GeminiThinkingConfig.builder()
             .includeThoughts(enabled)
             .thinkingBudget(maxTokens)
