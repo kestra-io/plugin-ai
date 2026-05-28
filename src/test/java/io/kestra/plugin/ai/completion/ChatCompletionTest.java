@@ -251,7 +251,11 @@ class ChatCompletionTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(
                 ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
-                    .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024)).build()
+                    .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024))
+                    // Explicitly suppress thinking output: thinking runs on the model side but
+                    // must not appear in getThinking().  Without this, GoogleGemini defaults
+                    // returnThinking=true (needed to propagate thought_signatures in tool calls).
+                    .returnThinking(Property.ofValue(false)).build()
             )
             .messages(Property.ofExpression("{{ messages }}"))
             .provider(
