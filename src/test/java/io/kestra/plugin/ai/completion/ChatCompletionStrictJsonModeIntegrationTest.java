@@ -6,7 +6,10 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import dev.langchain4j.exception.RateLimitException;
 import io.kestra.core.junit.annotations.KestraTest;
+
+import static org.junit.jupiter.api.Assumptions.abort;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
@@ -90,7 +93,13 @@ class ChatCompletionStrictJsonModeIntegrationTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
+        ChatCompletion.Output output;
+        try {
+            output = task.run(runContext);
+        } catch (RateLimitException e) {
+            abort("Skipped: OpenAI rate limited or quota exceeded");
+            return;
+        }
 
         assertThat(output.getJsonOutput(), notNullValue());
         assertThat(output.getJsonOutput().get("people"), instanceOf(List.class));
