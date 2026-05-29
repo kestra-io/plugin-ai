@@ -68,11 +68,19 @@ public class TavilyWebSearch extends ContentRetrieverProvider {
     @PluginProperty(group = "main")
     private Property<Integer> maxResults = Property.ofValue(3);
 
+    @Schema(title = "Base URL of the Tavily API", description = "Override the default Tavily API base URL (https://api.tavily.com/). Useful for testing or proxying.")
+    @PluginProperty(group = "advanced")
+    private Property<String> baseUrl;
+
     @Override
     public ContentRetriever contentRetriever(RunContext runContext) throws IllegalVariableEvaluationException {
-        final WebSearchEngine searchEngine = TavilyWebSearchEngine.builder()
-            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .build();
+        var engineBuilder = TavilyWebSearchEngine.builder()
+            .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow());
+        var rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(null);
+        if (rBaseUrl != null) {
+            engineBuilder.baseUrl(rBaseUrl);
+        }
+        final WebSearchEngine searchEngine = engineBuilder.build();
         return WebSearchContentRetriever.builder()
             .webSearchEngine(searchEngine)
             .maxResults(runContext.render(this.maxResults).as(Integer.class).orElse(3))
