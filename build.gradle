@@ -295,6 +295,8 @@ shadowJar {
     exclude "org/slf4j/**"
     exclude "ch/qos/logback/**"
     exclude "com/fasterxml/jackson/**"
+    exclude "okhttp3/**"
+    exclude "okio/**"
     exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
     exclude "META-INF/INDEX.LIST"
     exclude "module-info.class"

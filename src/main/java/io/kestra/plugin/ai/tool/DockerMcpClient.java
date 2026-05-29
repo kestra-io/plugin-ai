@@ -68,7 +68,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                     inputs:
                       - id: prompt
                         type: STRING
-                        defaults: Create a file 'hello.txt' with the content "Hello World" in the /tmp directory.
+                        defaults: Create the file '/tmp/hello.txt' with the content "Hello World".
 
                     tasks:
                       - id: agent
@@ -78,6 +78,8 @@ import io.kestra.core.models.annotations.PluginProperty;
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                           modelName: gemini-2.5-flash
                         prompt: "{{ inputs.prompt }}"
+                        systemMessage: |
+                          You are a filesystem assistant. Always use the write_file tool with the exact absolute path provided in the user's request.
                         tools:
                           - type: io.kestra.plugin.ai.tool.DockerMcpClient
                             image: mcp/filesystem
