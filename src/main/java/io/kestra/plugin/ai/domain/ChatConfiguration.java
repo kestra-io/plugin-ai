@@ -77,7 +77,11 @@ public class ChatConfiguration {
         description = """
             Enables internal reasoning ('thinking') in supported language models, allowing the model to perform intermediate reasoning steps
             before producing a final output; this is useful for complex tasks like multi-step problem solving or decision making, but may
-            increase token usage and response time, and is only applicable to compatible models."""
+            increase token usage and response time, and is only applicable to compatible models.
+
+            For Google Gemini: when neither this property nor `thinkingBudgetTokens` is set, thinking is explicitly disabled \
+            (`thinkingBudget = 0`) to prevent tool-call failures on native thinking models such as gemini-3.5-flash. \
+            Set `thinkingEnabled: true` or `thinkingBudgetTokens > 0` to opt back in."""
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> thinkingEnabled;
@@ -86,7 +90,11 @@ public class ChatConfiguration {
         title = "Thinking Token Budget",
         description = """
             Specifies the maximum number of tokens allocated as a budget for internal reasoning processes, such as generating intermediate
-            thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output."""
+            thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output.
+
+            For Google Gemini: when neither this property nor `thinkingEnabled` is set, the budget defaults to `0` (thinking disabled) \
+            to prevent tool-call failures on native thinking models such as gemini-3.5-flash. \
+            Set this to a positive integer (e.g. `1024`) to allow thinking."""
     )
     @PluginProperty(group = "advanced")
     private Property<Integer> thinkingBudgetTokens;
@@ -96,7 +104,11 @@ public class ChatConfiguration {
         description = """
             Controls whether to return the model's internal reasoning or 'thinking' text, if available. When enabled,
             the reasoning content is extracted from the response and made available in the AiMessage object.
-            It Does not trigger the thinking process itself—only affects whether the output is parsed and returned."""
+            Does not trigger the thinking process itself—only affects whether the output is parsed and returned.
+
+            For Google Gemini: defaults to `true` so that `thought_signature` values on function-call parts \
+            are captured and automatically re-sent in subsequent requests, preventing tool-call failures \
+            on native thinking models (e.g. gemini-3.5-flash)."""
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> returnThinking;

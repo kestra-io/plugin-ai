@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
-import io.kestra.core.docs.JsonSchemaGenerator;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -89,7 +88,7 @@ public class KestraTask extends ToolProvider {
     @Override
     public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
         var defaultRunContext = (DefaultRunContext) runContext;
-        var jsonSchemaGenerator = defaultRunContext.services().additionalService(JsonSchemaGenerator.class);
+        var jsonSchemaGenerator = defaultRunContext.services().jsonSchemaGenerator();
 
         Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
         for (Task task : tasks) {

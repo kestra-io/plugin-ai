@@ -27,8 +27,10 @@ import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
+import io.kestra.plugin.ai.tool.KestraTask;
 import io.kestra.plugin.ai.tool.Skill;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
+import io.kestra.plugin.core.log.Log;
 
 import jakarta.inject.Inject;
 
@@ -999,6 +1001,115 @@ class AIAgentTest {
         assertThat(output.getGuardrailViolationMessage()).contains("Message exceeds strict limit");
         assertThat(output.getGuardrailViolationMessage()).doesNotContain("Should never be reached");
         assertThat(output.getTextOutput()).isNull();
+    }
+
+    /**
+     * Regression test for https://github.com/kestra-io/plugin-ai/issues/324.
+     * <p>
+     * gemini-3.5-flash is a native thinking model: the Gemini API attaches a
+     * {@code thought_signature} to every {@code functionCall} part in its response.
+     * Without explicit handling, LangChain4j drops that signature when reconstructing
+     * the conversation history, causing the follow-up request (carrying the tool result)
+     * to be rejected with:
+     * {@code 400 INVALID_ARGUMENT – Function call is missing a thought_signature}.
+     * <p>
+     * The fix sets {@code returnThinking=true} by default (to capture the signature into
+     * {@code AiMessage.attributes("thinking_signature")}) and always enables
+     * {@code sendThinking=true} (to re-attach the signature to function-call parts when
+     * building the next request), propagating it transparently for any thinking model.
+     * As a secondary optimisation, {@code thinkingBudget} defaults to {@code 0} to minimise
+     * thinking overhead when thinking is not explicitly requested.
+     */
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void withKestraTaskTool_gemini35Flash_shouldNotThrowThoughtSignatureError() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "apiKey", GOOGLE_API_KEY
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-3.5-flash"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .systemMessage(Property.ofValue("print the text output of the response to the user prompt using the tool kestra_task_log"))
+            .prompt(Property.ofValue("tell me a joke"))
+            .configuration(ChatConfiguration.empty())
+            .tools(
+                List.of(
+                    KestraTask.builder()
+                        .tasks(List.of(
+                            Log.builder()
+                                .id("log")
+                                .type(Log.class.getName())
+                                .message(Property.ofValue("..."))
+                                .build()
+                        ))
+                        .build()
+                )
+            )
+            .build();
+
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getToolExecutions()).isNotEmpty();
+        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_log");
+    }
+
+    /**
+     * Backward-compatibility check: {@code returnThinking=true} (default) and
+     * {@code sendThinking=true} (always on) must be a no-op for models that never
+     * produce {@code thought_signature} values (gemini-2.0-flash).
+     * <p>
+     * We only assert that the agent completes without throwing (no API errors, no
+     * NullPointerExceptions from the new defaults) and that a text response is produced.
+     * Whether the model chooses to call the tool is left to its discretion; gemini-2.0-flash
+     * may answer directly without tool use, and that is fine for this regression check.
+     */
+    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @Test
+    void withKestraTaskTool_gemini20Flash_returnThinkingDefaultsShouldBeNoOp() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "apiKey", GOOGLE_API_KEY
+            )
+        );
+
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .modelName(Property.ofValue("gemini-2.0-flash"))
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .build()
+            )
+            .systemMessage(Property.ofValue("print the text output of the response to the user prompt using the tool kestra_task_log"))
+            .prompt(Property.ofValue("tell me a joke"))
+            .configuration(ChatConfiguration.empty())
+            .tools(
+                List.of(
+                    KestraTask.builder()
+                        .tasks(List.of(
+                            Log.builder()
+                                .id("log")
+                                .type(Log.class.getName())
+                                .message(Property.ofValue("..."))
+                                .build()
+                        ))
+                        .build()
+                )
+            )
+            .build();
+
+        // The key check is that no exception is thrown: returnThinking=true and
+        // sendThinking=true must not break a model that produces no thought_signatures.
+        var output = agent.run(runContext);
+        assertThat(output.getTextOutput()).isNotNull();
     }
 
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
