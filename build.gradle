@@ -14,7 +14,7 @@ plugins {
 
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
-def langchain4jVersion = "1.14.1"
+def langchain4jVersion = "1.15.0"
 def langchain4jBetaVersion = "1.13.0-beta23"
 
 repositories {
@@ -295,6 +295,8 @@ shadowJar {
     exclude "org/slf4j/**"
     exclude "ch/qos/logback/**"
     exclude "com/fasterxml/jackson/**"
+    exclude "okhttp3/**"
+    exclude "okio/**"
     exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
     exclude "META-INF/INDEX.LIST"
     exclude "module-info.class"

@@ -279,7 +279,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       Use web search to gather current, reliable information from multiple sources.
                       Then create a well-structured Markdown report that includes an introduction,
                       key trends with short explanations, and a conclusion.
-                      Save the final report as `report.md` in the `/tmp` directory.
+                      Save the final report at the path `/tmp/report.md`.
 
                 tasks:
                   - id: agent
@@ -293,11 +293,11 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       You are a research assistant that must always follow this process:
                       1. Use the TavilyWebSearch content retriever to gather the most relevant and up-to-date information for the user prompt. Do not invent information.
                       2. Summarize and structure the findings clearly in Markdown format. Use headings, bullet points, and links when appropriate.
-                      3. Save the final Markdown report as `report.md` in the `/tmp` directory by using the provided filesystem tool.
+                      3. Save the final Markdown report at the path `/tmp/report.md` by using the write_file tool.
 
                       Important rules:
-                      - Never output raw text in your response. The final result must always be written to `report.md`.
-                      - If no useful results are retrieved, write a short note in `report.md` explaining that no information was found.
+                      - Never output raw text in your response. The final result must always be written to `/tmp/report.md`.
+                      - If no useful results are retrieved, write a short note in `/tmp/report.md` explaining that no information was found.
                       - Do not attempt to bypass or ignore the retriever or the filesystem tool.
 
                     contentRetrievers:
