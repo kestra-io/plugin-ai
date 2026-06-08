@@ -60,6 +60,7 @@ class PostgreSQLTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
             )
@@ -71,6 +72,13 @@ class PostgreSQLTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -146,6 +154,13 @@ class PostgreSQLTest extends ContainerTest {
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
             .embeddings(KestraKVStore.builder().build())
             .memory(
                 PostgreSQL.builder()
@@ -198,6 +213,7 @@ class PostgreSQLTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
             )
@@ -209,6 +225,13 @@ class PostgreSQLTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
