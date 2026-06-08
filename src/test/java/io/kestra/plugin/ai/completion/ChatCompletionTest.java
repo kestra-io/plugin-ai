@@ -119,7 +119,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -158,7 +158,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -278,48 +278,6 @@ class ChatCompletionTest extends ContainerTest {
         }
     }
 
-    @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
-    void testChatCompletionGemini_givenInvalidModel_whenThinkingNotAllowed_thenThrowException() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            Map.of(
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash",
-                "messages", List.of(
-                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
-                )
-            )
-        );
-        ChatCompletion task = ChatCompletion.builder()
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(
-                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
-                    .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024)).build()
-            )
-            .messages(Property.ofExpression("{{ messages }}"))
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
-            )
-            .build();
-
-        // Assert RuntimeException and error message
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-        {
-            ChatCompletion.Output output = task.run(runContext);
-        }, "status code: 400");
-
-        if (exception instanceof RateLimitException) {
-            abort("Skipped: Gemini rate limited (429)");
-        }
-
-        // Verify error message contains 404 details
-        assertThat(exception.getMessage(), containsString("Unable to submit request because thinking is not supported by this model."));
-    }
-
     /**
      * Test Chat Completion using Google Vertex AI.
      */
@@ -331,7 +289,7 @@ class ChatCompletionTest extends ContainerTest {
             Map.of(
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -372,7 +330,7 @@ class ChatCompletionTest extends ContainerTest {
             Map.of(
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -413,7 +371,7 @@ class ChatCompletionTest extends ContainerTest {
                 "project", "dummy-project",
                 "location", "us-central1",
                 "endpoint", "https://us-central1-aiplatform.googleapis.com",
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
                 )
@@ -2081,7 +2039,7 @@ class ChatCompletionTest extends ContainerTest {
                         .withResponseBody(Body.fromJsonBytes("""
                             {
                               "responseId" : "mock-response-id",
-                              "modelVersion" : "gemini-2.0-flash",
+                              "modelVersion" : "gemini-2.5-flash",
                               "candidates" : [ {
                                 "content" : {
                                   "parts" : [ { "text" : "Hello John from Gemini mTLS" } ],
@@ -2116,7 +2074,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "fakeApiKey",
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "baseUrl", baseUrl,
                 "caPem", caPem,
                 "clientPem", clientPem,

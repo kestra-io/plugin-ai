@@ -48,6 +48,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -56,7 +57,7 @@ class ChatCompletionTest extends ContainerTest {
             .provider(
                 Ollama.builder()
                     .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -72,6 +73,13 @@ class ChatCompletionTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -92,6 +100,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "apikey", GOOGLE_API_KEY,
                 "csi", GOOGLE_CSI
@@ -102,7 +111,7 @@ class ChatCompletionTest extends ContainerTest {
             .provider(
                 Ollama.builder()
                     .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -118,6 +127,13 @@ class ChatCompletionTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -147,6 +163,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "apikey", TAVILY_API_KEY
             )
@@ -156,7 +173,7 @@ class ChatCompletionTest extends ContainerTest {
             .provider(
                 Ollama.builder()
                     .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -172,6 +189,13 @@ class ChatCompletionTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -200,6 +224,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "apikey", RAPID_API_KEY
             )
@@ -210,6 +235,13 @@ class ChatCompletionTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -241,7 +273,7 @@ class ChatCompletionTest extends ContainerTest {
     void testGeminiChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "apiKey", GOOGLE_API_KEY
             )
         );
