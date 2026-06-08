@@ -58,7 +58,7 @@ class QdrantTest extends ContainerTest {
             QDRANT_COLLECTION_NAME,
             Collections.VectorParams.newBuilder()
                 .setDistance(Collections.Distance.Cosine)
-                .setSize(2048) // tinydolphin model below produces 2048-dimension embeddings
+                .setSize(384) // chroma/all-minilm-l6-v2-f32 embedding model produces 384-dimension embeddings
                 .build()
         ).get();
 
@@ -74,7 +74,7 @@ class QdrantTest extends ContainerTest {
     void inlineDocuments() throws Exception {
         var runContext = runContextFactory.of(
             Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )
