@@ -40,7 +40,7 @@ class IngestDocumentTest extends ContainerTest {
     void inlineDocuments() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -72,7 +72,7 @@ class IngestDocumentTest extends ContainerTest {
     void internalStorageURIs() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -108,7 +108,7 @@ class IngestDocumentTest extends ContainerTest {
     void workingDirectoryPath() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -145,7 +145,7 @@ class IngestDocumentTest extends ContainerTest {
     void externalURLs() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -177,7 +177,7 @@ class IngestDocumentTest extends ContainerTest {
     void inlineDocumentsWithBulkSize() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
