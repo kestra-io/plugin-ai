@@ -28,7 +28,7 @@ class SearchTest extends ContainerTest {
         // Given
         var runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );

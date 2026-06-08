@@ -4,7 +4,7 @@ plugins {
     id "idea"
     id 'jacoco'
     id "com.adarshr.test-logger" version "4.0.0"
-    id "com.gradleup.shadow" version "9.4.1"
+    id "com.gradleup.shadow" version "9.4.2"
     id 'signing'
     id "com.github.ben-manes.versions" version "0.54.0"
     id 'net.researchgate.release' version '3.1.0'
@@ -84,7 +84,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-watsonx:${langchain4jBetaVersion}"
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
-    implementation "org.apache.tika:tika-core:3.3.0"
+    implementation "org.apache.tika:tika-core:3.3.1"
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0:${langchain4jBetaVersion}"
 

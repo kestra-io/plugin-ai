@@ -45,7 +45,7 @@ class PGVectorTest extends ContainerTest {
     void inlineDocuments() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )
