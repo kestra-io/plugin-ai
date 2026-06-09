@@ -53,7 +53,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
                 "systemMessage", "You extract structured JSON data from natural language text.",
                 "jsonFields", List.of("name", "date"),
                 "schemaName", "Person",
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "apiKey", GEMINI_API_KEY
             )
         );
