@@ -16,7 +16,7 @@
   "dependencies": {
     "@kestra-io/artifact-sdk": "0.1.2",
     "@kestra-io/design-system": "0.3.0",
-    "@kestra-io/kestra-sdk": "2.0.0-dev.2e43ff28.eb2705ef",
+    "@kestra-io/kestra-sdk": "2.0.0-kdevelop.17815278.5a3d4f18.1c4bda1e",
     "element-plus": "2.9.0",
     "vue": "3.5.32"
   },

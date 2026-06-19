@@ -2,7 +2,7 @@
 import type { KnownSlotProps } from "@kestra-io/artifact-sdk";
 import { KsTopologyDetails, KsTag, KsCollapse, KsCollapseItem, KsAlert } from "@kestra-io/design-system";
 import { computed, ref, watch, useAttrs } from "vue";
-import { execution as fetchExecution } from "@kestra-io/kestra-sdk";
+import { resolveTenant, useClient } from "@kestra-io/kestra-sdk";
 
 const props = defineProps<KnownSlotProps["topology-details"]>();
 const attrs = useAttrs();
@@ -72,15 +72,31 @@ const taskRun = computed(() => {
     return list?.filter((tr: any) => tr.taskId === taskId.value).at(-1);
 });
 
-// Fetch full execution to get outputs
+// Fetch task run outputs from API (bypasses global 404 interceptor)
 const fetchedOutputs = ref<Record<string, any> | null>(null);
 
 async function loadTaskOutputs(execId: string) {
+    // useClient() + validateStatus bypasses the global 404 interceptor
+    // (coreStore.error = 404) that replaces the page with "Page not found".
     try {
-        const exec = await fetchExecution({ path: { executionId: execId } });
-        const list = exec.taskRunList as any[] | undefined;
-        const tr = list?.filter((tr: any) => tr.taskId === taskId.value).at(-1);
-        fetchedOutputs.value = (tr as any)?.outputs ?? null;
+        const tenant = resolveTenant(undefined);
+        const client = useClient();
+        let list = props.execution?.taskRunList as any[] | undefined;
+        if (!list) {
+            const execResp = await client.get(
+                `/api/v1/${tenant}/executions/${execId}`,
+                { validateStatus: (s: number) => s === 200 || s === 404 },
+            );
+            if (execResp.status !== 200) return;
+            list = execResp.data?.taskRunList as any[] | undefined;
+        }
+        const tr = list?.filter((r: any) => r.taskId === taskId.value).at(-1);
+        if (!tr?.id) return;
+        const resp = await client.get(
+            `/api/v1/${tenant}/outputs/${execId}/${tr.id}`,
+            { validateStatus: (s: number) => s === 200 || s === 404 },
+        );
+        fetchedOutputs.value = resp.status === 200 ? (resp.data ?? null) : null;
     } catch (e) {
         console.error("[AITopologyDetails] failed to load task outputs", e);
     }
