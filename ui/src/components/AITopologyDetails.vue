@@ -19,24 +19,69 @@ function lastSegment(typeStr: string | undefined): string | undefined {
     return typeStr.split(".").at(-1) ?? typeStr;
 }
 
+// In post-execution mode the platform may pass a stripped task (id+type only).
+// fetchedTaskDef holds the full task definition fetched from the flows API.
+const fetchedTaskDef = ref<Record<string, any> | null>(null);
+const effectiveTask = computed<Record<string, any>>(() =>
+    fetchedTaskDef.value
+        ? { ...(props.task as any), ...fetchedTaskDef.value }
+        : (props.task as any) ?? {}
+);
+
+function findTask(tasks: any[] | undefined, id: string): any {
+    if (!tasks?.length) return null;
+    for (const t of tasks) {
+        if (t.id === id) return t;
+        const sub = t.tasks ?? t.errors ?? t.finally;
+        if (sub) {
+            const found = findTask(Array.isArray(sub) ? sub : [sub], id);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+async function loadFlowTaskDef() {
+    if (provider.value) return; // already available from props.task
+    const ns = props.namespace as string | undefined;
+    const fid = props.flowId as string | undefined;
+    const tid = taskId.value;
+    if (!ns || !fid || !tid) return;
+    if (ns.startsWith("{") || fid.startsWith("{") || tid.startsWith("{")) return;
+    const tenant = resolveTenant(undefined);
+    if (!tenant || (tenant as string).startsWith("{")) return;
+    try {
+        const client = useClient();
+        const resp = await client.get(
+            `/api/v1/${tenant}/flows/${ns}/${fid}`,
+            { validateStatus: (s: number) => s === 200 || s === 404 },
+        );
+        if (resp.status !== 200) return;
+        const task = findTask(resp.data?.tasks, tid);
+        if (task) fetchedTaskDef.value = task;
+    } catch (e: any) {
+        console.error("[AITopologyDetails] failed to load flow task def", e);
+    }
+}
+
 const provider = computed(() => {
-    const p = (props.task as any)?.[isRag.value ? "chatProvider" : "provider"];
+    const p = effectiveTask.value[isRag.value ? "chatProvider" : "provider"];
     return lastSegment(p?.type);
 });
 
 const modelName = computed(() => {
     const key = isRag.value ? "chatProvider" : "provider";
-    return (props.task as any)?.[key]?.modelName as string | undefined;
+    return effectiveTask.value[key]?.modelName as string | undefined;
 });
 
 const systemMessage = computed(() =>
-    ((props.task as any)?.systemPrompt ?? (props.task as any)?.systemMessage) as string | undefined
+    (effectiveTask.value.systemPrompt ?? effectiveTask.value.systemMessage) as string | undefined
 );
 
-const prompt = computed(() => (props.task as any)?.prompt as string | undefined);
+const prompt = computed(() => effectiveTask.value.prompt as string | undefined);
 
 const toolNames = computed<string[]>(() => {
-    const tools = (props.task as any)?.tools as any[] | undefined;
+    const tools = effectiveTask.value.tools as any[] | undefined;
     if (!tools?.length) return [];
     return tools.map((t: any) => {
         if (typeof t === "string") return lastSegment(t) ?? t;
@@ -51,19 +96,17 @@ const toArray = (v: any): any[] => {
 };
 
 const retrieverNames = computed<string[]>(() => {
-    const task = props.task as any;
-    const single = task?.contentRetriever ?? task?.retriever;
-    const multi = toArray(task?.contentRetrievers ?? task?.retrievers);
+    const task = effectiveTask.value;
+    const single = task.contentRetriever ?? task.retriever;
+    const multi = toArray(task.contentRetrievers ?? task.retrievers);
     const all = single ? [single, ...multi] : multi;
     return all.map((r: any) => lastSegment(r?.type) ?? String(r)).filter(Boolean);
 });
 
-// Compact topology node shows first retriever in summary rows (RAG)
 const firstRetrieverName = computed(() => retrieverNames.value[0]);
 
-// Chat configuration — only non-null entries
 const chatConfigRows = computed(() => {
-    const cfg = (props.task as any)?.configuration as Record<string, any> | undefined;
+    const cfg = effectiveTask.value.configuration as Record<string, any> | undefined;
     if (!cfg) return [];
     const LABELS: Record<string, string> = {
         temperature: "Temperature",
@@ -83,20 +126,20 @@ const chatConfigRows = computed(() => {
 });
 
 const maxSeqTools = computed(() => {
-    const v = (props.task as any)?.maxSequentialToolsInvocations;
+    const v = effectiveTask.value.maxSequentialToolsInvocations;
     return v != null ? String(v) : undefined;
 });
 
-const memoryType = computed(() => lastSegment((props.task as any)?.memory?.type));
+const memoryType = computed(() => lastSegment(effectiveTask.value.memory?.type));
 
 const observabilityType = computed(() => {
-    const obs = (props.task as any)?.observability;
+    const obs = effectiveTask.value.observability;
     if (!obs) return undefined;
     return lastSegment(obs.type) ?? (typeof obs === "object" ? Object.keys(obs)[0] : undefined);
 });
 
 const guardrailsInfo = computed(() => {
-    const g = (props.task as any)?.guardrails as Record<string, any> | undefined;
+    const g = effectiveTask.value.guardrails as Record<string, any> | undefined;
     if (!g) return null;
     const inputRules: string[] = toArray(g.inputGuardrails ?? g.input).map((r: any) => lastSegment(r?.type) ?? String(r));
     const outputRules: string[] = toArray(g.outputGuardrails ?? g.output).map((r: any) => lastSegment(r?.type) ?? String(r));
@@ -142,7 +185,6 @@ async function loadTaskOutputs(execId: string) {
     const { signal } = currentAbort;
     fetchedOutputs.value = null;
 
-    // validateStatus bypasses the global 404 interceptor (coreStore.error = 404)
     try {
         const client = useClient();
         let list = props.execution?.taskRunList as any[] | undefined;
@@ -172,7 +214,12 @@ async function loadTaskOutputs(execId: string) {
 
 onUnmounted(() => currentAbort?.abort());
 
-watch(executionId, (id) => { if (id) loadTaskOutputs(id); }, { immediate: true });
+watch(executionId, (id) => {
+    if (id) {
+        loadTaskOutputs(id);
+        loadFlowTaskDef();
+    }
+}, { immediate: true });
 
 const outputs = computed(() => fetchedOutputs.value ?? taskRun.value?.outputs ?? null);
 const textOutput = computed(() => outputs.value?.textOutput as string | undefined);
@@ -209,6 +256,53 @@ const finishReasonType = computed((): "success" | "warning" | "danger" | "info" 
 });
 
 const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.value || !!jsonOutput.value));
+
+// ── Cost estimate ─────────────────────────────────────────────────────────────
+// USD per 1M tokens — snapshot prices, approximate only
+
+const PRICING: Record<string, { input: number; output: number }> = {
+    // OpenAI
+    "gpt-4o": { input: 2.5, output: 10 },
+    "gpt-4o-mini": { input: 0.15, output: 0.6 },
+    "gpt-4-turbo": { input: 10, output: 30 },
+    "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
+    "o1": { input: 15, output: 60 },
+    "o3-mini": { input: 1.1, output: 4.4 },
+    // Anthropic
+    "claude-opus-4-8": { input: 15, output: 75 },
+    "claude-sonnet-4-6": { input: 3, output: 15 },
+    "claude-sonnet-4-5": { input: 3, output: 15 },
+    "claude-haiku-4-5-20251001": { input: 0.8, output: 4 },
+    "claude-3-5-sonnet-20241022": { input: 3, output: 15 },
+    "claude-3-7-sonnet-latest": { input: 3, output: 15 },
+    "claude-3-opus-20240229": { input: 15, output: 75 },
+    "claude-3-haiku-20240307": { input: 0.25, output: 1.25 },
+    // Google
+    "gemini-2.5-pro": { input: 1.25, output: 10 },
+    "gemini-2.5-flash": { input: 0.3, output: 2.5 },
+    "gemini-2.0-flash": { input: 0.1, output: 0.4 },
+    "gemini-1.5-pro": { input: 1.25, output: 5 },
+    "gemini-1.5-flash": { input: 0.075, output: 0.3 },
+    "gemini-embedding-001": { input: 0.0, output: 0.0 },
+    // Mistral
+    "mistral-large-latest": { input: 2, output: 6 },
+    "mistral-small-latest": { input: 0.2, output: 0.6 },
+    "open-mistral-7b": { input: 0.25, output: 0.25 },
+    "open-mixtral-8x7b": { input: 0.7, output: 0.7 },
+    // DeepSeek
+    "deepseek-chat": { input: 0.27, output: 1.1 },
+    "deepseek-reasoner": { input: 0.55, output: 2.19 },
+};
+
+const costEstimate = computed(() => {
+    if (!tokenUsage.value || !modelName.value) return null;
+    const p = PRICING[modelName.value];
+    if (!p) return null;
+    const total =
+        (tokenUsage.value.inputTokenCount ?? 0) / 1_000_000 * p.input +
+        (tokenUsage.value.outputTokenCount ?? 0) / 1_000_000 * p.output;
+    return total < 0.000001 ? "<$0.000001" : `~$${total.toFixed(6)}`;
+});
 </script>
 
 <template>
@@ -220,16 +314,16 @@ const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.val
         <template v-if="isFullView">
 
             <!-- ── System message ── -->
-            <div v-if="systemMessage" class="ai-section">
-                <span class="ai-section__label">System message</span>
+            <details v-if="systemMessage" class="ai-accordion" open>
+                <summary class="ai-accordion__title">System message</summary>
                 <pre class="ai-pre">{{ systemMessage }}</pre>
-            </div>
+            </details>
 
             <!-- ── Prompt ── -->
-            <div v-if="prompt" class="ai-section">
-                <span class="ai-section__label">Prompt</span>
+            <details v-if="prompt" class="ai-accordion" open>
+                <summary class="ai-accordion__title">Prompt</summary>
                 <pre class="ai-pre">{{ prompt }}</pre>
-            </div>
+            </details>
 
             <!-- ── Chat Configuration ── -->
             <details v-if="chatConfigRows.length > 0 || maxSeqTools" class="ai-accordion">
@@ -309,6 +403,7 @@ const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.val
                         <span>out: {{ tokenUsage.outputTokenCount ?? "—" }}</span>
                         <span>total: {{ tokenUsage.totalTokenCount ?? "—" }}</span>
                     </span>
+                    <span v-if="costEstimate" class="ai-cost">{{ costEstimate }}</span>
                 </div>
 
                 <!-- Tool call timeline -->
@@ -382,22 +477,6 @@ const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.val
     padding: 0.5rem 0.75rem;
     font-size: var(--ai-font-sm);
     line-height: 1.5;
-}
-
-/* ── labeled section (Tools / System message / Prompt) ──────────────── */
-.ai-section {
-    margin-top: 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.ai-section__label {
-    font-size: 0.65rem;
-    font-weight: var(--ai-fw-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--ai-color-text-muted);
 }
 
 /* ── tag groups ─────────────────────────────────────────────────────── */
@@ -494,7 +573,7 @@ details[open] > .ai-accordion__title::before {
     overflow-y: auto;
 }
 
-/* ── meta row (finish reason + tokens) ─────────────────────────────── */
+/* ── meta row (finish reason + tokens + cost) ───────────────────────── */
 .ai-meta-row {
     display: flex;
     align-items: center;
@@ -508,6 +587,12 @@ details[open] > .ai-accordion__title::before {
     gap: var(--ai-gap-sm);
     font-size: 0.65rem;
     color: var(--ai-color-text-muted);
+}
+
+.ai-cost {
+    font-size: 0.65rem;
+    color: var(--ai-color-text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ── tool call entries ──────────────────────────────────────────────── */
