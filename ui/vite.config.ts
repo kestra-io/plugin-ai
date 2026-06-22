@@ -23,7 +23,7 @@ const SLOT_NAMES = [
 const ARTIFACT_FILENAME = "plugin-ui.js";
 const PLUGIN_ID = "io.kestra.plugin.ai";
 
-const SHOW_AI_DETAILS = { label: "Show AI details", taskProp: "", lang: "" };
+const SHOW_AI_DETAILS = { label: "Show Details", taskProp: "", lang: "" };
 const TOPOLOGY_DETAILS = "./src/components/AITopologyDetails.vue";
 const TOPOLOGY_MODAL = "./src/components/AITopologyModal.vue";
 

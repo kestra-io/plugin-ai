@@ -391,20 +391,33 @@ const costEstimate = computed(() => {
                     class="ai-alert"
                 />
 
-                <template v-if="hasResponse">
-                    <p v-if="textOutput" class="ai-response-text">{{ textOutput }}</p>
-                    <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
-                </template>
+                <details v-if="hasResponse || finishReason || tokenUsage" class="ai-accordion" open>
+                    <summary class="ai-accordion__title">Answer</summary>
 
-                <div v-if="finishReason || tokenUsage" class="ai-meta-row">
-                    <KsTag v-if="finishReason" :type="finishReasonType" size="small">{{ finishReason }}</KsTag>
-                    <span v-if="tokenUsage" class="ai-tokens">
-                        <span>in: {{ tokenUsage.inputTokenCount ?? "—" }}</span>
-                        <span>out: {{ tokenUsage.outputTokenCount ?? "—" }}</span>
-                        <span>total: {{ tokenUsage.totalTokenCount ?? "—" }}</span>
-                    </span>
-                    <span v-if="costEstimate" class="ai-cost">{{ costEstimate }}</span>
-                </div>
+                    <template v-if="hasResponse">
+                        <p v-if="textOutput" class="ai-response-text">{{ textOutput }}</p>
+                        <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
+                    </template>
+
+                    <div v-if="finishReason || tokenUsage" class="ai-kv">
+                        <template v-if="finishReason">
+                            <span class="ai-kv__key">Finish reason</span>
+                            <span class="ai-kv__val"><KsTag :type="finishReasonType" size="small">{{ finishReason }}</KsTag></span>
+                        </template>
+                        <template v-if="tokenUsage">
+                            <span class="ai-kv__key">Tokens in</span>
+                            <span class="ai-kv__val">{{ tokenUsage.inputTokenCount ?? "—" }}</span>
+                            <span class="ai-kv__key">Tokens out</span>
+                            <span class="ai-kv__val">{{ tokenUsage.outputTokenCount ?? "—" }}</span>
+                            <span class="ai-kv__key">Tokens total</span>
+                            <span class="ai-kv__val">{{ tokenUsage.totalTokenCount ?? "—" }}</span>
+                        </template>
+                        <template v-if="costEstimate">
+                            <span class="ai-kv__key">Cost estimate</span>
+                            <span class="ai-kv__val">{{ costEstimate }}</span>
+                        </template>
+                    </div>
+                </details>
 
                 <!-- Tool call timeline -->
                 <details v-if="toolExecutions.length > 0" class="ai-accordion">
@@ -573,27 +586,6 @@ details[open] > .ai-accordion__title::before {
     overflow-y: auto;
 }
 
-/* ── meta row (finish reason + tokens + cost) ───────────────────────── */
-.ai-meta-row {
-    display: flex;
-    align-items: center;
-    gap: var(--ai-gap-sm);
-    margin-top: 0.375rem;
-    flex-wrap: wrap;
-}
-
-.ai-tokens {
-    display: flex;
-    gap: var(--ai-gap-sm);
-    font-size: 0.65rem;
-    color: var(--ai-color-text-muted);
-}
-
-.ai-cost {
-    font-size: 0.65rem;
-    color: var(--ai-color-text-muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
 
 /* ── tool call entries ──────────────────────────────────────────────── */
 .ai-tool-call {
