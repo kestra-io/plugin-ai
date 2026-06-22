@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { KnownSlotProps } from "@kestra-io/artifact-sdk";
 import { KsTopologyDetails, KsTag, KsCollapse, KsCollapseItem, KsAlert } from "@kestra-io/design-system";
-import { computed, ref, watch, useAttrs } from "vue";
+import { computed, ref, watch, useAttrs, onUnmounted } from "vue";
 import { resolveTenant, useClient } from "@kestra-io/kestra-sdk";
 
 const props = defineProps<KnownSlotProps["topology-details"]>();
@@ -10,11 +10,11 @@ const isFullView = computed(() => attrs.displayMode === "full");
 
 const taskId = computed(() => props.task?.id as string | undefined);
 const taskType = computed(() => props.task?.type as string | undefined);
-const isRag = computed(() => taskType.value?.includes("rag.") ?? false);
+const isRag = computed(() => taskType.value?.includes(".rag.") ?? false);
 
 // Pre-execution: extract config from task props directly
 const provider = computed(() => {
-    const p = (props.task as any)?.provider;
+    const p = (props.task as any)?.[isRag.value ? "chatProvider" : "provider"];
     if (!p) return undefined;
     const typeStr = p.type as string | undefined;
     if (!typeStr) return undefined;
@@ -22,8 +22,13 @@ const provider = computed(() => {
     return segments.at(-1) ?? typeStr;
 });
 
-const modelName = computed(() => (props.task as any)?.provider?.modelName as string | undefined);
-const systemPrompt = computed(() => (props.task as any)?.systemPrompt as string | undefined);
+const modelName = computed(() => {
+    const key = isRag.value ? "chatProvider" : "provider";
+    return (props.task as any)?.[key]?.modelName as string | undefined;
+});
+const systemPrompt = computed(() =>
+    ((props.task as any)?.systemPrompt ?? (props.task as any)?.systemMessage) as string | undefined
+);
 
 const toolNames = computed<string[]>(() => {
     const tools = (props.task as any)?.tools as any[] | undefined;
@@ -44,7 +49,16 @@ const toolNames = computed<string[]>(() => {
 
 const retrieverType = computed(() => {
     if (!isRag.value) return undefined;
-    const r = (props.task as any)?.contentRetriever ?? (props.task as any)?.retriever;
+    const task = props.task as any;
+    const toArray = (v: any): any[] | undefined => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string") { try { const p = JSON.parse(v); return Array.isArray(p) ? p : undefined; } catch { return undefined; } }
+        return undefined;
+    };
+    const r = task?.contentRetriever
+        ?? task?.retriever
+        ?? toArray(task?.contentRetrievers)?.[0]
+        ?? toArray(task?.retrievers)?.[0];
     if (!r) return undefined;
     const typeStr = r.type as string | undefined;
     if (!typeStr) return undefined;
@@ -74,33 +88,50 @@ const taskRun = computed(() => {
 
 // Fetch task run outputs from API (bypasses global 404 interceptor)
 const fetchedOutputs = ref<Record<string, any> | null>(null);
+let currentAbort: AbortController | null = null;
 
 async function loadTaskOutputs(execId: string) {
+    // Guard against unresolved placeholder strings (e.g. "{namespace}") that
+    // are truthy in JS but would produce a spurious request to /executions/undefined.
+    if (!execId || execId.startsWith("{")) return;
+    const tenant = resolveTenant(undefined);
+    if (!tenant || (tenant as string).startsWith("{")) return;
+
+    currentAbort?.abort();
+    currentAbort = new AbortController();
+    const { signal } = currentAbort;
+    fetchedOutputs.value = null;
+
     // useClient() + validateStatus bypasses the global 404 interceptor
     // (coreStore.error = 404) that replaces the page with "Page not found".
     try {
-        const tenant = resolveTenant(undefined);
         const client = useClient();
         let list = props.execution?.taskRunList as any[] | undefined;
         if (!list) {
             const execResp = await client.get(
                 `/api/v1/${tenant}/executions/${execId}`,
-                { validateStatus: (s: number) => s === 200 || s === 404 },
+                { validateStatus: (s: number) => s === 200 || s === 404, signal },
             );
-            if (execResp.status !== 200) return;
+            if (signal.aborted || execResp.status !== 200) return;
             list = execResp.data?.taskRunList as any[] | undefined;
         }
         const tr = list?.filter((r: any) => r.taskId === taskId.value).at(-1);
-        if (!tr?.id) return;
+        if (!tr?.id || signal.aborted) return;
         const resp = await client.get(
             `/api/v1/${tenant}/outputs/${execId}/${tr.id}`,
-            { validateStatus: (s: number) => s === 200 || s === 404 },
+            { validateStatus: (s: number) => s === 200 || s === 404, signal },
         );
-        fetchedOutputs.value = resp.status === 200 ? (resp.data ?? null) : null;
-    } catch (e) {
-        console.error("[AITopologyDetails] failed to load task outputs", e);
+        if (!signal.aborted) {
+            fetchedOutputs.value = resp.status === 200 ? (resp.data ?? null) : null;
+        }
+    } catch (e: any) {
+        if (e?.name !== "AbortError" && e?.code !== "ERR_CANCELED") {
+            console.error("[AITopologyDetails] failed to load task outputs", e);
+        }
     }
 }
+
+onUnmounted(() => currentAbort?.abort());
 
 watch(
     executionId,
@@ -160,53 +191,53 @@ const hasResponse = computed(
 
 <template>
     <div class="ai-details">
-        <!-- Pre-execution: provider + model always shown -->
+        <!-- Provider + model always shown (compact topology node and full drawer) -->
         <KsTopologyDetails :rows="summaryRows" />
 
-        <!-- System prompt collapsible -->
-        <KsCollapse v-if="systemPrompt">
-            <KsCollapseItem name="system-prompt" title="System prompt">
-                <pre class="ai-pre">{{ systemPrompt }}</pre>
-            </KsCollapseItem>
-        </KsCollapse>
+        <!-- Everything below is drawer-only (full view) -->
+        <template v-if="isFullView">
+            <!-- System prompt -->
+            <KsCollapse v-if="systemPrompt">
+                <KsCollapseItem name="system-prompt" title="System prompt">
+                    <pre class="ai-pre">{{ systemPrompt }}</pre>
+                </KsCollapseItem>
+            </KsCollapse>
 
-        <!-- Tools list -->
-        <div v-if="toolNames.length > 0" class="ai-tools">
-            <KsTag v-for="name in toolNames" :key="name" size="small" type="info">
-                {{ name }}
-            </KsTag>
-        </div>
-
-        <!-- Post-execution panel -->
-        <template v-if="hasExecution && outputs">
-            <!-- Guardrail violation -->
-            <KsAlert
-                v-if="guardrailViolated"
-                type="error"
-                :title="guardrailMessage ?? 'Guardrail violated'"
-                show-icon
-            />
-
-            <!-- LLM response -->
-            <template v-if="hasResponse">
-                <p v-if="textOutput" class="ai-response-text">{{ textOutput }}</p>
-                <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
-            </template>
-
-            <!-- Finish reason + token usage -->
-            <div v-if="finishReason || tokenUsage" class="ai-meta-row">
-                <KsTag v-if="finishReason" :type="finishReasonType" size="small">
-                    {{ finishReason }}
+            <!-- Tools list -->
+            <div v-if="toolNames.length > 0" class="ai-tools">
+                <KsTag v-for="name in toolNames" :key="name" size="small" type="info">
+                    {{ name }}
                 </KsTag>
-                <span v-if="tokenUsage" class="ai-tokens">
-                    <span>in: {{ tokenUsage.inputTokenCount ?? "—" }}</span>
-                    <span>out: {{ tokenUsage.outputTokenCount ?? "—" }}</span>
-                    <span>total: {{ tokenUsage.totalTokenCount ?? "—" }}</span>
-                </span>
             </div>
 
-            <!-- Full-view extras -->
-            <template v-if="isFullView">
+            <!-- Post-execution panel -->
+            <template v-if="hasExecution && outputs">
+                <!-- Guardrail violation -->
+                <KsAlert
+                    v-if="guardrailViolated"
+                    type="error"
+                    :title="guardrailMessage ?? 'Guardrail violated'"
+                    show-icon
+                />
+
+                <!-- LLM response -->
+                <template v-if="hasResponse">
+                    <p v-if="textOutput" class="ai-response-text">{{ textOutput }}</p>
+                    <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
+                </template>
+
+                <!-- Finish reason + token usage -->
+                <div v-if="finishReason || tokenUsage" class="ai-meta-row">
+                    <KsTag v-if="finishReason" :type="finishReasonType" size="small">
+                        {{ finishReason }}
+                    </KsTag>
+                    <span v-if="tokenUsage" class="ai-tokens">
+                        <span>in: {{ tokenUsage.inputTokenCount ?? "—" }}</span>
+                        <span>out: {{ tokenUsage.outputTokenCount ?? "—" }}</span>
+                        <span>total: {{ tokenUsage.totalTokenCount ?? "—" }}</span>
+                    </span>
+                </div>
+
                 <!-- Tool call timeline -->
                 <KsCollapse v-if="toolExecutions.length > 0">
                     <KsCollapseItem
