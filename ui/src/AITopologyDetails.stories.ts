@@ -21,6 +21,7 @@ const agentTask = {
     type: "io.kestra.plugin.ai.agent.AIAgent",
     provider: openAIProvider,
     systemPrompt: "You are a helpful assistant that answers questions about Kestra workflows.",
+    prompt: "List the last 3 executions of the etl-pipeline flow.",
     tools: [
         { type: "io.kestra.plugin.ai.tool.KestraFlow" },
         { type: "io.kestra.plugin.ai.tool.TavilyWebSearch" },
@@ -31,6 +32,8 @@ const chatTask = {
     id: "chat-completion",
     type: "io.kestra.plugin.ai.completion.ChatCompletion",
     provider: openAIProvider,
+    systemPrompt: "You are a helpful assistant.\nAnswer concisely in one sentence.",
+    prompt: "What is Kestra?",
 };
 
 const ragTask = {
@@ -46,6 +49,7 @@ export const PreExecution: Story = {
         task: agentTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
+        displayMode: "full",
     },
 };
 
@@ -55,6 +59,7 @@ export const ChatCompletionPostExecution: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
+        displayMode: "full",
         execution: {
             id: "exec-chat-001",
             namespace: "company.team",
@@ -90,6 +95,7 @@ export const AgentWithToolCalls: Story = {
         task: agentTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
+        displayMode: "full",
         execution: {
             id: "exec-agent-002",
             namespace: "company.team",
@@ -164,6 +170,7 @@ export const RagCompletion: Story = {
         task: ragTask,
         namespace: "company.team",
         flowId: "rag-pipeline",
+        displayMode: "full",
         execution: {
             id: "exec-rag-003",
             namespace: "company.team",
@@ -233,6 +240,7 @@ export const ThinkingEnabled: Story = {
         },
         namespace: "company.team",
         flowId: "ai-pipeline",
+        displayMode: "full",
         execution: {
             id: "exec-think-004",
             namespace: "company.team",
@@ -275,6 +283,7 @@ export const GuardrailViolation: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
+        displayMode: "full",
         execution: {
             id: "exec-guard-005",
             namespace: "company.team",
@@ -306,6 +315,7 @@ export const MaxTokensHit: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
+        displayMode: "full",
         execution: {
             id: "exec-len-006",
             namespace: "company.team",

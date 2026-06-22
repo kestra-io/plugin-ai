@@ -303,6 +303,16 @@ const costEstimate = computed(() => {
         (tokenUsage.value.outputTokenCount ?? 0) / 1_000_000 * p.output;
     return total < 0.000001 ? "<$0.000001" : `~$${total.toFixed(6)}`;
 });
+
+const tokenMax = computed(() =>
+    Math.max(tokenUsage.value?.inputTokenCount ?? 0, tokenUsage.value?.outputTokenCount ?? 0, 1)
+);
+const tokenInputPct = computed(() =>
+    Math.round(((tokenUsage.value?.inputTokenCount ?? 0) / tokenMax.value) * 100)
+);
+const tokenOutputPct = computed(() =>
+    Math.round(((tokenUsage.value?.outputTokenCount ?? 0) / tokenMax.value) * 100)
+);
 </script>
 
 <template>
@@ -314,14 +324,14 @@ const costEstimate = computed(() => {
         <template v-if="isFullView">
 
             <!-- ── System message ── -->
-            <details v-if="systemMessage" class="ai-accordion" open>
-                <summary class="ai-accordion__title">System message</summary>
+            <details v-if="systemMessage" class="ai-section" open>
+                <summary class="ai-section__title">System message</summary>
                 <pre class="ai-pre">{{ systemMessage }}</pre>
             </details>
 
             <!-- ── Prompt ── -->
-            <details v-if="prompt" class="ai-accordion" open>
-                <summary class="ai-accordion__title">Prompt</summary>
+            <details v-if="prompt" class="ai-section" open>
+                <summary class="ai-section__title">Prompt</summary>
                 <pre class="ai-pre">{{ prompt }}</pre>
             </details>
 
@@ -391,31 +401,42 @@ const costEstimate = computed(() => {
                     class="ai-alert"
                 />
 
-                <details v-if="hasResponse || finishReason || tokenUsage" class="ai-accordion" open>
-                    <summary class="ai-accordion__title">Answer</summary>
+                <details v-if="hasResponse || finishReason || tokenUsage" class="ai-section" open>
+                    <summary class="ai-section__title">
+                        Answer
+                        <KsTag v-if="finishReason" :type="finishReasonType" size="small">{{ finishReason }}</KsTag>
+                    </summary>
 
                     <template v-if="hasResponse">
-                        <p v-if="textOutput" class="ai-response-text">{{ textOutput }}</p>
+                        <pre v-if="textOutput" class="ai-pre">{{ textOutput }}</pre>
                         <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
                     </template>
 
-                    <div v-if="finishReason || tokenUsage" class="ai-kv">
-                        <template v-if="finishReason">
-                            <span class="ai-kv__key">Finish reason</span>
-                            <span class="ai-kv__val"><KsTag :type="finishReasonType" size="small">{{ finishReason }}</KsTag></span>
-                        </template>
-                        <template v-if="tokenUsage">
-                            <span class="ai-kv__key">Tokens in</span>
-                            <span class="ai-kv__val">{{ tokenUsage.inputTokenCount ?? "—" }}</span>
-                            <span class="ai-kv__key">Tokens out</span>
-                            <span class="ai-kv__val">{{ tokenUsage.outputTokenCount ?? "—" }}</span>
-                            <span class="ai-kv__key">Tokens total</span>
-                            <span class="ai-kv__val">{{ tokenUsage.totalTokenCount ?? "—" }}</span>
-                        </template>
-                        <template v-if="costEstimate">
-                            <span class="ai-kv__key">Cost estimate</span>
-                            <span class="ai-kv__val">{{ costEstimate }}</span>
-                        </template>
+                    <div v-if="tokenUsage" class="ai-tokens">
+                        <div class="ai-token-bar">
+                            <span class="ai-token-bar__label">Input</span>
+                            <div class="ai-token-bar__track">
+                                <div class="ai-token-bar__fill ai-token-bar__fill--input" :style="{ width: tokenInputPct + '%' }"></div>
+                            </div>
+                            <span class="ai-token-bar__count">{{ tokenUsage.inputTokenCount ?? "—" }}</span>
+                        </div>
+                        <div class="ai-token-bar">
+                            <span class="ai-token-bar__label">Output</span>
+                            <div class="ai-token-bar__track">
+                                <div class="ai-token-bar__fill ai-token-bar__fill--output" :style="{ width: tokenOutputPct + '%' }"></div>
+                            </div>
+                            <span class="ai-token-bar__count">{{ tokenUsage.outputTokenCount ?? "—" }}</span>
+                        </div>
+                        <div class="ai-token-summary">
+                            <div class="ai-token-box">
+                                <span class="ai-token-box__label">Total tokens</span>
+                                <span class="ai-token-box__value">{{ tokenUsage.totalTokenCount ?? "—" }}</span>
+                            </div>
+                            <div v-if="costEstimate" class="ai-token-box">
+                                <span class="ai-token-box__label">Cost est.</span>
+                                <span class="ai-token-box__value">{{ costEstimate }}</span>
+                            </div>
+                        </div>
                     </div>
                 </details>
 
@@ -502,6 +523,40 @@ const costEstimate = computed(() => {
     margin-top: 0.35rem;
 }
 
+/* ── flat section (system message, prompt, answer) ──────────────────── */
+.ai-section {
+    border-top: 1px solid var(--ai-color-border);
+    margin-top: 0.5rem;
+    padding-top: 0.35rem;
+}
+
+.ai-section__title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 0.72rem;
+    font-weight: var(--ai-fw-bold);
+    color: var(--ks-text-primary, inherit);
+    padding: 0.1rem 0 0.35rem;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+}
+
+.ai-section__title::-webkit-details-marker { display: none; }
+
+.ai-section__title::after {
+    content: "▲";
+    font-size: 0.45rem;
+    color: var(--ai-color-text-muted);
+    transition: transform 0.15s;
+}
+
+details.ai-section:not([open]) > .ai-section__title::after {
+    transform: rotate(180deg);
+}
+
 /* ── native accordion ───────────────────────────────────────────────── */
 .ai-accordion {
     border-top: 1px solid var(--ai-color-border);
@@ -577,15 +632,77 @@ details[open] > .ai-accordion__title::before {
     color: var(--ks-color-text-code, #cdd6f4);
 }
 
-/* ── response text ──────────────────────────────────────────────────── */
-.ai-response-text {
-    margin: var(--ai-gap-xs) 0 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 6rem;
-    overflow-y: auto;
+/* ── token progress bars ────────────────────────────────────────────── */
+.ai-tokens {
+    border-top: 1px solid var(--ai-color-border);
+    margin-top: 0.5rem;
+    padding-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
 }
 
+.ai-token-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--ai-font-sm);
+}
+
+.ai-token-bar__label {
+    width: 3.5rem;
+    flex-shrink: 0;
+    color: var(--ai-color-text-muted);
+}
+
+.ai-token-bar__track {
+    flex: 1;
+    height: 0.45rem;
+    border-radius: 99px;
+    background: var(--ai-color-surface);
+    overflow: hidden;
+}
+
+.ai-token-bar__fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.3s ease;
+}
+
+.ai-token-bar__fill--input  { background: #7c86ef; }
+.ai-token-bar__fill--output { background: #34d399; }
+
+.ai-token-bar__count {
+    width: 2.5rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.ai-token-summary {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.ai-token-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--ai-radius);
+    background: var(--ai-color-surface);
+}
+
+.ai-token-box__label {
+    font-size: 0.62rem;
+    color: var(--ai-color-text-muted);
+}
+
+.ai-token-box__value {
+    font-size: 0.9rem;
+    font-weight: var(--ai-fw-bold);
+}
 
 /* ── tool call entries ──────────────────────────────────────────────── */
 .ai-tool-call {
