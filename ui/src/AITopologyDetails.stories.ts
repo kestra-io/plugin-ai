@@ -36,7 +36,7 @@ const chatTask = {
 const ragTask = {
     id: "rag-chat",
     type: "io.kestra.plugin.ai.rag.ChatCompletion",
-    provider: openAIProvider,
+    chatProvider: openAIProvider,
     contentRetriever: { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
 };
 
