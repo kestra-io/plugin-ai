@@ -506,9 +506,7 @@ const tokenOutputPct = computed(() =>
     --ai-color-text-muted: var(--ks-text-secondary, #9ca3af);
     --ai-color-primary: var(--ks-color-primary, #7c3aed);
 
-    position: relative;
-    z-index: 1;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem 0;
     font-size: var(--ai-font-sm);
     line-height: 1.5;
 }
