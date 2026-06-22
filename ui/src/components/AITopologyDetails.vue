@@ -113,6 +113,9 @@ const summaryRows = computed(() => {
     if (isRag.value && firstRetrieverName.value) {
         rows.push({ label: "Retriever", value: firstRetrieverName.value });
     }
+    if (isFullView.value && toolNames.value.length > 0) {
+        rows.push({ label: "Tools", value: toolNames.value.join(", ") });
+    }
     return rows;
 });
 
@@ -215,14 +218,6 @@ const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.val
 
         <!-- Everything below: full view (modal / drawer) only -->
         <template v-if="isFullView">
-
-            <!-- ── Tools row ── -->
-            <div v-if="toolNames.length > 0" class="ai-section">
-                <span class="ai-section__label">Tools</span>
-                <div class="ai-tags">
-                    <KsTag v-for="name in toolNames" :key="name" size="small" type="info">{{ name }}</KsTag>
-                </div>
-            </div>
 
             <!-- ── System message ── -->
             <div v-if="systemMessage" class="ai-section">
