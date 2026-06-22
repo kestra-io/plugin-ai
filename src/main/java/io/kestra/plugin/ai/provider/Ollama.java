@@ -60,6 +60,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           type: io.kestra.plugin.ai.provider.Ollama
                           modelName: llama3
                           endpoint: http://localhost:11434
+                        configuration:
                           thinkingEnabled: true
                           returnThinking: true
                         messages:
