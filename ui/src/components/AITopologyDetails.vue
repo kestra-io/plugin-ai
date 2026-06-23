@@ -159,6 +159,14 @@ const summaryRows = computed(() => {
     return rows;
 });
 
+const fullViewRows = computed(() => {
+    const rows: { label: string; value: string }[] = [];
+    if (toolNames.value.length > 0) {
+        rows.push({ label: "Tools", value: toolNames.value.join(", ") });
+    }
+    return rows;
+});
+
 // ── Execution outputs ─────────────────────────────────────────────────────────
 
 const hasExecution = computed(() => !!props.execution?.id);
@@ -320,6 +328,9 @@ const tokenOutputPct = computed(() =>
         <!-- Everything below: full view (modal / drawer) only -->
         <template v-if="isFullView">
 
+            <!-- ── Full-view-only metadata rows (Tools, etc.) ── -->
+            <KsTopologyDetails v-if="fullViewRows.length > 0" :rows="fullViewRows" />
+
             <!-- ── System message ── -->
             <details v-if="systemMessage" class="ai-section" open>
                 <summary class="ai-section__title">System message</summary>
@@ -344,14 +355,6 @@ const tokenOutputPct = computed(() =>
                         <span class="ai-kv__key">Max tool calls</span>
                         <span class="ai-kv__val">{{ maxSeqTools }}</span>
                     </template>
-                </div>
-            </details>
-
-            <!-- ── Tools ── -->
-            <details v-if="toolNames.length > 0" class="ai-accordion">
-                <summary class="ai-accordion__title">Tools ({{ toolNames.length }})</summary>
-                <div class="ai-tags ai-tags--gap">
-                    <KsTag v-for="name in toolNames" :key="name" size="small" type="default">{{ name }}</KsTag>
                 </div>
             </details>
 
