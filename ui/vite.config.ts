@@ -33,8 +33,9 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
-                heightWithExecution: 220,
+                // base (56) + 2 rows × ~32px
+                height: 120,
+                heightWithExecution: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -52,8 +53,8 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
-                heightWithExecution: 180,
+                height: 120,
+                heightWithExecution: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -71,8 +72,8 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
-                heightWithExecution: 180,
+                height: 120,
+                heightWithExecution: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -90,8 +91,8 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
-                heightWithExecution: 180,
+                height: 120,
+                heightWithExecution: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -109,8 +110,8 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
-                heightWithExecution: 220,
+                height: 120,
+                heightWithExecution: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -128,8 +129,9 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 128,
-                heightWithExecution: 220,
+                // base (56) + 3 rows × ~32px (Provider + Model + Retriever)
+                height: 151,
+                heightWithExecution: 151,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -147,7 +149,7 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
+                height: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -165,7 +167,7 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 92,
+                height: 120,
                 customAction: SHOW_AI_DETAILS,
             },
         },
