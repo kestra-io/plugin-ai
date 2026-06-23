@@ -347,6 +347,14 @@ const tokenOutputPct = computed(() =>
                 </div>
             </details>
 
+            <!-- ── Tools ── -->
+            <details v-if="toolNames.length > 0" class="ai-accordion">
+                <summary class="ai-accordion__title">Tools ({{ toolNames.length }})</summary>
+                <div class="ai-tags ai-tags--gap">
+                    <KsTag v-for="name in toolNames" :key="name" size="small" type="default">{{ name }}</KsTag>
+                </div>
+            </details>
+
             <!-- ── Content Retrievers ── -->
             <details v-if="retrieverNames.length > 0" class="ai-accordion">
                 <summary class="ai-accordion__title">Content Retrievers</summary>
