@@ -29,21 +29,30 @@ class KestraKVStoreTest extends ContainerTest {
     @Test
     void testMemory() throws Exception {
         RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
+            "io.kestra.plugin.ai.memory", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
             )
         );
 
-        var ollamaProvider = Ollama.builder()
-            .type(Ollama.class.getName())
-            .modelName(Property.ofExpression("{{ modelName }}"))
-            .endpoint(Property.ofExpression("{{ endpoint }}"))
-            .build();
-
         var rag = ChatCompletion.builder()
-            .chatProvider(ollamaProvider)
+            .chatProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
             .memory(KestraKVStore.builder().build())
             .prompt(Property.ofValue("Hello, my name is John"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
@@ -55,7 +64,21 @@ class KestraKVStoreTest extends ContainerTest {
 
         // call it a second time, it should use the memory
         rag = ChatCompletion.builder()
-            .chatProvider(ollamaProvider)
+            .chatProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
             .memory(KestraKVStore.builder().build())
             .prompt(Property.ofValue("What's my name?"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
