@@ -108,11 +108,14 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        // WHEN
-        Classification.Output runOutput = task.run(runContext);
+        // WHEN / THEN
+        try {
+            Classification.Output runOutput = task.run(runContext);
 
-        // THEN
-        assertThat(runOutput.getClassification(), notNullValue());
+            assertThat(runOutput.getClassification(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -267,10 +270,14 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        Classification.Output output = task.run(runContext);
+        try {
+            Classification.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getClassification(), notNullValue());
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getClassification(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -310,11 +317,15 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        Classification.Output output = task.run(runContext);
+        try {
+            Classification.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(true));
-        assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
-        assertThat(output.getClassification(), nullValue());
+            assertThat(output.isGuardrailViolated(), is(true));
+            assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
+            assertThat(output.getClassification(), nullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test

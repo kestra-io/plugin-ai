@@ -412,6 +412,8 @@ class ChatCompletionTest extends ContainerTest {
             }
 
             postgres.stop();
+        } catch (RateLimitException e) {
+            abort("Skipped: OpenAI rate limited or quota exceeded");
         }
     }
 }
