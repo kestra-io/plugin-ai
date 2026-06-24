@@ -1,7 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang3.time.StopWatch;
@@ -11,14 +11,15 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 
 public class TimingChatModelListener implements ChatModelListener {
-    private static final Map<Integer, StopWatch> TIMERS = new HashMap<>();
-    private static final Map<String, Integer> TIMER_ID_BY_RESPONSE_ID = new HashMap<>();
+    private static final Map<Integer, StopWatch> TIMERS = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> TIMER_ID_BY_RESPONSE_ID = new ConcurrentHashMap<>();
 
-    private final AtomicInteger counter = new AtomicInteger(0);
+    // ponytail: static so IDs are globally unique across instances sharing the static maps
+    private static final AtomicInteger counter = new AtomicInteger(0);
 
     public static StopWatch getTimer(String responseId) {
-        Integer timerId = TIMER_ID_BY_RESPONSE_ID.get(responseId);
-        return TIMERS.get(timerId);
+        Integer timerId = TIMER_ID_BY_RESPONSE_ID.remove(responseId);
+        return timerId != null ? TIMERS.remove(timerId) : null;
     }
 
     public static void clear() {
