@@ -25,8 +25,14 @@ import io.kestra.core.utils.MapUtils;
 import io.kestra.core.validations.NoSystemLabelValidation;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.sdk.KestraClient;
+import io.kestra.sdk.api.ExecutionsApi;
+import io.kestra.sdk.internal.ApiClient;
 import io.kestra.sdk.internal.ApiException;
+import io.kestra.sdk.internal.Pair;
+import io.kestra.sdk.model.ExecutionControllerExecutionResponse;
+import io.kestra.sdk.model.ExecutionKind;
 import io.kestra.sdk.model.FlowWithSource;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -361,7 +367,7 @@ public class KestraFlow extends ToolProvider {
 
             FlowWithSource flowWithSource;
             try {
-                flowWithSource = client.flows().flow(rNamespace, rFlowId, false, false, rTenantId, rRevision.orElse(null));
+                flowWithSource = client.flows().flow(rNamespace, rFlowId, rTenantId, false, rRevision.orElse(null), false);
             } catch (ApiException e) {
                 throw new IllegalArgumentException("Unable to find flow '" + rFlowId + "' in namespace '" + rNamespace + "'", e);
             }
@@ -444,7 +450,7 @@ public class KestraFlow extends ToolProvider {
                 .map(v -> ((Number) v).intValue())
                 .orElse(null);
             try {
-                return client.flows().flow(namespace, flowId, false, false, tenantId, revision);
+                return client.flows().flow(namespace, flowId, tenantId, false, revision, false);
             } catch (ApiException e) {
                 throw new ToolExecutionException("Flow not found: " + namespace + "." + flowId, e);
             }
@@ -515,12 +521,13 @@ public class KestraFlow extends ToolProvider {
                     }
                 });
 
-                var response = client.executions().createExecution(
+                var executionsApi = new ExecutionsApiWithInputs(client.executions().getApiClient());
+                var response = executionsApi.createExecutionWithInputs(
+                    tenantId,
                     flowWithSource.getNamespace(),
                     flowWithSource.getId(),
-                    false,
-                    tenantId,
                     sdkLabels,
+                    false,
                     flowWithSource.getRevision(),
                     scheduledDate.map(ZonedDateTime::toOffsetDateTime).orElse(null),
                     null,
@@ -549,6 +556,33 @@ public class KestraFlow extends ToolProvider {
             return labels.stream()
                 .filter(label -> label.key().startsWith(Label.SYSTEM_PREFIX))
                 .toList();
+        }
+    }
+
+    private static final class ExecutionsApiWithInputs extends ExecutionsApi {
+        private static final String MULTIPART = "multipart/form-data";
+
+        ExecutionsApiWithInputs(ApiClient apiClient) {
+            super(apiClient);
+        }
+
+        ExecutionControllerExecutionResponse createExecutionWithInputs(
+                String tenant, String namespace, String id,
+                List<String> labels, Boolean wait, Integer revision,
+                OffsetDateTime scheduleDate, String breakpoints, ExecutionKind kind,
+                Map<String, Object> inputs) throws ApiException {
+            List<Pair> multiLabels = labels == null || labels.isEmpty()
+                ? Collections.emptyList()
+                : apiClient.parameterToPairs("multi", "labels", labels);
+            return invoke("POST",
+                tenantPath(tenant, "executions", namespace, id),
+                null,
+                queryParams("wait", wait, "revision", revision,
+                    "scheduleDate", scheduleDate, "breakpoints", breakpoints, "kind", kind),
+                multiLabels,
+                JSON, MULTIPART,
+                inputs != null ? inputs : new HashMap<>(),
+                new TypeReference<ExecutionControllerExecutionResponse>() {});
         }
     }
 
