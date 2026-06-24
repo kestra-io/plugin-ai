@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -16,27 +14,25 @@ import io.kestra.core.utils.Await;
 
 public class ContainerTest {
 
-    public static GenericContainer<?> ollamaContainer;
-    public static String ollamaEndpoint;
-
     private static final List<String> MODELS = List.of(
         "tinydolphin",
         "chroma/all-minilm-l6-v2-f32"
     );
 
-    @BeforeAll
-    public static void setUp() {
-        var dockerImageName = DockerImageName.parse("ollama/ollama:latest");
+    // ponytail: singleton — starts once per JVM, shared across all test classes
+    private static final GenericContainer<?> OLLAMA_CONTAINER;
+    public static final String ollamaEndpoint;
 
-        ollamaContainer = new GenericContainer<>(dockerImageName)
+    static {
+        OLLAMA_CONTAINER = new GenericContainer<>(DockerImageName.parse("ollama/ollama:latest"))
             .withExposedPorts(11434)
             .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30)))
             .withCreateContainerCmdModifier(cmd -> Objects.requireNonNull(cmd.getHostConfig()).withRuntime("runc"))
             .withEnv("NVIDIA_VISIBLE_DEVICES", "");
 
-        ollamaContainer.start();
+        OLLAMA_CONTAINER.start();
 
-        ollamaEndpoint = "http://" + ollamaContainer.getHost() + ":" + ollamaContainer.getMappedPort(11434);
+        ollamaEndpoint = "http://" + OLLAMA_CONTAINER.getHost() + ":" + OLLAMA_CONTAINER.getMappedPort(11434);
 
         waitUntilOllamaResponds();
 
@@ -85,17 +81,10 @@ public class ContainerTest {
 
     private static boolean execOk(String... cmd) {
         try {
-            Container.ExecResult res = ollamaContainer.execInContainer(cmd);
+            Container.ExecResult res = OLLAMA_CONTAINER.execInContainer(cmd);
             return res.getExitCode() == 0;
         } catch (Exception e) {
-            return false; // Awaitility will retry to the next poll
-        }
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (ollamaContainer != null) {
-            ollamaContainer.stop();
+            return false;
         }
     }
 }
