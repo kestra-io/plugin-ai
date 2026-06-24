@@ -89,6 +89,12 @@ Infrastructure dependencies (Docker Compose services):
 plugin-ai/
 ├── src/main/java/io/kestra/plugin/ai/tool/
 ├── src/test/java/io/kestra/plugin/ai/tool/
+├── ui/                          # Plugin UI (Vue 3 / Module Federation)
+│   ├── src/components/
+│   │   └── AITopologyDetails.vue  # Shared topology-details component
+│   ├── src/AITopologyDetails.stories.ts
+│   ├── vite.config.ts
+│   └── package.json
 ├── build.gradle
 └── README.md
 ```
