@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -30,6 +32,7 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KestraTest
 class IngestDocumentTest extends ContainerTest {
 

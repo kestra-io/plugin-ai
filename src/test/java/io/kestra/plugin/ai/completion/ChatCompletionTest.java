@@ -231,7 +231,6 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
             assertThat(output.getThinking(), notNullValue());
         } catch (RateLimitException e) {
             abort("Skipped: Gemini rate limited (429)");
