@@ -70,6 +70,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           apiKey: "{{ secret('GOOGLE_API_KEY') }}"
                           modelName: gemini-2.5-flash
+                        configuration:
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024
                           returnThinking: true
@@ -102,6 +103,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           clientPem: "{{ secret('CLIENT_PEM') }}"
                           caPem: "{{ secret('CA_PEM') }}"
                           baseUrl: "https://internal.gemini.company.com/endpoint"
+                        configuration:
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024
                           returnThinking: true

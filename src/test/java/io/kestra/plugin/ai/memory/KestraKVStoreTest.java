@@ -3,6 +3,8 @@ package io.kestra.plugin.ai.memory;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -18,6 +20,7 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KestraTest
 class KestraKVStoreTest extends ContainerTest {
     @Inject
@@ -26,7 +29,7 @@ class KestraKVStoreTest extends ContainerTest {
     @Test
     void testMemory() throws Exception {
         RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
+            "io.kestra.plugin.ai.memory", Map.of(
                 "modelName", "tinydolphin",
                 "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,

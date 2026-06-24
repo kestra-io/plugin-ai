@@ -6,6 +6,8 @@ import java.util.Map;
 import io.kestra.plugin.core.log.Fetch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.annotations.Plugin;
@@ -41,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KestraTest
 class KestraTaskTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");

@@ -204,10 +204,14 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        JSONStructuredExtraction.Output output = task.run(runContext);
+        try {
+            JSONStructuredExtraction.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getExtractedJson(), notNullValue());
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getExtractedJson(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -292,10 +296,14 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        JSONStructuredExtraction.Output output = task.run(runContext);
+        try {
+            JSONStructuredExtraction.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getExtractedJson(), notNullValue());
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getExtractedJson(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -336,11 +344,15 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        JSONStructuredExtraction.Output output = task.run(runContext);
+        try {
+            JSONStructuredExtraction.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(true));
-        assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
-        assertThat(output.getExtractedJson(), nullValue());
+            assertThat(output.isGuardrailViolated(), is(true));
+            assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
+            assertThat(output.getExtractedJson(), nullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test

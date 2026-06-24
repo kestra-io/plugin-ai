@@ -1,0 +1,33 @@
+{
+  "name": "io.kestra.plugin.ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "add": "artifact-sdk",
+    "storybook": "storybook dev -p 6006",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --check",
+    "format:fix": "oxfmt --write"
+  },
+  "dependencies": {
+    "@kestra-io/artifact-sdk": "0.1.2",
+    "@kestra-io/design-system": "0.3.0",
+    "@kestra-io/kestra-sdk": "2.0.0-kdevelop.17815278.5a3d4f18.1c4bda1e",
+"vue": "3.5.38"
+  },
+  "devDependencies": {
+    "@storybook/addon-docs": "10.3.4",
+    "@storybook/addon-themes": "10.3.4",
+    "@storybook/vue3-vite": "10.3.4",
+    "@vitejs/plugin-vue": "6.0.5",
+    "oxfmt": "0.49.0",
+    "oxlint": "1.64.0",
+    "storybook": "10.4.6",
+    "typescript": "6.0.2",
+    "vite": "8.1.0"
+  }
+}
