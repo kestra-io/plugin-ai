@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 
@@ -24,6 +26,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KestraTest(startRunner = true)
 class SkillTest {
     @Inject
