@@ -401,11 +401,15 @@ class ChatCompletionTest extends ContainerTest {
                 .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
                 .build();
 
-            var ragOutput = rag.run(runContext);
+            try {
+                var ragOutput = rag.run(runContext);
 
-            assertThat(ragOutput.getTextOutput()).isNotNull();
-            assertThat(ragOutput.getTextOutput()).containsAnyOf("Alice", "Bob");
-            assertThat(ragOutput.getTextOutput()).containsAnyOf("Paris", "Berlin");
+                assertThat(ragOutput.getTextOutput()).isNotNull();
+                assertThat(ragOutput.getTextOutput()).containsAnyOf("Alice", "Bob");
+                assertThat(ragOutput.getTextOutput()).containsAnyOf("Paris", "Berlin");
+            } catch (RateLimitException e) {
+                abort("Skipped: OpenAI rate limited (429)");
+            }
 
             postgres.stop();
         }
