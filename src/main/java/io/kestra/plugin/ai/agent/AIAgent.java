@@ -26,7 +26,6 @@ import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
-import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -825,8 +824,6 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             if (memory != null) {
                 memory.close(runContext);
             }
-
-            TimingChatModelListener.clear();
         }
     }
 
