@@ -33,7 +33,6 @@ import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
-import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
@@ -381,8 +380,6 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         } finally {
             observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
-
-            TimingChatModelListener.clear();
         }
     }
 
