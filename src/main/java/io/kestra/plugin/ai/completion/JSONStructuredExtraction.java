@@ -201,7 +201,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
             Output guardrails are evaluated against the extracted JSON before it is returned.
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Nullable
     private Guardrails guardrails;
 

@@ -33,6 +33,7 @@ import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
+import io.kestra.plugin.ai.provider.TimingChatModelListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
@@ -277,14 +278,14 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
     @Nullable
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Guardrails guardrails;
 
     @Schema(
         title = "Observability",
         description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Observability observability;
 
     @Override
@@ -380,6 +381,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         } finally {
             observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
+
+            TimingChatModelListener.clear();
         }
     }
 

@@ -19,6 +19,7 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
+import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -349,7 +350,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
     @Nullable
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Guardrails guardrails;
 
     @Override
@@ -412,6 +413,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             if (memory != null) {
                 memory.close(runContext);
             }
+
+            TimingChatModelListener.clear();
         }
     }
 

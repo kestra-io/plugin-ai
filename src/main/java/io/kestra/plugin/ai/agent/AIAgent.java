@@ -26,6 +26,7 @@ import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
+import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -733,7 +734,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         title = "Observability",
         description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Observability observability;
 
     @Schema(
@@ -744,7 +745,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
     @Nullable
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Guardrails guardrails;
 
     @PluginProperty(group = "destination")
@@ -824,6 +825,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             if (memory != null) {
                 memory.close(runContext);
             }
+
+            TimingChatModelListener.clear();
         }
     }
 

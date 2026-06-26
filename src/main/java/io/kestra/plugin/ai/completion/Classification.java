@@ -148,7 +148,7 @@ public class Classification extends Task implements RunnableTask<Classification.
             Output guardrails are evaluated against the classification result before it is returned.
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Nullable
     private Guardrails guardrails;
 
