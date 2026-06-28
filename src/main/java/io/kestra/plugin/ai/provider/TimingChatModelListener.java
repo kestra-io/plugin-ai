@@ -47,6 +47,11 @@ public class TimingChatModelListener implements ChatModelListener {
             return;
         }
         stopWatch.stop();
-        TIMER_ID_BY_RESPONSE_ID.put(responseContext.chatResponse().id(), timerId);
+        String responseId = responseContext.chatResponse().id();
+        if (responseId != null) {
+            TIMER_ID_BY_RESPONSE_ID.put(responseId, timerId);
+        } else {
+            TIMERS.remove(timerId);
+        }
     }
 }

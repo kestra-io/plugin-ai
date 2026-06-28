@@ -278,14 +278,14 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
     @Nullable
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Guardrails guardrails;
 
     @Schema(
         title = "Observability",
         description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Observability observability;
 
     @Override
