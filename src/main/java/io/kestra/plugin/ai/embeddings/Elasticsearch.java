@@ -30,6 +30,8 @@ import org.elasticsearch.client.RestClientBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
@@ -131,6 +133,7 @@ public class Elasticsearch extends EmbeddingStoreProvider {
     @Getter
     public static class ElasticsearchConnection {
         private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
+        private static final Logger log = LoggerFactory.getLogger(ElasticsearchConnection.class);
 
         @Schema(
             title = "List of HTTP Elasticsearch servers",
@@ -167,9 +170,14 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
         @Schema(
             title = "Trust all SSL CA certificates",
-            description = "Use this if the server uses a self-signed SSL certificate"
+            description = "Use this if the server uses a self-signed SSL certificate. "
+                + "WARNING: enabling this disables both certificate chain validation and hostname verification, "
+                + "exposing connections to man-in-the-middle attacks. "
+                + "Prefer supplying a custom CA certificate instead. Use only in trusted, controlled environments.",
+            deprecated = true
         )
         @PluginProperty(group = "advanced")
+        @Deprecated
         private Property<Boolean> trustAllSsl;
 
         @Schema(
@@ -242,6 +250,12 @@ public class Elasticsearch extends EmbeddingStoreProvider {
             }
 
             if (runContext.render(this.trustAllSsl).as(Boolean.class).orElse(false)) {
+                log.warn(
+                    "trustAllSsl=true: TLS certificate chain validation and hostname verification are DISABLED. "
+                    + "This exposes the connection to man-in-the-middle attacks. "
+                    + "Use only in controlled environments with self-signed certificates. "
+                    + "This option is deprecated and will be removed in a future release."
+                );
                 SSLContextBuilder sslContextBuilder = new SSLContextBuilder();
                 sslContextBuilder.loadTrustMaterial(null, (TrustStrategy) (chain, authType) -> true);
                 SSLContext sslContext = sslContextBuilder.build();

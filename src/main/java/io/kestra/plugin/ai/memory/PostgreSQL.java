@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -184,6 +185,9 @@ public class PostgreSQL extends MemoryProvider {
         }
     }
 
+    /** Strict allowlist for table names: letters, digits, and underscores only (max 63 chars, must start with letter or underscore). */
+    private static final Pattern TABLE_NAME_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]{0,62}$");
+
     private record ResolvedConfig(String host, int port, String database, String user, String password,
         String tableName, Drop drop) {
     }
@@ -196,6 +200,12 @@ public class PostgreSQL extends MemoryProvider {
         var rPass = runContext.render(this.getPassword()).as(String.class).orElseThrow();
         var rDrop = runContext.render(this.getDrop()).as(Drop.class).orElse(Drop.NEVER);
         var rTable = runContext.render(this.getTableName()).as(String.class).orElse("chat_memory");
+
+        if (!TABLE_NAME_PATTERN.matcher(rTable).matches()) {
+            throw new IllegalArgumentException(
+                "Invalid tableName '" + rTable + "': must match ^[a-zA-Z_][a-zA-Z0-9_]{0,62}$ to prevent SQL injection"
+            );
+        }
 
         return new ResolvedConfig(rHost, rPort, rDb, rUser, rPass, rTable, rDrop);
     }
