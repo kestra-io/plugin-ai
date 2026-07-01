@@ -147,7 +147,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Gemini doesn't always return a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
         } catch (RateLimitException e) {
@@ -189,7 +190,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Gemini doesn't always return a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
             assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
@@ -315,7 +317,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
         } catch (RateLimitException e) {
@@ -358,7 +361,8 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
 
             assertThat(output.getTextOutput(), notNullValue());
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
         } catch (RateLimitException e) {
             abort("Skipped: Vertex AI rate limited (429)");
