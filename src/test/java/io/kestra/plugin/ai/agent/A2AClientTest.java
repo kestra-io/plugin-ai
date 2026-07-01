@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.agent;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -15,6 +16,7 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class A2AClientTest {
     @Inject

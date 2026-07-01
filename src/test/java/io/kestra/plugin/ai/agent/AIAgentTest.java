@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 
@@ -41,6 +42,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class AIAgentTest {
     private static final String PINECONE_API_KEY = System.getenv("PINECONE_API_KEY");

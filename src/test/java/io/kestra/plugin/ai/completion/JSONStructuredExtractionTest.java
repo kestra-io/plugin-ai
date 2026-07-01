@@ -6,6 +6,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -35,6 +36,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");

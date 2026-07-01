@@ -1,17 +1,17 @@
 plugins {
-    id 'io.kestra.gradle.repository-conventions' version '1.2.3'
-    id "io.kestra.gradle.plugin-doc-lint" version "1.2.4"
-    id 'io.kestra.gradle.spotless-conventions' version '1.2.2'
+    id 'io.kestra.gradle.repository-conventions' version '1.2.5'
+    id "io.kestra.gradle.plugin-doc-lint" version "1.2.5"
+    id 'io.kestra.gradle.spotless-conventions' version '1.2.5'
     id 'java-library'
     id "idea"
     id 'jacoco'
     id "com.adarshr.test-logger" version "4.0.0"
-    id "com.gradleup.shadow" version "9.4.2"
+    id "com.gradleup.shadow" version "9.4.3"
     id 'signing'
     id "com.github.ben-manes.versions" version "0.54.0"
     id 'net.researchgate.release' version '3.1.0'
     id "com.vanniktech.maven.publish" version "0.37.0"
-    id "io.kestra.gradle.inject-bom-versions" version "1.2.2"
+    id "io.kestra.gradle.inject-bom-versions" version "1.2.5"
     id 'com.github.node-gradle.node' version '7.1.0'
 }
 
@@ -333,7 +333,7 @@ idea {
 // Build the UI module before packaging (only if ui/ directory exists)
 if (file('ui').exists()) {
     tasks.register('npmInstallUI', com.github.gradle.node.npm.task.NpmTask) {
-        args = ['install']
+        args = ['install', '--fetch-retries=5', '--fetch-retry-mintimeout=5000', '--fetch-retry-maxtimeout=60000']
         workingDir = file('ui')
     }
 

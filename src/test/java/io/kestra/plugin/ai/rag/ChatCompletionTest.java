@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -32,6 +33,7 @@ import dev.langchain4j.exception.RateLimitException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ChatCompletionTest extends ContainerTest {
     private final String GOOGLE_API_KEY = System.getenv("GOOGLE_API_KEY");
