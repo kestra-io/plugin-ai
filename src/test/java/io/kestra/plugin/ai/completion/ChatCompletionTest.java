@@ -12,6 +12,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.github.tomakehurst.wiremock.http.Body;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
@@ -45,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.abort;
 
 @Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ChatCompletionTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
@@ -147,7 +149,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Gemini doesn't always return a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
         } catch (RateLimitException e) {
@@ -189,7 +192,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Gemini doesn't always return a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
             assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
@@ -315,7 +319,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
         } catch (RateLimitException e) {
@@ -358,7 +363,8 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
 
             assertThat(output.getTextOutput(), notNullValue());
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
         } catch (RateLimitException e) {
             abort("Skipped: Vertex AI rate limited (429)");

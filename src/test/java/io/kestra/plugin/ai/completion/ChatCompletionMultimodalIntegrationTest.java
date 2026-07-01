@@ -9,9 +9,10 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.domain.ChatMessage;
-import org.junit.jupiter.api.Assumptions;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -27,6 +28,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ChatCompletionMultimodalIntegrationTest {
     private static final byte[] SAMPLE_PNG_BYTES = Base64.getDecoder().decode(
