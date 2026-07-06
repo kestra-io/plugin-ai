@@ -26,10 +26,10 @@ function mockResolveTemplate(template: string, hasExecution: boolean): string {
     let resolvable = true;
     const out = template.replace(/\{\{\s*(.*?)\s*}}/g, (rawMatch, exprSource: string) => {
         const expr = exprSource.trim();
-        if (expr in MOCK_VARS) return MOCK_VARS[expr];
+        if (Object.hasOwn(MOCK_VARS, expr)) return MOCK_VARS[expr];
         const secret = expr.match(/^secret\(\s*['"]([^'"]+)['"]\s*\)$/);
         if (secret) return `[secret: ${secret[1]}]`;
-        if (hasExecution && expr in MOCK_INPUTS) return MOCK_INPUTS[expr];
+        if (hasExecution && Object.hasOwn(MOCK_INPUTS, expr)) return MOCK_INPUTS[expr];
         // env(), kv(), or an execution-scoped reference with no execution → unresolvable.
         resolvable = false;
         return rawMatch;
@@ -38,20 +38,56 @@ function mockResolveTemplate(template: string, hasExecution: boolean): string {
     return resolvable ? out : template;
 }
 
-// The generated client invokes `axios(config)`; replace that transport with a stub
-// that renders the request's expressions per the rules above.
+// A story using this flow id makes the stub answer the render request with 403, so we can
+// exercise useRenderedExpressions' failure branch (fall back to the raw template) without
+// any global mutable state — the intent travels in the request body.
+const RENDER_FAILURE_FLOW_ID = "ai_pebble_render_failure";
+
+// The generated client invokes `axios(config)`; replace that transport with a stub that
+// renders the request's expressions per the rules above. Scoped to the expressions-render
+// endpoint only: any other SDK call throws loudly rather than silently receiving a fake 200,
+// so this module-level transport swap can't mask a real request in a future test that shares
+// this worker's client singleton.
 client.setConfig({
-    axios: (async (config: { data?: unknown }) => {
+    axios: (async (config: {
+        url?: string;
+        data?: unknown;
+        validateStatus?: (status: number) => boolean;
+    }) => {
+        if (!String(config.url ?? "").includes("expressions/render")) {
+            throw new Error(`Stories mock received an unexpected SDK request: ${config.url}`);
+        }
         const body = (typeof config.data === "string" ? JSON.parse(config.data) : config.data) as {
             expressions?: string[];
             executionId?: string;
+            flowId?: string;
         };
-        const hasExecution = Boolean(body?.executionId);
+        const status = body?.flowId === RENDER_FAILURE_FLOW_ID ? 403 : 200;
         const rendered: Record<string, string> = {};
-        for (const expression of body?.expressions ?? []) {
-            rendered[expression] = mockResolveTemplate(expression, hasExecution);
+        if (status === 200) {
+            const hasExecution = Boolean(body?.executionId);
+            for (const expression of body?.expressions ?? []) {
+                rendered[expression] = mockResolveTemplate(expression, hasExecution);
+            }
         }
-        return { data: { rendered }, status: 200, statusText: "OK", headers: {}, config };
+        const response = {
+            data: status === 200 ? { rendered } : {},
+            status,
+            statusText: status === 200 ? "OK" : "Forbidden",
+            headers: {},
+            config,
+        };
+        // Mimic axios: reject when the status is not accepted by the caller's validateStatus,
+        // so useRenderedExpressions' try/catch runs exactly as it does against a real server.
+        const accept = config.validateStatus ?? ((s: number) => s >= 200 && s < 300);
+        if (!accept(status)) {
+            const error = new Error(`Request failed with status code ${status}`) as Error & {
+                response?: unknown;
+            };
+            error.response = response;
+            throw error;
+        }
+        return response;
     }) as never,
 });
 
@@ -447,6 +483,26 @@ export const ExpressionsPostExecution: Story = {
         );
         // The raw template must be gone.
         expect(canvas.queryByText(/\{\{ inputs\.question }}/)).toBeNull();
+    },
+};
+
+export const ExpressionsRenderFailure: Story = {
+    name: "Expression resolution — render failure (falls back to raw templates)",
+    args: {
+        // The render endpoint answers 403 for this flow id. useRenderedExpressions must swallow
+        // the error and display every field as its raw, unresolved template.
+        task: expressionAgentTask,
+        namespace: "company.ai",
+        flowId: RENDER_FAILURE_FLOW_ID,
+        displayMode: "full",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // Render failed → nothing resolves; the raw Pebble templates remain on screen.
+        await waitFor(() => expect(canvas.getByText(/\{\{ vars\.model }}/)).toBeInTheDocument());
+        expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
+        // The secret stays as its raw expression and is never revealed, even on the failure path.
+        expect(canvas.getByText(/\{\{ secret\('ANTHROPIC_API_KEY'\) }}/)).toBeInTheDocument();
     },
 };
 
