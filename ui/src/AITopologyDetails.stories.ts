@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
+import { within, waitFor, expect } from "storybook/test";
 import { client } from "@kestra-io/kestra-sdk/client";
 import AITopologyDetails from "./components/AITopologyDetails.vue";
 
@@ -389,6 +390,16 @@ export const ExpressionsPreExecution: Story = {
         flowId: "ai_pebble_resolution_test",
         displayMode: "full",
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // vars.* resolve from the flow context even before any execution exists.
+        await waitFor(() => expect(canvas.getByText("claude-3-haiku-20240307")).toBeInTheDocument());
+        // System message: vars resolved and secret() masked (never revealed).
+        await waitFor(() => expect(canvas.getByText(/a precise technical assistant/)).toBeInTheDocument());
+        expect(canvas.getByText(/\[secret: ANTHROPIC_API_KEY]/)).toBeInTheDocument();
+        // inputs.* cannot resolve without an execution → the prompt stays raw.
+        expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
+    },
 };
 
 export const ExpressionsPostExecution: Story = {
@@ -426,6 +437,16 @@ export const ExpressionsPostExecution: Story = {
                 },
             ],
         },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText("claude-3-haiku-20240307")).toBeInTheDocument());
+        // With an execution present, inputs.* now resolve too.
+        await waitFor(() =>
+            expect(canvas.getByText("What is Kestra in one sentence?")).toBeInTheDocument()
+        );
+        // The raw template must be gone.
+        expect(canvas.queryByText(/\{\{ inputs\.question }}/)).toBeNull();
     },
 };
 

@@ -8,6 +8,7 @@
     "build": "vite build",
     "add": "artifact-sdk",
     "storybook": "storybook dev -p 6006",
+    "test": "vitest run",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --check",
@@ -17,17 +18,19 @@
     "@kestra-io/artifact-sdk": "0.1.2",
     "@kestra-io/design-system": "0.3.0",
     "@kestra-io/kestra-sdk": "2.0.0-kdevelop.17830727.7ce38d9a.a4050f62",
-"vue": "3.5.38"
+    "vue": "3.5.38"
   },
   "devDependencies": {
     "@storybook/addon-docs": "10.3.4",
     "@storybook/addon-themes": "10.3.4",
     "@storybook/vue3-vite": "10.3.4",
     "@vitejs/plugin-vue": "6.0.5",
+    "jsdom": "29.1.1",
     "oxfmt": "0.49.0",
     "oxlint": "1.64.0",
     "storybook": "10.4.6",
     "typescript": "6.0.2",
-    "vite": "8.1.0"
+    "vite": "8.1.0",
+    "vitest": "4.1.10"
   }
 }

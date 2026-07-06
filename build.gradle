@@ -342,6 +342,15 @@ if (file('ui').exists()) {
         args = ['run', 'build', '--', '--outDir', '../src/main/resources/plugin-ui']
         workingDir = file('ui')
     }
+
+    // Runs the Storybook `play` functions headlessly (jsdom) so CI catches UI regressions.
+    tasks.register('testUI', com.github.gradle.node.npm.task.NpmTask) {
+        dependsOn 'npmInstallUI'
+        args = ['run', 'test']
+        workingDir = file('ui')
+    }
+
     processResources.dependsOn 'buildUI'
     shadowJar.dependsOn 'buildUI'
+    tasks.named('check').configure { dependsOn 'testUI' }
 }
