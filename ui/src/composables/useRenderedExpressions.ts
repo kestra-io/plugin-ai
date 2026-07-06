@@ -62,6 +62,9 @@ export function useRenderedExpressions(
     context: () => RenderContext,
 ) {
     const rendered = ref<Record<string, string>>({});
+    // Guards against out-of-order responses: rapid context changes (task / execution switches) fire
+    // overlapping load() calls, so only the latest request is allowed to mutate `rendered`.
+    let requestId = 0;
 
     async function load() {
         const values = (expressions() ?? []).filter(
@@ -71,6 +74,7 @@ export function useRenderedExpressions(
             rendered.value = {};
             return;
         }
+        const id = ++requestId;
         try {
             const { rendered: result } = await renderExpressions(
                 {
@@ -78,11 +82,20 @@ export function useRenderedExpressions(
                     tenant: currentTenant(),
                     ...context(),
                 },
-                { headers: csrfHeaders() },
+                {
+                    headers: csrfHeaders(),
+                    // Best-effort display call: never let a failed render surface the host's global
+                    // error UI. Treating 404 as a non-error skips the SDK's full-page 404 overlay,
+                    // and showMessageOnError suppresses the error toast for other statuses (403/5xx).
+                    validateStatus: (s: number) => s === 200 || s === 404,
+                    showMessageOnError: false,
+                },
             );
-            rendered.value = result ?? {};
+            if (id === requestId) rendered.value = result ?? {};
         } catch {
-            /* best-effort: keep raw values */
+            // Best-effort: drop any stale resolved values so display() falls back to the raw
+            // template instead of showing values resolved under a previous context.
+            if (id === requestId) rendered.value = {};
         }
     }
 
