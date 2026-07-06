@@ -3,8 +3,11 @@ import type { KnownSlotProps } from "@kestra-io/artifact-sdk";
 import { KsTopologyDetails, KsTag, KsAlert } from "@kestra-io/design-system";
 import { computed, ref, watch, useAttrs, onUnmounted } from "vue";
 import { resolveTenant, useClient } from "@kestra-io/kestra-sdk";
+import { useRenderedExpressions } from "../composables/useRenderedExpressions";
 
-const props = defineProps<KnownSlotProps["topology-details"]>();
+// `source` (the current, possibly unsaved flow YAML) is provided by the host but not yet part of the
+// shared KnownSlotProps type, so it is declared explicitly here.
+const props = defineProps<KnownSlotProps["topology-details"] & { source?: string }>();
 const attrs = useAttrs();
 const isFullView = computed(() => attrs.displayMode === "full");
 
@@ -69,16 +72,33 @@ const provider = computed(() => {
     return lastSegment(p?.type);
 });
 
-const modelName = computed(() => {
+// Raw values from the task definition — these may contain Pebble expressions (e.g. "{{ vars.* }}").
+const rawModelName = computed(() => {
     const key = isRag.value ? "chatProvider" : "provider";
     return effectiveTask.value[key]?.modelName as string | undefined;
 });
 
-const systemMessage = computed(() =>
+const rawSystemMessage = computed(() =>
     (effectiveTask.value.systemPrompt ?? effectiveTask.value.systemMessage) as string | undefined
 );
 
-const prompt = computed(() => effectiveTask.value.prompt as string | undefined);
+const rawPrompt = computed(() => effectiveTask.value.prompt as string | undefined);
+
+// Task properties may contain Pebble expressions (e.g. "{{ inputs.question }}"); resolve them for
+// display so the topology shows real values instead of raw templates. Falls back to raw on failure.
+const { display } = useRenderedExpressions(
+    () => [rawModelName.value, rawSystemMessage.value, rawPrompt.value],
+    () => ({
+        executionId: props.execution?.id as string | undefined,
+        namespace: props.namespace,
+        flowId: props.flowId,
+        flow: props.source,
+    }),
+);
+
+const modelName = computed(() => display(rawModelName.value));
+const systemMessage = computed(() => display(rawSystemMessage.value));
+const prompt = computed(() => display(rawPrompt.value));
 
 const toolNames = computed<string[]>(() => {
     const tools = effectiveTask.value.tools as any[] | undefined;
