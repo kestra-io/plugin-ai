@@ -1,5 +1,58 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
+import { client } from "@kestra-io/kestra-sdk/client";
 import AITopologyDetails from "./components/AITopologyDetails.vue";
+
+// ── Mock the POST /expressions/render endpoint ──────────────────────────────
+// Storybook has no Kestra backend, so we stub the generated SDK client's transport
+// to mimic the server-side DisplayExpressionRenderer:
+//   - vars.* / flow.* / globals.* and secret() resolve from the flow context;
+//   - inputs.* / outputs.* / execution.* resolve only when an execution is present;
+//   - env() / kv() are never resolved.
+// Resolution is all-or-nothing per string: one unresolvable reference keeps the
+// whole template raw (matching Pebble's single-pass render). This lets the two
+// "Expression resolution" stories below demonstrate the real pre/post-execution
+// behaviour without a live server.
+const MOCK_VARS: Record<string, string> = {
+    "vars.model": "claude-3-haiku-20240307",
+    "vars.persona": "a precise technical assistant",
+};
+const MOCK_INPUTS: Record<string, string> = {
+    "inputs.question": "What is Kestra in one sentence?",
+    "inputs.tone": "concise",
+};
+
+function mockResolveTemplate(template: string, hasExecution: boolean): string {
+    let resolvable = true;
+    const out = template.replace(/\{\{\s*(.*?)\s*}}/g, (rawMatch, exprSource: string) => {
+        const expr = exprSource.trim();
+        if (expr in MOCK_VARS) return MOCK_VARS[expr];
+        const secret = expr.match(/^secret\(\s*['"]([^'"]+)['"]\s*\)$/);
+        if (secret) return `[secret: ${secret[1]}]`;
+        if (hasExecution && expr in MOCK_INPUTS) return MOCK_INPUTS[expr];
+        // env(), kv(), or an execution-scoped reference with no execution → unresolvable.
+        resolvable = false;
+        return rawMatch;
+    });
+    // All-or-nothing: keep the original template if anything could not be resolved.
+    return resolvable ? out : template;
+}
+
+// The generated client invokes `axios(config)`; replace that transport with a stub
+// that renders the request's expressions per the rules above.
+client.setConfig({
+    axios: (async (config: { data?: unknown }) => {
+        const body = (typeof config.data === "string" ? JSON.parse(config.data) : config.data) as {
+            expressions?: string[];
+            executionId?: string;
+        };
+        const hasExecution = Boolean(body?.executionId);
+        const rendered: Record<string, string> = {};
+        for (const expression of body?.expressions ?? []) {
+            rendered[expression] = mockResolveTemplate(expression, hasExecution);
+        }
+        return { data: { rendered }, status: 200, statusText: "OK", headers: {}, config };
+    }) as never,
+});
 
 const meta: Meta<typeof AITopologyDetails> = {
     title: "Plugin UI / topology-details / AITopologyDetails",
@@ -41,6 +94,22 @@ const ragTask = {
     type: "io.kestra.plugin.ai.rag.ChatCompletion",
     chatProvider: openAIProvider,
     contentRetriever: { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
+};
+
+// Task whose display-facing fields all carry Pebble expressions from different context
+// sources, so the same task renders differently before vs. after an execution exists.
+const expressionAgentTask = {
+    id: "ai-agent",
+    type: "io.kestra.plugin.ai.agent.AIAgent",
+    provider: {
+        type: "io.kestra.plugin.ai.provider.Anthropic",
+        modelName: "{{ vars.model }}", // flow context → resolves pre-execution
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}",
+    },
+    // vars + secret → resolves pre-execution (secret masked, never revealed).
+    systemPrompt: "You are {{ vars.persona }}.\nAuth token: {{ secret('ANTHROPIC_API_KEY') }}",
+    // inputs.* → raw until an execution supplies the value.
+    prompt: "{{ inputs.question }}",
 };
 
 export const PreExecution: Story = {
@@ -302,6 +371,57 @@ export const GuardrailViolation: Story = {
                         guardrailViolated: true,
                         guardrailViolationMessage:
                             "Output contains potentially sensitive personal data — PII guardrail triggered.",
+                    },
+                },
+            ],
+        },
+    },
+};
+
+export const ExpressionsPreExecution: Story = {
+    name: "Expression resolution — pre-execution (vars + secret resolve, inputs stay raw)",
+    args: {
+        // No execution: Model resolves to "claude-3-haiku-20240307" and the system message
+        // resolves ("...precise technical assistant" + masked secret), but the prompt stays
+        // raw as "{{ inputs.question }}" because inputs need an execution.
+        task: expressionAgentTask,
+        namespace: "company.ai",
+        flowId: "ai_pebble_resolution_test",
+        displayMode: "full",
+    },
+};
+
+export const ExpressionsPostExecution: Story = {
+    name: "Expression resolution — post-execution (inputs resolve too)",
+    args: {
+        // With an execution present, the prompt's "{{ inputs.question }}" now also resolves
+        // to "What is Kestra in one sentence?" alongside the vars/secret already resolved.
+        task: expressionAgentTask,
+        namespace: "company.ai",
+        flowId: "ai_pebble_resolution_test",
+        displayMode: "full",
+        execution: {
+            id: "exec-expr-001",
+            namespace: "company.ai",
+            flowId: "ai_pebble_resolution_test",
+            state: { current: "SUCCESS", startDate: "2024-01-21T12:00:00Z" },
+            taskRunList: [
+                {
+                    id: "tr-expr-001",
+                    taskId: "ai-agent",
+                    executionId: "exec-expr-001",
+                    outputs: {
+                        textOutput:
+                            "Kestra is an open-source orchestration platform for building and scheduling workflows as code.",
+                        finishReason: "STOP",
+                        tokenUsage: {
+                            inputTokenCount: 34,
+                            outputTokenCount: 18,
+                            totalTokenCount: 52,
+                        },
+                        toolExecutions: [],
+                        intermediateResponses: [],
+                        guardrailViolated: false,
                     },
                 },
             ],
