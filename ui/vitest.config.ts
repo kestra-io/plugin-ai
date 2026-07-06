@@ -8,8 +8,8 @@ export default defineConfig({
     plugins: [vue()],
     test: {
         environment: "jsdom",
-        include: ["src/**/*.test.ts"],
-        setupFiles: ["src/test-setup.ts"],
+        include: ["tests/**/*.{test,spec}.ts"],
+        setupFiles: ["tests/unit/setup.ts"],
         // The design-system dist imports .css; inline it so Vite transforms those imports
         // instead of Node trying to require raw .css files.
         server: { deps: { inline: [/@kestra-io\/design-system/] } },

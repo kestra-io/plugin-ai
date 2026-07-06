@@ -72,7 +72,6 @@ const provider = computed(() => {
     return lastSegment(p?.type);
 });
 
-// Raw values from the task definition — these may contain Pebble expressions (e.g. "{{ vars.* }}").
 const rawModelName = computed(() => {
     const key = isRag.value ? "chatProvider" : "provider";
     return effectiveTask.value[key]?.modelName as string | undefined;
@@ -84,8 +83,6 @@ const rawSystemMessage = computed(() =>
 
 const rawPrompt = computed(() => effectiveTask.value.prompt as string | undefined);
 
-// Task properties may contain Pebble expressions (e.g. "{{ inputs.question }}"); resolve them for
-// display so the topology shows real values instead of raw templates. Falls back to raw on failure.
 const { display } = useRenderedExpressions(
     () => [rawModelName.value, rawSystemMessage.value, rawPrompt.value],
     () => ({

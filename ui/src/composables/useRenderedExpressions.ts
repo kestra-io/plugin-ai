@@ -103,7 +103,6 @@ export function useRenderedExpressions(
         immediate: true,
     });
 
-    /** Returns the rendered value for `value`, falling back to the raw value. */
     function display(value?: string): string | undefined {
         if (value === undefined) return undefined;
         return rendered.value[value] ?? value;
