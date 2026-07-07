@@ -9,6 +9,8 @@
     "add": "artifact-sdk",
     "storybook": "storybook dev -p 6006",
     "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --check",

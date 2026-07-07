@@ -37,3 +37,22 @@ if (typeof window !== "undefined") {
 if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = () => {};
 }
+
+// A real browser always exposes Web Storage, but this env's `window.localStorage` lacks a working
+// `getItem` (Node's experimental `--localstorage-file` shim), so composables that read persisted
+// host state (e.g. the active tenant under `selectedTenant`) would throw at mount. Provide a
+// minimal in-memory Storage so those reads return null instead of blowing up story rendering.
+if (typeof window !== "undefined" && typeof window.localStorage?.getItem !== "function") {
+    const store = new Map<string, string>();
+    const storage: Storage = {
+        getItem: (key) => (store.has(key) ? store.get(key)! : null),
+        setItem: (key, value) => void store.set(key, String(value)),
+        removeItem: (key) => void store.delete(key),
+        clear: () => store.clear(),
+        key: (index) => Array.from(store.keys())[index] ?? null,
+        get length() {
+            return store.size;
+        },
+    };
+    Object.defineProperty(window, "localStorage", { configurable: true, value: storage });
+}
