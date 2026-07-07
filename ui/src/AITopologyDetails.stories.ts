@@ -1,5 +1,95 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
+import { within, waitFor, expect } from "storybook/test";
+import { client } from "@kestra-io/kestra-sdk/client";
 import AITopologyDetails from "./components/AITopologyDetails.vue";
+
+// ── Mock the POST /expressions/render endpoint ──────────────────────────────
+// Storybook has no Kestra backend, so we stub the generated SDK client's transport
+// to mimic the server-side DisplayExpressionRenderer:
+//   - vars.* / flow.* / globals.* and secret() resolve from the flow context;
+//   - inputs.* / outputs.* / execution.* resolve only when an execution is present;
+//   - env() / kv() are never resolved.
+// Resolution is all-or-nothing per string: one unresolvable reference keeps the
+// whole template raw (matching Pebble's single-pass render). This lets the two
+// "Expression resolution" stories below demonstrate the real pre/post-execution
+// behaviour without a live server.
+const MOCK_VARS: Record<string, string> = {
+    "vars.model": "claude-3-haiku-20240307",
+    "vars.persona": "a precise technical assistant",
+};
+const MOCK_INPUTS: Record<string, string> = {
+    "inputs.question": "What is Kestra in one sentence?",
+    "inputs.tone": "concise",
+};
+
+function mockResolveTemplate(template: string, hasExecution: boolean): string {
+    let resolvable = true;
+    const out = template.replace(/\{\{\s*(.*?)\s*}}/g, (rawMatch, exprSource: string) => {
+        const expr = exprSource.trim();
+        if (Object.hasOwn(MOCK_VARS, expr)) return MOCK_VARS[expr];
+        const secret = expr.match(/^secret\(\s*['"]([^'"]+)['"]\s*\)$/);
+        if (secret) return `[secret: ${secret[1]}]`;
+        if (hasExecution && Object.hasOwn(MOCK_INPUTS, expr)) return MOCK_INPUTS[expr];
+        // env(), kv(), or an execution-scoped reference with no execution → unresolvable.
+        resolvable = false;
+        return rawMatch;
+    });
+    // All-or-nothing: keep the original template if anything could not be resolved.
+    return resolvable ? out : template;
+}
+
+// A story using this flow id makes the stub answer the render request with 403, so we can
+// exercise useRenderedExpressions' failure branch (fall back to the raw template) without
+// any global mutable state — the intent travels in the request body.
+const RENDER_FAILURE_FLOW_ID = "ai_pebble_render_failure";
+
+// The generated client invokes `axios(config)`; replace that transport with a stub that
+// renders the request's expressions per the rules above. Scoped to the expressions-render
+// endpoint only: any other SDK call throws loudly rather than silently receiving a fake 200,
+// so this module-level transport swap can't mask a real request in a future test that shares
+// this worker's client singleton.
+client.setConfig({
+    axios: (async (config: {
+        url?: string;
+        data?: unknown;
+        validateStatus?: (status: number) => boolean;
+    }) => {
+        if (!String(config.url ?? "").includes("expressions/render")) {
+            throw new Error(`Stories mock received an unexpected SDK request: ${config.url}`);
+        }
+        const body = (typeof config.data === "string" ? JSON.parse(config.data) : config.data) as {
+            expressions?: string[];
+            executionId?: string;
+            flowId?: string;
+        };
+        const status = body?.flowId === RENDER_FAILURE_FLOW_ID ? 403 : 200;
+        const rendered: Record<string, string> = {};
+        if (status === 200) {
+            const hasExecution = Boolean(body?.executionId);
+            for (const expression of body?.expressions ?? []) {
+                rendered[expression] = mockResolveTemplate(expression, hasExecution);
+            }
+        }
+        const response = {
+            data: status === 200 ? { rendered } : {},
+            status,
+            statusText: status === 200 ? "OK" : "Forbidden",
+            headers: {},
+            config,
+        };
+        // Mimic axios: reject when the status is not accepted by the caller's validateStatus,
+        // so useRenderedExpressions' try/catch runs exactly as it does against a real server.
+        const accept = config.validateStatus ?? ((s: number) => s >= 200 && s < 300);
+        if (!accept(status)) {
+            const error = new Error(`Request failed with status code ${status}`) as Error & {
+                response?: unknown;
+            };
+            error.response = response;
+            throw error;
+        }
+        return response;
+    }) as never,
+});
 
 const meta: Meta<typeof AITopologyDetails> = {
     title: "Plugin UI / topology-details / AITopologyDetails",
@@ -41,6 +131,22 @@ const ragTask = {
     type: "io.kestra.plugin.ai.rag.ChatCompletion",
     chatProvider: openAIProvider,
     contentRetriever: { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
+};
+
+// Task whose display-facing fields all carry Pebble expressions from different context
+// sources, so the same task renders differently before vs. after an execution exists.
+const expressionAgentTask = {
+    id: "ai-agent",
+    type: "io.kestra.plugin.ai.agent.AIAgent",
+    provider: {
+        type: "io.kestra.plugin.ai.provider.Anthropic",
+        modelName: "{{ vars.model }}", // flow context → resolves pre-execution
+        apiKey: "{{ secret('ANTHROPIC_API_KEY') }}",
+    },
+    // vars + secret → resolves pre-execution (secret masked, never revealed).
+    systemPrompt: "You are {{ vars.persona }}.\nAuth token: {{ secret('ANTHROPIC_API_KEY') }}",
+    // inputs.* → raw until an execution supplies the value.
+    prompt: "{{ inputs.question }}",
 };
 
 export const PreExecution: Story = {
@@ -306,6 +412,97 @@ export const GuardrailViolation: Story = {
                 },
             ],
         },
+    },
+};
+
+export const ExpressionsPreExecution: Story = {
+    name: "Expression resolution — pre-execution (vars + secret resolve, inputs stay raw)",
+    args: {
+        // No execution: Model resolves to "claude-3-haiku-20240307" and the system message
+        // resolves ("...precise technical assistant" + masked secret), but the prompt stays
+        // raw as "{{ inputs.question }}" because inputs need an execution.
+        task: expressionAgentTask,
+        namespace: "company.ai",
+        flowId: "ai_pebble_resolution_test",
+        displayMode: "full",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // vars.* resolve from the flow context even before any execution exists.
+        await waitFor(() => expect(canvas.getByText("claude-3-haiku-20240307")).toBeInTheDocument());
+        // System message: vars resolved and secret() masked (never revealed).
+        await waitFor(() => expect(canvas.getByText(/a precise technical assistant/)).toBeInTheDocument());
+        expect(canvas.getByText(/\[secret: ANTHROPIC_API_KEY]/)).toBeInTheDocument();
+        // inputs.* cannot resolve without an execution → the prompt stays raw.
+        expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
+    },
+};
+
+export const ExpressionsPostExecution: Story = {
+    name: "Expression resolution — post-execution (inputs resolve too)",
+    args: {
+        // With an execution present, the prompt's "{{ inputs.question }}" now also resolves
+        // to "What is Kestra in one sentence?" alongside the vars/secret already resolved.
+        task: expressionAgentTask,
+        namespace: "company.ai",
+        flowId: "ai_pebble_resolution_test",
+        displayMode: "full",
+        execution: {
+            id: "exec-expr-001",
+            namespace: "company.ai",
+            flowId: "ai_pebble_resolution_test",
+            state: { current: "SUCCESS", startDate: "2024-01-21T12:00:00Z" },
+            taskRunList: [
+                {
+                    id: "tr-expr-001",
+                    taskId: "ai-agent",
+                    executionId: "exec-expr-001",
+                    outputs: {
+                        textOutput:
+                            "Kestra is an open-source orchestration platform for building and scheduling workflows as code.",
+                        finishReason: "STOP",
+                        tokenUsage: {
+                            inputTokenCount: 34,
+                            outputTokenCount: 18,
+                            totalTokenCount: 52,
+                        },
+                        toolExecutions: [],
+                        intermediateResponses: [],
+                        guardrailViolated: false,
+                    },
+                },
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText("claude-3-haiku-20240307")).toBeInTheDocument());
+        // With an execution present, inputs.* now resolve too.
+        await waitFor(() =>
+            expect(canvas.getByText("What is Kestra in one sentence?")).toBeInTheDocument()
+        );
+        // The raw template must be gone.
+        expect(canvas.queryByText(/\{\{ inputs\.question }}/)).toBeNull();
+    },
+};
+
+export const ExpressionsRenderFailure: Story = {
+    name: "Expression resolution — render failure (falls back to raw templates)",
+    args: {
+        // The render endpoint answers 403 for this flow id. useRenderedExpressions must swallow
+        // the error and display every field as its raw, unresolved template.
+        task: expressionAgentTask,
+        namespace: "company.ai",
+        flowId: RENDER_FAILURE_FLOW_ID,
+        displayMode: "full",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // Render failed → nothing resolves; the raw Pebble templates remain on screen.
+        await waitFor(() => expect(canvas.getByText(/\{\{ vars\.model }}/)).toBeInTheDocument());
+        expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
+        // The secret stays as its raw expression and is never revealed, even on the failure path.
+        expect(canvas.getByText(/\{\{ secret\('ANTHROPIC_API_KEY'\) }}/)).toBeInTheDocument();
     },
 };
 
