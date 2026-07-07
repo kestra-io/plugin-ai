@@ -13,37 +13,13 @@ export interface RenderContext {
 }
 
 /**
- * The Kestra UI encodes the active tenant as the first path segment after the app base
- * (`/ui/<tenant>/flows/...`). The generated SDK otherwise resolves the tenant to its built-in
- * `"main"` default because the host configures the shared client via `useClient()`/manual URLs
- * and never calls `setSelectedTenant()`. On EE instances whose tenant is named differently that
- * default 404s, so we resolve the tenant from the URL and pass it explicitly per call.
+ * Tenant the host UI resolved and persisted on navigation (EE writes it under `selectedTenant`).
+ * We pass it explicitly because the plugin bundles its own SDK copy whose global tenant stays at the
+ * `"main"` default. Absent on single-tenant OSS — there the `"main"` default is already correct.
  */
 function currentTenant(): string | undefined {
     if (typeof window === "undefined") return undefined;
-    // KESTRA_UI_PATH is the absolute UI base (e.g. "/ui/"). It can be a relative "./" in some
-    // templated builds, so only trust it when absolute and otherwise assume the conventional mount.
-    const raw = (window as { KESTRA_UI_PATH?: string }).KESTRA_UI_PATH;
-    const base = raw && raw.startsWith("/") ? raw.replace(/\/$/, "") : "/ui";
-    let path = window.location.pathname;
-    if (base && path.startsWith(base)) {
-        path = path.slice(base.length);
-    }
-    return path.split("/").find(Boolean) || undefined;
-}
-
-/**
- * Kestra's `CsrfTokenFilter` rejects cookie-authenticated non-safe requests (POST) that lack a
- * CSRF token with a 403. `expressions/render` is a POST, so the browser (JWT/basic-auth cookie)
- * must send the token. The host app reads it from `<meta name="csrf-token">` and forwards it as
- * the `X-CSRF-TOKEN` header, but the generated SDK client we call has no such interceptor, so we
- * attach it ourselves. Returns an empty object when there is no token (e.g. Authorization-header
- * clients, which the filter exempts).
- */
-function csrfHeaders(): Record<string, string> {
-    if (typeof document === "undefined") return {};
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-    return token ? { "X-CSRF-TOKEN": token } : {};
+    return window.localStorage.getItem("selectedTenant") ?? undefined;
 }
 
 /**
@@ -83,7 +59,6 @@ export function useRenderedExpressions(
                     ...context(),
                 },
                 {
-                    headers: csrfHeaders(),
                     // Best-effort display call: never let a failed render surface the host's global
                     // error UI. Treating 404 as a non-error skips the SDK's full-page 404 overlay,
                     // and showMessageOnError suppresses the error toast for other statuses (403/5xx).
