@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import dev.langchain4j.exception.RateLimitException;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -27,6 +28,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ChatCompletionStrictJsonModeIntegrationTest {
     private final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");

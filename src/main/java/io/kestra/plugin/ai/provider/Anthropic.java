@@ -60,6 +60,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           type: io.kestra.plugin.ai.provider.Anthropic
                           apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
                           modelName: claude-3-haiku-20240307
+                        configuration:
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024
                           returnThinking: false

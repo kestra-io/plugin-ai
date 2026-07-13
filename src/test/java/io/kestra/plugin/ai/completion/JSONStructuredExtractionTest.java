@@ -6,6 +6,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -35,6 +36,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
@@ -53,7 +55,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
                 "systemMessage", "You extract structured JSON data from natural language text.",
                 "jsonFields", List.of("name", "date"),
                 "schemaName", "Person",
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "apiKey", GEMINI_API_KEY
             )
         );
@@ -204,10 +206,14 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        JSONStructuredExtraction.Output output = task.run(runContext);
+        try {
+            JSONStructuredExtraction.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getExtractedJson(), notNullValue());
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getExtractedJson(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -292,10 +298,14 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        JSONStructuredExtraction.Output output = task.run(runContext);
+        try {
+            JSONStructuredExtraction.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getExtractedJson(), notNullValue());
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getExtractedJson(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -336,11 +346,15 @@ class JSONStructuredExtractionTest extends ContainerTest {
             )
             .build();
 
-        JSONStructuredExtraction.Output output = task.run(runContext);
+        try {
+            JSONStructuredExtraction.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(true));
-        assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
-        assertThat(output.getExtractedJson(), nullValue());
+            assertThat(output.isGuardrailViolated(), is(true));
+            assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
+            assertThat(output.getExtractedJson(), nullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test

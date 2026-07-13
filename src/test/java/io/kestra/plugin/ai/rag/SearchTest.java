@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -17,6 +20,8 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class SearchTest extends ContainerTest {
 
@@ -28,7 +33,7 @@ class SearchTest extends ContainerTest {
         // Given
         var runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );

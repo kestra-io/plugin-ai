@@ -10,6 +10,9 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -30,6 +33,8 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class IngestDocumentTest extends ContainerTest {
 
@@ -40,7 +45,7 @@ class IngestDocumentTest extends ContainerTest {
     void inlineDocuments() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -72,7 +77,7 @@ class IngestDocumentTest extends ContainerTest {
     void internalStorageURIs() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -108,7 +113,7 @@ class IngestDocumentTest extends ContainerTest {
     void workingDirectoryPath() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -145,7 +150,7 @@ class IngestDocumentTest extends ContainerTest {
     void externalURLs() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );
@@ -177,7 +182,7 @@ class IngestDocumentTest extends ContainerTest {
     void inlineDocumentsWithBulkSize() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint
             )
         );

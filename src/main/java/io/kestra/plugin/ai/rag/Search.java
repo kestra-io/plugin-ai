@@ -130,6 +130,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
     @PluginProperty(group = "main")
     private EmbeddingStoreProvider embeddings;
 
+    @Schema(title = "Controls the output: NONE returns metrics only, FETCH/FETCH_ONE return matches, STORE writes matches to internal storage")
     @NotNull
     @Builder.Default
     @PluginProperty(group = "processing")

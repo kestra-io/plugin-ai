@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -26,6 +27,7 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class QdrantTest extends ContainerTest {
 
@@ -58,7 +60,7 @@ class QdrantTest extends ContainerTest {
             QDRANT_COLLECTION_NAME,
             Collections.VectorParams.newBuilder()
                 .setDistance(Collections.Distance.Cosine)
-                .setSize(2048) // tinydolphin model below produces 2048-dimension embeddings
+                .setSize(384) // chroma/all-minilm-l6-v2-f32 embedding model produces 384-dimension embeddings
                 .build()
         ).get();
 
@@ -74,7 +76,7 @@ class QdrantTest extends ContainerTest {
     void inlineDocuments() throws Exception {
         var runContext = runContextFactory.of(
             Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )

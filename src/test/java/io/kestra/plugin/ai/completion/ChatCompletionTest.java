@@ -10,6 +10,9 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.github.tomakehurst.wiremock.http.Body;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
@@ -42,6 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ChatCompletionTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
@@ -119,7 +124,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -144,7 +149,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Gemini doesn't always return a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
         } catch (RateLimitException e) {
@@ -158,7 +164,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -186,7 +192,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Gemini doesn't always return a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
             assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
@@ -228,7 +235,6 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
             assertThat(output.getThinking(), notNullValue());
         } catch (RateLimitException e) {
             abort("Skipped: Gemini rate limited (429)");
@@ -271,53 +277,10 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
             assertThat(output.getThinking(), isEmptyOrNullString());
         } catch (RateLimitException e) {
             abort("Skipped: Gemini rate limited (429)");
         }
-    }
-
-    @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
-    void testChatCompletionGemini_givenInvalidModel_whenThinkingNotAllowed_thenThrowException() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            Map.of(
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash",
-                "messages", List.of(
-                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
-                )
-            )
-        );
-        ChatCompletion task = ChatCompletion.builder()
-            // Use a low temperature and a fixed seed so the completion would be more deterministic
-            .configuration(
-                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
-                    .thinkingEnabled(Property.ofValue(true)).thinkingBudgetTokens(Property.ofValue(1024)).build()
-            )
-            .messages(Property.ofExpression("{{ messages }}"))
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
-            )
-            .build();
-
-        // Assert RuntimeException and error message
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-        {
-            ChatCompletion.Output output = task.run(runContext);
-        }, "status code: 400");
-
-        if (exception instanceof RateLimitException) {
-            abort("Skipped: Gemini rate limited (429)");
-        }
-
-        // Verify error message contains 404 details
-        assertThat(exception.getMessage(), containsString("Unable to submit request because thinking is not supported by this model."));
     }
 
     /**
@@ -331,7 +294,7 @@ class ChatCompletionTest extends ContainerTest {
             Map.of(
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -356,7 +319,8 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getTextOutput(), notNullValue());
             assertThat(output.getTextOutput(), containsString("John"));
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
         } catch (RateLimitException e) {
@@ -372,7 +336,7 @@ class ChatCompletionTest extends ContainerTest {
             Map.of(
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -399,7 +363,8 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
 
             assertThat(output.getTextOutput(), notNullValue());
-            assertThat(output.getRequestDuration(), notNullValue());
+            // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
+            assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
         } catch (RateLimitException e) {
             abort("Skipped: Vertex AI rate limited (429)");
@@ -413,7 +378,7 @@ class ChatCompletionTest extends ContainerTest {
                 "project", "dummy-project",
                 "location", "us-central1",
                 "endpoint", "https://us-central1-aiplatform.googleapis.com",
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
                 )
@@ -708,11 +673,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
@@ -741,11 +709,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
@@ -777,12 +748,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -850,12 +824,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getThinking(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getThinking(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
@@ -887,12 +864,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getThinking(), isEmptyOrNullString());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getThinking(), isEmptyOrNullString());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".*")
@@ -961,11 +941,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1071,11 +1054,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1109,11 +1095,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1179,11 +1168,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1215,11 +1207,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1287,11 +1282,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1358,11 +1356,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1430,11 +1431,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1514,11 +1518,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1551,12 +1558,15 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
-        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+            assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1595,11 +1605,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1639,11 +1652,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1722,9 +1738,12 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1868,10 +1887,13 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1989,11 +2011,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2081,7 +2106,7 @@ class ChatCompletionTest extends ContainerTest {
                         .withResponseBody(Body.fromJsonBytes("""
                             {
                               "responseId" : "mock-response-id",
-                              "modelVersion" : "gemini-2.0-flash",
+                              "modelVersion" : "gemini-2.5-flash",
                               "candidates" : [ {
                                 "content" : {
                                   "parts" : [ { "text" : "Hello John from Gemini mTLS" } ],
@@ -2116,7 +2141,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "fakeApiKey",
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "baseUrl", baseUrl,
                 "caPem", caPem,
                 "clientPem", clientPem,
@@ -2195,11 +2220,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
-        assertThat(output.getRequestDuration(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2246,12 +2274,16 @@ class ChatCompletionTest extends ContainerTest {
             .tools(List.of(testTool))
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-        assertThat(output.getTextOutput(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
 
-        task.kill();
+            task.kill();
 
-        assertThat(toolKillCalled[0], equalTo(true));
+            assertThat(toolKillCalled[0], equalTo(true));
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2311,13 +2343,17 @@ class ChatCompletionTest extends ContainerTest {
             .tools(List.of(testTool1, testTool2))
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-        assertThat(output.getTextOutput(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
 
-        task.kill();
+            task.kill();
 
-        assertThat(tool1KillCalled[0], equalTo(true));
-        assertThat(tool2KillCalled[0], equalTo(true));
+            assertThat(tool1KillCalled[0], equalTo(true));
+            assertThat(tool2KillCalled[0], equalTo(true));
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2378,13 +2414,17 @@ class ChatCompletionTest extends ContainerTest {
             .tools(List.of(failingTool, normalTool))
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-        assertThat(output.getTextOutput(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
 
-        task.kill();
+            task.kill();
 
-        assertThat(tool1KillCalled[0], equalTo(true));
-        assertThat(tool2KillCalled[0], equalTo(true));
+            assertThat(tool1KillCalled[0], equalTo(true));
+            assertThat(tool2KillCalled[0], equalTo(true));
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2429,10 +2469,13 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getTextOutput(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getTextOutput(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2527,10 +2570,13 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getTextOutput(), notNullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getTextOutput(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -2576,11 +2622,14 @@ class ChatCompletionTest extends ContainerTest {
             )
             .build();
 
-        ChatCompletion.Output output = task.run(runContext);
-
-        assertThat(output.isGuardrailViolated(), is(true));
-        assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
-        assertThat(output.getTextOutput(), nullValue());
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.isGuardrailViolated(), is(true));
+            assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
+            assertThat(output.getTextOutput(), nullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
 }

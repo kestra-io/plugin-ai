@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 
@@ -34,10 +35,14 @@ import io.kestra.plugin.core.log.Log;
 
 import jakarta.inject.Inject;
 
+import dev.langchain4j.exception.RateLimitException;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.abort;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class AIAgentTest {
     private static final String PINECONE_API_KEY = System.getenv("PINECONE_API_KEY");
@@ -352,7 +357,7 @@ class AIAgentTest {
     void withGoogleCustomWebSearchContentRetriever() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "apiKey", GOOGLE_API_KEY,
                 "csi", GOOGLE_CSI
             )
@@ -380,9 +385,13 @@ class AIAgentTest {
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
 
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getTextOutput()).contains("Paris");
+        try {
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getTextOutput()).contains("Paris");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".*")
@@ -417,9 +426,13 @@ class AIAgentTest {
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
 
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getTextOutput()).contains("Paris");
+        try {
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getTextOutput()).contains("Paris");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     /**
@@ -436,7 +449,7 @@ class AIAgentTest {
     void withEmbeddingStoreRetriever() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "googleApiKey", GOOGLE_API_KEY
             )
         );
@@ -463,41 +476,45 @@ class AIAgentTest {
             )
             .build();
 
-        IngestDocument.Output ingestOutput = ingest.run(runContext);
-        assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
+        try {
+            IngestDocument.Output ingestOutput = ingest.run(runContext);
+            assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
 
-        // Query using EmbeddingStoreRetriever
-        var agent = AIAgent.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                    .build()
-            )
-            .contentRetrievers(
-                Property.ofValue(
-                    List.of(
-                        EmbeddingStoreRetriever.builder()
-                            .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
-                            .embeddingProvider(
-                                GoogleGemini.builder()
-                                    .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-001"))
-                                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                                    .build()
-                            )
-                            .build()
+            // Query using EmbeddingStoreRetriever
+            var agent = AIAgent.builder()
+                .provider(
+                    GoogleGemini.builder()
+                        .type(GoogleGemini.class.getName())
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                        .build()
+                )
+                .contentRetrievers(
+                    Property.ofValue(
+                        List.of(
+                            EmbeddingStoreRetriever.builder()
+                                .embeddings(io.kestra.plugin.ai.embeddings.KestraKVStore.builder().build())
+                                .embeddingProvider(
+                                    GoogleGemini.builder()
+                                        .type(GoogleGemini.class.getName())
+                                        .modelName(Property.ofValue("gemini-embedding-001"))
+                                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                        .build()
+                                )
+                                .build()
+                        )
                     )
                 )
-            )
-            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .build();
+                .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+                .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .build();
 
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getTextOutput()).contains("Paris");
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getTextOutput()).contains("Paris");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     /**
@@ -507,7 +524,7 @@ class AIAgentTest {
      * <li><b>Two Kestra KVStore embedding stores</b> containing technical and business documents</li>
      * <li><b>Google Gemini</b> for both embedding generation
      * ({@code gemini-embedding-001}) and LLM responses
-     * ({@code gemini-2.0-flash})</li>
+     * ({@code gemini-2.5-flash})</li>
      * <li><b>Tavily Web Search</b> for real-time, general-purpose internet search</li>
      * <li><b>Google Custom Search (CSE)</b> for domain-specific or curated web search results</li>
      * </ul>
@@ -520,7 +537,7 @@ class AIAgentTest {
     void withMultipleEmbeddingStores_andWebSearches() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "googleApiKey", GOOGLE_API_KEY,
                 "tavilyApiKey", TAVILY_API_KEY,
                 "csi", GOOGLE_CSI
@@ -551,94 +568,98 @@ class AIAgentTest {
             )
             .build();
 
-        technicalIngest.run(runContext);
+        try {
+            technicalIngest.run(runContext);
 
-        // Ingest business docs into KV Store 2
-        var businessIngest = IngestDocument.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-001"))
-                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                    .build()
-            )
-            .embeddings(
-                io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
-                    .kvName(Property.ofValue("business-docs"))
-                    .build()
-            )
-            .drop(Property.ofValue(true))
-            .fromDocuments(
-                List.of(
-                    IngestDocument.InlineDocument.builder()
-                        .content(Property.ofValue("We serve enterprise customers in financial services and healthcare"))
+            // Ingest business docs into KV Store 2
+            var businessIngest = IngestDocument.builder()
+                .provider(
+                    GoogleGemini.builder()
+                        .type(GoogleGemini.class.getName())
+                        .modelName(Property.ofValue("gemini-embedding-001"))
+                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
                         .build()
                 )
-            )
-            .build();
-
-        businessIngest.run(runContext);
-
-        // Query using multiple embedding stores + multiple web searches
-        var agent = AIAgent.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                    .build()
-            )
-            .contentRetrievers(
-                Property.ofValue(
+                .embeddings(
+                    io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                        .kvName(Property.ofValue("business-docs"))
+                        .build()
+                )
+                .drop(Property.ofValue(true))
+                .fromDocuments(
                     List.of(
-                        // Embedding Store 1
-                        EmbeddingStoreRetriever.builder()
-                            .embeddings(
-                                io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
-                                    .kvName(Property.ofValue("technical-docs"))
-                                    .build()
-                            )
-                            .embeddingProvider(
-                                GoogleGemini.builder()
-                                    .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-001"))
-                                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                                    .build()
-                            )
-                            .build(),
-                        // Embedding Store 2
-                        EmbeddingStoreRetriever.builder()
-                            .embeddings(
-                                io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
-                                    .kvName(Property.ofValue("business-docs"))
-                                    .build()
-                            )
-                            .embeddingProvider(
-                                GoogleGemini.builder()
-                                    .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-001"))
-                                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                                    .build()
-                            )
-                            .build(),
-                        // Web Search 1: Tavily
-                        TavilyWebSearch.builder()
-                            .apiKey(Property.ofExpression("{{ tavilyApiKey }}"))
-                            .build(),
-                        // Web Search 2: Google Custom Search
-                        GoogleCustomWebSearch.builder()
-                            .csi(Property.ofExpression("{{ csi }}"))
-                            .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                        IngestDocument.InlineDocument.builder()
+                            .content(Property.ofValue("We serve enterprise customers in financial services and healthcare"))
                             .build()
                     )
                 )
-            )
-            .prompt(Property.ofValue("What is Kestra and what industries does it serve?"))
-            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
-            .build();
+                .build();
 
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
+            businessIngest.run(runContext);
+
+            // Query using multiple embedding stores + multiple web searches
+            var agent = AIAgent.builder()
+                .provider(
+                    GoogleGemini.builder()
+                        .type(GoogleGemini.class.getName())
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                        .build()
+                )
+                .contentRetrievers(
+                    Property.ofValue(
+                        List.of(
+                            // Embedding Store 1
+                            EmbeddingStoreRetriever.builder()
+                                .embeddings(
+                                    io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                                        .kvName(Property.ofValue("technical-docs"))
+                                        .build()
+                                )
+                                .embeddingProvider(
+                                    GoogleGemini.builder()
+                                        .type(GoogleGemini.class.getName())
+                                        .modelName(Property.ofValue("gemini-embedding-001"))
+                                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                        .build()
+                                )
+                                .build(),
+                            // Embedding Store 2
+                            EmbeddingStoreRetriever.builder()
+                                .embeddings(
+                                    io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                                        .kvName(Property.ofValue("business-docs"))
+                                        .build()
+                                )
+                                .embeddingProvider(
+                                    GoogleGemini.builder()
+                                        .type(GoogleGemini.class.getName())
+                                        .modelName(Property.ofValue("gemini-embedding-001"))
+                                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                        .build()
+                                )
+                                .build(),
+                            // Web Search 1: Tavily
+                            TavilyWebSearch.builder()
+                                .apiKey(Property.ofExpression("{{ tavilyApiKey }}"))
+                                .build(),
+                            // Web Search 2: Google Custom Search
+                            GoogleCustomWebSearch.builder()
+                                .csi(Property.ofExpression("{{ csi }}"))
+                                .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                .build()
+                        )
+                    )
+                )
+                .prompt(Property.ofValue("What is Kestra and what industries does it serve?"))
+                .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+                .build();
+
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     /**
@@ -659,7 +680,7 @@ class AIAgentTest {
     void withMultipleDifferentEmbeddingStores_andWebSearch() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.0-flash",
+                "modelName", "gemini-2.5-flash",
                 "googleApiKey", GOOGLE_API_KEY,
                 "tavilyApiKey", TAVILY_API_KEY,
                 "pineconeApiKey", PINECONE_API_KEY
@@ -689,92 +710,96 @@ class AIAgentTest {
             )
             .build();
 
-        businessIngest.run(runContext);
+        try {
+            businessIngest.run(runContext);
 
-        var agent = AIAgent.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                    .build()
-            )
-            .contentRetrievers(
-                Property.ofValue(
-                    List.of(
+            var agent = AIAgent.builder()
+                .provider(
+                    GoogleGemini.builder()
+                        .type(GoogleGemini.class.getName())
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                        .build()
+                )
+                .contentRetrievers(
+                    Property.ofValue(
+                        List.of(
 
-                        /* ---------- Pinecone Retriever ---------- */
-                        EmbeddingStoreRetriever.builder()
-                            .embeddings(
-                                io.kestra.plugin.ai.embeddings.Pinecone.builder()
-                                    .apiKey(Property.ofExpression("{{ pineconeApiKey }}"))
-                                    .index(Property.ofValue("embeddings"))
-                                    .cloud(Property.ofValue("aws"))
-                                    .region(Property.ofValue("us-east-1"))
-                                    .namespace(Property.ofValue("test")) // optional
-                                    .build()
-                            )
-                            .embeddingProvider(
-                                GoogleGemini.builder()
-                                    .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-001"))
-                                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                                    .build()
-                            )
-                            .build(),
+                            /* ---------- Pinecone Retriever ---------- */
+                            EmbeddingStoreRetriever.builder()
+                                .embeddings(
+                                    io.kestra.plugin.ai.embeddings.Pinecone.builder()
+                                        .apiKey(Property.ofExpression("{{ pineconeApiKey }}"))
+                                        .index(Property.ofValue("embeddings"))
+                                        .cloud(Property.ofValue("aws"))
+                                        .region(Property.ofValue("us-east-1"))
+                                        .namespace(Property.ofValue("test")) // optional
+                                        .build()
+                                )
+                                .embeddingProvider(
+                                    GoogleGemini.builder()
+                                        .type(GoogleGemini.class.getName())
+                                        .modelName(Property.ofValue("gemini-embedding-001"))
+                                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                        .build()
+                                )
+                                .build(),
 
-                        /* ---------- KV Store #1 ---------- */
-                        EmbeddingStoreRetriever.builder()
-                            .embeddings(
-                                io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
-                                    .kvName(Property.ofValue("pinecone-sim"))
-                                    .build()
-                            )
-                            .embeddingProvider(
-                                GoogleGemini.builder()
-                                    .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-001"))
-                                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                                    .build()
-                            )
-                            .build(),
+                            /* ---------- KV Store #1 ---------- */
+                            EmbeddingStoreRetriever.builder()
+                                .embeddings(
+                                    io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                                        .kvName(Property.ofValue("pinecone-sim"))
+                                        .build()
+                                )
+                                .embeddingProvider(
+                                    GoogleGemini.builder()
+                                        .type(GoogleGemini.class.getName())
+                                        .modelName(Property.ofValue("gemini-embedding-001"))
+                                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                        .build()
+                                )
+                                .build(),
 
-                        /* ---------- KV Store #2 ---------- */
-                        EmbeddingStoreRetriever.builder()
-                            .embeddings(
-                                io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
-                                    .kvName(Property.ofValue("qdrant-sim"))
-                                    .build()
-                            )
-                            .embeddingProvider(
-                                GoogleGemini.builder()
-                                    .type(GoogleGemini.class.getName())
-                                    .modelName(Property.ofValue("gemini-embedding-001"))
-                                    .apiKey(Property.ofExpression("{{ googleApiKey }}"))
-                                    .build()
-                            )
-                            .build(),
+                            /* ---------- KV Store #2 ---------- */
+                            EmbeddingStoreRetriever.builder()
+                                .embeddings(
+                                    io.kestra.plugin.ai.embeddings.KestraKVStore.builder()
+                                        .kvName(Property.ofValue("qdrant-sim"))
+                                        .build()
+                                )
+                                .embeddingProvider(
+                                    GoogleGemini.builder()
+                                        .type(GoogleGemini.class.getName())
+                                        .modelName(Property.ofValue("gemini-embedding-001"))
+                                        .apiKey(Property.ofExpression("{{ googleApiKey }}"))
+                                        .build()
+                                )
+                                .build(),
 
-                        /* ---------- Tavily Web Search ---------- */
-                        TavilyWebSearch.builder()
-                            .apiKey(Property.ofExpression("{{ tavilyApiKey }}"))
-                            .build()
+                            /* ---------- Tavily Web Search ---------- */
+                            TavilyWebSearch.builder()
+                                .apiKey(Property.ofExpression("{{ tavilyApiKey }}"))
+                                .build()
+                        )
                     )
                 )
-            )
-            .prompt(Property.ofValue("What programming languages does Kestra support and which companies use it?"))
-            .configuration(
-                ChatConfiguration.builder()
-                    .temperature(Property.ofValue(0.1))
-                    .seed(Property.ofValue(123456789))
-                    .build()
-            )
-            .build();
+                .prompt(Property.ofValue("What programming languages does Kestra support and which companies use it?"))
+                .configuration(
+                    ChatConfiguration.builder()
+                        .temperature(Property.ofValue(0.1))
+                        .seed(Property.ofValue(123456789))
+                        .build()
+                )
+                .build();
 
-        var output = agent.run(runContext);
+            var output = agent.run(runContext);
 
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getTextOutput()).contains("Kestra");
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getTextOutput()).contains("Kestra");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -1055,10 +1080,14 @@ class AIAgentTest {
             )
             .build();
 
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getToolExecutions()).isNotEmpty();
-        assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_log");
+        try {
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getToolExecutions()).isNotEmpty();
+            assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_log");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     /**
@@ -1106,10 +1135,14 @@ class AIAgentTest {
             )
             .build();
 
-        // The key check is that no exception is thrown: returnThinking=true and
-        // sendThinking=true must not break a model that produces no thought_signatures.
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
+        try {
+            // The key check is that no exception is thrown: returnThinking=true and
+            // sendThinking=true must not break a model that produces no thought_signatures.
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
@@ -1154,10 +1187,14 @@ class AIAgentTest {
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .build();
 
-        var output = agent.run(runContext);
-        assertThat(output.getTextOutput()).isNotNull();
-        assertThat(output.getToolExecutions()).isNotEmpty();
-        assertThat(output.getToolExecutions()).extracting("requestName").contains("activate_skill");
+        try {
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getToolExecutions()).isNotEmpty();
+            assertThat(output.getToolExecutions()).extracting("requestName").contains("activate_skill");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
 }

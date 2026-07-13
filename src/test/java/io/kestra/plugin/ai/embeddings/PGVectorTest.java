@@ -6,6 +6,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.GenericContainer;
 
 import io.kestra.core.junit.annotations.KestraTest;
@@ -20,6 +21,7 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class PGVectorTest extends ContainerTest {
     @Inject
@@ -45,7 +47,7 @@ class PGVectorTest extends ContainerTest {
     void inlineDocuments() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "modelName", "tinydolphin",
+                "modelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )

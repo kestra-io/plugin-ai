@@ -11,6 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -28,6 +31,8 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock("kestra-h2-flyway")
 @KestraTest(startRunner = true)
 class KestraFlowTest {
     @Inject

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -23,6 +24,7 @@ import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class RedisTest extends ContainerTest {
 
@@ -46,6 +48,7 @@ class RedisTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "modelName", "tinydolphin",
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint,
                 "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
             )
@@ -57,6 +60,13 @@ class RedisTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
@@ -83,6 +93,13 @@ class RedisTest extends ContainerTest {
                 Ollama.builder()
                     .type(Ollama.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )

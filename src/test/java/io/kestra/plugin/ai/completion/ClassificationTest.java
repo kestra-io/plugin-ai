@@ -6,6 +6,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -33,6 +34,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.abort;
 
+@ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ClassificationTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
@@ -52,7 +54,7 @@ class ClassificationTest extends ContainerTest {
                 "prompt", "Is 'This is a joke' a good joke?",
                 "classes", List.of("true", "false"),
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.0-flash"
+                "modelName", "gemini-2.5-flash"
             )
         );
 
@@ -90,7 +92,7 @@ class ClassificationTest extends ContainerTest {
                 "classes", List.of("true", "false"),
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.0-flash"
+                "modelName", "gemini-2.5-flash"
             )
         );
 
@@ -108,11 +110,14 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        // WHEN
-        Classification.Output runOutput = task.run(runContext);
+        // WHEN / THEN
+        try {
+            Classification.Output runOutput = task.run(runContext);
 
-        // THEN
-        assertThat(runOutput.getClassification(), notNullValue());
+            assertThat(runOutput.getClassification(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -267,10 +272,14 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        Classification.Output output = task.run(runContext);
+        try {
+            Classification.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(false));
-        assertThat(output.getClassification(), notNullValue());
+            assertThat(output.isGuardrailViolated(), is(false));
+            assertThat(output.getClassification(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test
@@ -310,11 +319,15 @@ class ClassificationTest extends ContainerTest {
             )
             .build();
 
-        Classification.Output output = task.run(runContext);
+        try {
+            Classification.Output output = task.run(runContext);
 
-        assertThat(output.isGuardrailViolated(), is(true));
-        assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
-        assertThat(output.getClassification(), nullValue());
+            assertThat(output.isGuardrailViolated(), is(true));
+            assertThat(output.getGuardrailViolationMessage(), containsString("Response contains confidential information"));
+            assertThat(output.getClassification(), nullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
     }
 
     @Test

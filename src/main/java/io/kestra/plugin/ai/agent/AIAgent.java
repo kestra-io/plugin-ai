@@ -734,7 +734,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         title = "Observability",
         description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Observability observability;
 
     @Schema(
@@ -745,7 +745,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
     )
     @Nullable
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private Guardrails guardrails;
 
     @PluginProperty(group = "destination")
