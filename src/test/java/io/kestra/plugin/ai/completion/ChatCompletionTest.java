@@ -800,7 +800,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", ANTHROPIC_API_KEY,
-                "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
+                "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929,
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -841,7 +841,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", ANTHROPIC_API_KEY,
-                "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
+                "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929,
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -881,7 +881,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", ANTHROPIC_API_KEY,
-                "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_20250514,
+                "modelName", AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929,
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
