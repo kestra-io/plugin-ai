@@ -28,7 +28,7 @@ repositories {
     }
 }
 
-final targetJavaVersion = JavaVersion.VERSION_21
+final targetJavaVersion = JavaVersion.VERSION_25
 
 java {
     sourceCompatibility = targetJavaVersion
@@ -186,29 +186,9 @@ dependencies {
 
     // Memories
     testImplementation "org.testcontainers:postgresql:1.21.4"
-}
 
-/**********************************************************************************************************************\
- * Allure Reports
- **********************************************************************************************************************/
-dependencies {
-    testImplementation enforcedPlatform("io.kestra:platform:$kestraVersion")
-    testImplementation "io.qameta.allure:allure-junit5"
-}
-
-configurations {
-    agent {
-        canBeResolved = true
-        canBeConsumed = true
-    }
-}
-
-dependencies {
-    agent "org.aspectj:aspectjweaver:1.9.25.1"
-}
-
-test {
-    jvmArgs = ["-javaagent:${configurations.agent.singleFile}"]
+    // Kestra plugin
+    testImplementation "io.kestra.plugin:plugin-kestra:1.9.0"
 }
 
 /**********************************************************************************************************************\
