@@ -84,8 +84,8 @@ public class DashScope extends ModelProvider {
     @Schema(
         title = "API base URL",
         description = """
-                If you use a model in the China (Beijing) region, you need to replace the URL with: https://dashscope.aliyuncs.com/api/v1,
-                otherwise use the Singapore region of: "https://dashscope-intl.aliyuncs.com/api/v1.
+                If you use a model in the China (Beijing) region, you need to replace the URL with `https://dashscope.aliyuncs.com/api/v1`,
+                otherwise use the Singapore region of `https://dashscope-intl.aliyuncs.com/api/v1`.
                 The default value is computed based on the system timezone.
             """
     )

@@ -220,14 +220,14 @@ public class KestraFlow extends ToolProvider {
         description = "Any labels passed by the LLM will override those defined here.",
         implementation = Object.class, oneOf = { List.class, Map.class }
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "advanced")
     @JsonSerialize(using = ListOrMapOfLabelSerializer.class)
     @JsonDeserialize(using = ListOrMapOfLabelDeserializer.class)
     private List<@NoSystemLabelValidation Label> labels;
 
     @Builder.Default
     @Schema(
-        title = "Whether the flow should inherit labels from this execution that triggered it",
+        title = "Whether the flow should inherit labels from the execution that triggered it",
         description = """
             By default, labels are not inherited. If you set this option to `true`, the flow execution will inherit all labels from the agent's execution.
             Any labels passed by the LLM will override those defined here."""

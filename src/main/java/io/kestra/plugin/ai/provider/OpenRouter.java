@@ -61,7 +61,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           type: io.kestra.plugin.ai.provider.OpenRouter
                           apiKey: "{{ secret('OPENROUTER_API_KEY') }}"
                           baseUrl: https://openrouter.ai/api/v1
-                          modelName: x-ai/grok-beta
+                          modelName: openai/gpt-4o-mini
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.

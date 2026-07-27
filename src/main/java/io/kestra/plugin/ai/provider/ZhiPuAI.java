@@ -55,7 +55,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                 tasks:
                   - id: chat_completion
-                    type: io.kestra.plugin.ai.ChatCompletion
+                    type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.ZhiPuAI
                       apiKey: "{{ secret('ZHIPU_API_KEY') }}"
@@ -94,7 +94,7 @@ public class ZhiPuAI extends ModelProvider {
     private Property<Integer> maxRetries;
 
     @Schema(title = "The maximum number of tokens returned by this request")
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "execution")
     private Property<Integer> maxToken;
 
     @Override

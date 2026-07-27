@@ -58,7 +58,7 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.retriever.GoogleCustomWebSearch"
 )
 public class GoogleCustomWebSearch extends ContentRetrieverProvider {
-    @Schema(title = "Custom search engine ID (cx)")
+    @Schema(title = "Custom Search Engine ID", description = "The Programmable Search Engine ID, referred to as `cx` in Google's documentation.")
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> csi;

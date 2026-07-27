@@ -53,8 +53,8 @@ import io.kestra.core.models.annotations.PluginProperty;
                       # Use either `uri` or `host`/`port`:
                       # For gRPC (typical): milvus://localhost:19530
                       # For HTTP: http://localhost:9091
-                      uri: "http://localhost:19200"
-                      token: "{{ secret('MILVUS_TOKEN') }}"  # omit if auth is disabled
+                      uri: "http://localhost:9091"
+                      token: "{{ secret('MILVUS_TOKEN') }}"
                       collectionName: embeddings
                     fromExternalURLs:
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
@@ -67,7 +67,7 @@ public class Milvus extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Token",
-        description = "Milvus auth token. Required if authentication is enabled; omit for local deployments without auth."
+        description = "Milvus auth token. Required."
     )
     @NotNull
     @PluginProperty(secret = true, group = "main")

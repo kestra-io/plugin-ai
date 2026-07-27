@@ -48,7 +48,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-001
-                      apiKey: my_api_key
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Redis
                       host: localhost

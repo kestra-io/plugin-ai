@@ -35,7 +35,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @Schema(
     title = "Persist chat memory in PostgreSQL",
     description = """
-        Stores chat history in a PostgreSQL table keyed by `memory_id`; TTL sets an `expires_at` timestamp. Honors drop policies BEFORE/AFTER run; defaults to KEEP. Table is created if missing. Requires reachable Postgres with permissions to create tables."""
+        Stores chat history in a PostgreSQL table keyed by `memory_id`; TTL sets an `expires_at` timestamp. Honors drop policies BEFORE_TASKRUN/AFTER_TASKRUN; defaults to NEVER (memory is retained). Table is created if missing. Requires reachable Postgres with permissions to create tables."""
 )
 @Plugin(
     examples = {

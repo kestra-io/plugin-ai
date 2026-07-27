@@ -12,13 +12,13 @@ Store secrets in [secrets](https://kestra.io/docs/concepts/secret) and apply con
 
 ## Common properties
 
-All tasks that generate text accept a `configuration` object (`ChatConfiguration`) to tune the model: set `temperature`, `topK`, `topP`, `seed`, `maxToken`, `logRequests`, `logResponses`. Enable extended thinking with `thinkingEnabled`, `thinkingBudgetTokens`, and `returnThinking`. Control response format with `configuration.responseFormat` — set `type` to `TEXT` (default) or `JSON_SCHEMA`; for JSON output also set `jsonSchema` and optionally `strictJson`.
+All tasks that generate text accept a `configuration` object (`ChatConfiguration`) to tune the model: set `temperature`, `topK`, `topP`, `seed`, `maxToken`, `logRequests`, `logResponses`. Enable extended thinking with `thinkingEnabled`, `thinkingBudgetTokens`, and `returnThinking`. Control response format with `configuration.responseFormat` — set `type` to `TEXT` (default) or `JSON`; for JSON output also set `jsonSchema` and optionally `strictJson`.
 
 ## Tasks
 
 ### Completions
 
-`completion.ChatCompletion` sends a multi-turn conversation to the model — set `messages` (required, list of objects with `type` (`SYSTEM`, `USER`, or `AI`) and `content`) and `provider`. Optionally pass `configuration`, `tools` (list of tool providers), and `memory`. The output includes `textOutput`, `jsonOutput`, `tokenUsage`, `finishReason`, `toolExecutions`, `thinking`, and `sources`.
+`completion.ChatCompletion` sends a multi-turn conversation to the model — set `messages` (required, list of objects with `type` (`SYSTEM`, `USER`, or `AI`) and `content`) and `provider`. Optionally pass `configuration` and `tools` (list of tool providers). The output includes `textOutput`, `jsonOutput`, `tokenUsage`, `finishReason`, `toolExecutions`, `thinking`, and `sources`.
 
 `completion.Classification` classifies text — set `prompt` (required), `classes` (required, list of label strings), and `provider`. Optionally override `systemMessage` and pass `configuration`. The output includes `classification`, `tokenUsage`, and `finishReason`.
 
@@ -30,24 +30,26 @@ All tasks that generate text accept a `configuration` object (`ChatConfiguration
 
 `rag.IngestDocument` ingests documents into an embedding store — set `provider` (embedding model, required) and `embeddings` (store, required). Provide content via one or more of: `fromPath` (path in task working directory), `fromInternalURIs` (list of `kestra://` URIs), `fromExternalURLs` (list of HTTP URLs), or `fromDocuments` (inline list with `content` and optional `metadata`). Control chunking with `documentSplitter` (set `splitter` type: `RECURSIVE`, `PARAGRAPH`, `LINE`, `SENTENCE`, or `WORD`; plus `maxSegmentSizeInChars` and `maxOverlapSizeInChars`). Set `drop: true` to clear the store before ingesting. Set `bulkSize` to control batch size (default 500). The output includes `ingestedDocuments`, `inputTokenCount`, `outputTokenCount`, and `totalTokenCount`.
 
-`rag.Search` retrieves matching chunks from an embedding store — set `query` (required), `maxResults` (required), `minScore` (required), `provider` (required), and `embeddings` (required). Set `fetchType` to control output (default `NONE`; use `FETCH` or `STORE` to surface results). The output includes `results`, `uri`, and `size`.
+`rag.Search` retrieves matching chunks from an embedding store — set `query` (required), `maxResults` (required), `minScore` (required), `provider` (required), and `embeddings` (required). Set `fetchType` to control output (default `NONE`; use `FETCH`, `FETCH_ONE`, or `STORE` to surface results). The output includes `results`, `uri`, and `size`.
 
 `rag.ChatCompletion` runs a retrieval-augmented chat — set `prompt` (required) and `chatProvider` (required, the LLM). Configure retrieval via `embeddings` and `embeddingProvider`, or provide `contentRetrievers` (a list of `EmbeddingStoreRetriever` or `TavilyWebSearch` retriever objects). Control retrieval with `contentRetrieverConfiguration` (defaults: `maxResults` 3, `minScore` 0.0). Optionally set `systemMessage`, `tools`, `memory`, and `chatConfiguration`.
 
 ### Agent
 
-`agent.AIAgent` runs an autonomous agent loop — set `prompt` (required) and `provider` (required). Attach callable tools via `tools` (list of tool providers). Optionally set `systemMessage`, `configuration`, `memory`, `contentRetrievers`, `maxSequentialToolsInvocations`, `outputFiles`, and `observability` (LangfuseObservability for tracing).
+`agent.AIAgent` runs an autonomous agent loop — set `prompt` (required) and `provider` (required). Attach callable tools via `tools` (list of tool providers). Optionally set `systemMessage`, `configuration`, `memory`, `contentRetrievers`, `maxSequentialToolsInvocations`, `outputFiles`, `guardrails` (input/output rules evaluated before/after the model call), and `observability` (LangfuseObservability for tracing).
+
+`agent.A2AClient` proxies a prompt to a remote agent over the A2A (Agent-to-Agent) protocol — set `serverUrl` (required) and `prompt` (required). The output includes `textOutput`.
 
 ## Embedding stores
 
 Configure `embeddings` with one of these subtypes:
 
-- **KestraKVStore** — uses Kestra's built-in KV store; optionally set `kvName` (default `{{flow.id}}-embedding-store`)
+- **KestraKVStore** — uses Kestra's built-in KV store; optionally set `kvName` (default `{{ flow.id }}-embedding-store`)
 - **Pinecone** — set `apiKey`, `cloud`, `region`, and `index` (all required); optionally `namespace`
 - **Qdrant** — set `apiKey`, `host`, `port`, and `collectionName` (all required)
 - **Redis** — set `host` and `port` (both required); optionally set `indexName` (default `embedding-index`)
 - **PGVector** — set `host`, `port`, `user`, `password`, `database`, and `table` (all required); optionally `useIndex` (default false)
-- **MongoDBAtlas** — set `apiKey`, `collectionName`, and `databaseName` (all required)
+- **MongoDBAtlas** — set `scheme` (e.g. `mongodb+srv`), `host`, `database`, `collectionName`, and `indexName` (all required); authenticate with `username` and `password`
 - **Chroma** — connect to a Chroma vector database
 - **Weaviate** — connect to a Weaviate instance
 - **MariaDB** — use MariaDB as a vector store
@@ -73,5 +75,7 @@ Configure `tools` on chat and agent tasks with one of these subtypes:
 - **CodeExecution** — set `apiKey` (required, RapidAPI key for Judge0)
 - **GoogleCustomWebSearch** — set `apiKey` and `csi` (Custom Search Engine ID, both required)
 - **KestraFlow** / **KestraTask** — invoke other Kestra flows or tasks as tools
+- **AIAgent** — call a nested AI agent as a tool (sub-agent delegation); set `name`, `description`, and `provider`
+- **Skill** — provide reusable skills (instructions and resources) to an agent
 - **SseMcpClient** / **StdioMcpClient** / **StreamableHttpMcpClient** / **DockerMcpClient** — connect to MCP servers
 - **A2AClient** — connect to an A2A-compatible agent

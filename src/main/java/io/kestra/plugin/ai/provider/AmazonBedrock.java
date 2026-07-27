@@ -47,7 +47,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @Plugin(
     examples = {
         @Example(
-            title = "Chat completion with OpenAI",
+            title = "Chat completion with Amazon Bedrock",
             full = true,
             code = {
                 """
