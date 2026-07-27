@@ -36,7 +36,7 @@ import io.kestra.core.models.annotations.PluginProperty;
             full = true,
             code = {
                 """
-                    id: ai-agent-with-agent-tools
+                    id: a2a_remote_agent_tool
                     namespace: company.ai
 
                     inputs:

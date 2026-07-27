@@ -63,7 +63,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                         provider:
                           type: io.kestra.plugin.ai.provider.MistralAI
                           apiKey: "{{ secret('MISTRAL_API_KEY') }}"
-                          modelName: mistral:7b
+                          modelName: mistral-small-latest
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.

@@ -55,13 +55,13 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                     tasks:
                       - id: chat_completion
-                        type: io.kestra.plugin.ai.ChatCompletion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.OciGenAI
                           region: "{{ secret('OCI_GENAI_MODEL_REGION_PROPERTY') }}"
                           compartmentId: "{{ secret('OCI_GENAI_COMPARTMENT_ID_PROPERTY') }}"
                           authProvider: "{{ secret('OCI_GENAI_CONFIG_PROFILE_PROPERTY') }}"
-                          modelName: oracle.chat.gpt-3.5
+                          modelName: cohere.command-r-plus
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -85,7 +85,7 @@ public class OciGenAI extends ModelProvider {
     @PluginProperty(group = "main")
     private Property<String> region;
 
-    @Schema(title = "OCI SDK Authentication provider")
+    @Schema(title = "OCI config profile name", description = "Name of the profile in your OCI config file used to authenticate the SDK client. Defaults to `DEFAULT` when not set.")
     @PluginProperty(group = "connection")
     private Property<String> authProvider;
 
@@ -105,7 +105,7 @@ public class OciGenAI extends ModelProvider {
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        throw new UnsupportedOperationException("OciGenAI is currently not supported for image generation.");
+        throw new UnsupportedOperationException("OciGenAI is currently not supported for embeddings.");
     }
 
     private AuthenticationDetailsProvider createAuthProvider(final RunContext runContext) throws IllegalVariableEvaluationException {

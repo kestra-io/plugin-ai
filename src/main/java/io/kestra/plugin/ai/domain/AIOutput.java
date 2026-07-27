@@ -148,9 +148,16 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Builder
     @Getter
     public static class ToolExecution {
+        @Schema(title = "Request ID", description = "Identifier of the tool execution request.")
         private String requestId;
+
+        @Schema(title = "Request name", description = "Name of the tool that was invoked.")
         private String requestName;
+
+        @Schema(title = "Request arguments", description = "Arguments passed to the tool, parsed from the model's request.")
         private Map<String, Object> requestArguments;
+
+        @Schema(title = "Result", description = "Result returned by the tool execution.")
         private String result;
 
         public static ToolExecution from(dev.langchain4j.service.tool.ToolExecution toolExecution) throws JsonProcessingException {

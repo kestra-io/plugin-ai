@@ -1,7 +1,7 @@
 group: io.kestra.plugin.ai.agent
 name: "agent"
 title: "Agent"
-description: "Tasks that run AI agents combining system prompts, user input, tools, content retrievers, and optional memory to produce grounded responses."
+description: "Tasks that run AI agents combining system prompts, user input, tools, content retrievers, and optional memory to produce grounded responses, including proxying prompts to remote agents over the A2A protocol."
 body: ""
 videos: []
 createdBy: "Kestra Core Team"

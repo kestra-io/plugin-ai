@@ -98,6 +98,7 @@ public class Elasticsearch extends EmbeddingStoreProvider {
     private transient RestClient restClient;
 
     @NotNull
+    @Schema(title = "Connection", description = "Elasticsearch connection configuration (hosts, authentication, and TLS settings).")
     private ElasticsearchConnection connection;
 
     @NotNull

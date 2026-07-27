@@ -34,7 +34,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @JsonDeserialize
 @Schema(
     title = "Store embeddings in MariaDB",
-    description = "Persists embeddings to a MariaDB table; create/drop behavior is controlled by `createTable` and `drop`. Metadata defaults to COMBINED_JSON unless COLUMN_PER_KEY is configured with column/index definitions. Requires valid JDBC URL and credentials."
+    description = "Persists embeddings to a MariaDB table; create/drop behavior is controlled by `createTable` and `drop`. Metadata storage mode defaults to COLUMN_PER_KEY (which requires column/index definitions); set COMBINED_JSON to store metadata as a JSON object in a single column. Requires valid JDBC URL and credentials."
 )
 @Plugin(
     examples = {
@@ -59,6 +59,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                       databaseUrl: "{{ secret('MARIADB_DATABASE_URL') }}"
                       tableName: embeddings
                       fieldName: id
+                      createTable: true
                     fromExternalURLs:
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
@@ -119,8 +120,8 @@ public class MariaDB extends EmbeddingStoreProvider {
         title = "Metadata Storage Mode",
         description = """
               Determines how metadata is stored:
-                - COLUMN_PER_KEY: Use individual columns for each metadata field (requires columnDefinitions and indexes).
-                - COMBINED_JSON (default): Store metadata as a JSON object in a single column.
+                - COLUMN_PER_KEY (default): Use individual columns for each metadata field (requires columnDefinitions and indexes).
+                - COMBINED_JSON: Store metadata as a JSON object in a single column.
               If columnDefinitions and indexes are provided, COLUMN_PER_KEY must be used.
             """
     )

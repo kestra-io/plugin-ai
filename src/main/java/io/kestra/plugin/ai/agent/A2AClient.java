@@ -52,7 +52,7 @@ public class A2AClient extends Task implements RunnableTask<A2AClient.Output> {
     @PluginProperty(group = "main")
     protected Property<String> serverUrl;
 
-    @Schema(title = "Text prompt", description = "The input prompt for the language model")
+    @Schema(title = "Text prompt", description = "The input prompt sent to the remote A2A agent")
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> prompt;

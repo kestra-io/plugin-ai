@@ -1,7 +1,7 @@
 group: io.kestra.plugin.ai.tool
 name: "tool"
 title: "Tool"
-description: "Tasks that expose tools agents can call: Kestra flow/task runners, code execution, MCP clients, and web search to extend LLM reasoning with actions and real-time data."
+description: "Tasks that expose tools agents can call: Kestra flow/task runners, sub-agent and A2A delegation, skills, code execution, MCP clients, and web search to extend LLM reasoning with actions and real-time data."
 body: ""
 videos: []
 createdBy: "Kestra Core Team"

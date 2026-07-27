@@ -40,6 +40,7 @@ import lombok.experimental.SuperBuilder;
     examples = {
         @Example(
             title = "Use RAG with AIAgent using an embedding store content retriever. This example ingests documents into a KV embedding store and then uses an AI agent with the EmbeddingStoreRetriever to answer questions grounded in the ingested data.",
+            full = true,
             code = """
                 id: agent_with_rag
                 namespace: company.ai
@@ -50,7 +51,7 @@ import lombok.experimental.SuperBuilder;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-001
-                      googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     drop: true
@@ -63,7 +64,7 @@ import lombok.experimental.SuperBuilder;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever
                         embeddings:
@@ -71,7 +72,7 @@ import lombok.experimental.SuperBuilder;
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-embedding-001
-                          googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         maxResults: 3
                         minScore: 0.0
                     prompt: What is the capital of France and how many people live there?
@@ -79,6 +80,7 @@ import lombok.experimental.SuperBuilder;
         ),
         @Example(
             title = "Use multiple embedding stores simultaneously. This demonstrates the power of the content retriever approach - you can retrieve from multiple embedding stores and other sources in a single task.",
+            full = true,
             code = """
                 id: multi_store_rag
                 namespace: company.ai
@@ -89,16 +91,16 @@ import lombok.experimental.SuperBuilder;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-2.5-flash
-                      googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever
                         embeddings:
                           type: io.kestra.plugin.ai.embeddings.Pinecone
-                          pineconeApiKey: "{{ secret('PINECONE_API_KEY') }}"
+                          apiKey: "{{ secret('PINECONE_API_KEY') }}"
                           index: technical-docs
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.OpenAI
-                          googleApiKey: "{{ secret('OPENAI_API_KEY') }}"
+                          apiKey: "{{ secret('OPENAI_API_KEY') }}"
                           modelName: text-embedding-3-small
                       - type: io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever
                         embeddings:
@@ -109,9 +111,9 @@ import lombok.experimental.SuperBuilder;
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-embedding-001
-                          googleApiKey: "{{ secret('GEMINI_API_KEY') }}"
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
-                        tavilyApiKey: "{{ secret('TAVILY_API_KEY') }}"
+                        apiKey: "{{ secret('TAVILY_API_KEY') }}"
                     prompt: What are the latest trends in data orchestration?
                 """
         )
