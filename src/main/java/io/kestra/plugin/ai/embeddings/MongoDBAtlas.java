@@ -59,6 +59,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.MongoDBAtlas
+                      scheme: mongodb+srv
                       username: "{{ secret('MONGODB_ATLAS_USERNAME') }}"
                       password: "{{ secret('MONGODB_ATLAS_PASSWORD') }}"
                       host: "{{ secret('MONGODB_ATLAS_HOST') }}"
@@ -92,7 +93,8 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
     @PluginProperty(group = "main")
     private Property<String> host;
 
-    @Schema(title = "The database")
+    @NotNull
+    @Schema(title = "The database", description = "Name of the database. Required.")
     @PluginProperty(group = "connection")
     private Property<String> database;
 

@@ -48,7 +48,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                     tasks:
                       - id: chat_completion
-                        type: io.kestra.plugin.ai.ChatCompletion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.LocalAI
                           modelName: gemma-3-1b-it

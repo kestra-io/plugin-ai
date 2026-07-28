@@ -49,12 +49,12 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                     tasks:
                       - id: chat_completion
-                        type: io.kestra.plugin.ai.ChatCompletion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.WorkersAI
                           accountId: "{{ secret('WORKERS_AI_ACCOUNT_ID') }}"
                           apiKey: "{{ secret('WORKERS_AI_API_KEY') }}"
-                          modelName: @cf/meta/llama-2-7b-chat-fp16
+                          modelName: "@cf/meta/llama-2-7b-chat-fp16"
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.

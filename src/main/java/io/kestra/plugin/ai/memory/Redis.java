@@ -33,7 +33,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @Schema(
     title = "Persist chat memory in Redis",
     description = """
-        Stores chat history in Redis under `memoryId` with TTL-based expiry. Supports drop policies BEFORE/AFTER task run; defaults to KEEP. Ensure Redis is reachable; no TLS/auth fields are defined here."""
+        Stores chat history in Redis under `memoryId` with TTL-based expiry. Supports drop policies BEFORE_TASKRUN/AFTER_TASKRUN; defaults to NEVER (memory is retained). Ensure Redis is reachable; no TLS/auth fields are defined here."""
 )
 @Plugin(
     examples = {

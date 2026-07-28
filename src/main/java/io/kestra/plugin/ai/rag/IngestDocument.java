@@ -144,7 +144,10 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     @PluginProperty(group = "source")
     private List<InlineDocument> fromDocuments;
 
-    @Schema(title = "Additional metadata to add to all ingested documents")
+    @Schema(
+        title = "Additional metadata",
+        description = "Note: this top-level property is not currently applied to ingested documents. To attach metadata, set the `metadata` field on each inline document under `fromDocuments`."
+    )
     @PluginProperty(group = "advanced")
     private Property<Map<String, String>> metadata;
 

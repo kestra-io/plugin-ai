@@ -99,7 +99,10 @@ import io.kestra.core.models.annotations.PluginProperty;
         Launches an MCP server inside a Docker container and exposes its tools to the agent. Requires an `image`; optional `command`, `env`, and `binds` control the container. Docker host defaults to the detected runtime; `logEvents` defaults to false. Provide registry credentials and TLS settings when pulling from private registries."""
 )
 public class DockerMcpClient extends AbstractMcpClient {
-    @Schema(title = "MCP client command, as a list of command parts")
+    @Schema(
+        title = "MCP client command, as a list of command parts",
+        description = "Arguments passed to the container entrypoint, e.g. `[\"/tmp\"]`. Each element is a separate command part."
+    )
     @PluginProperty(group = "advanced")
     private Property<List<String>> command;
 
@@ -158,7 +161,10 @@ public class DockerMcpClient extends AbstractMcpClient {
     @PluginProperty(group = "advanced")
     private Property<String> apiVersion;
 
-    @Schema(title = "Volume binds")
+    @Schema(
+        title = "Volume binds",
+        description = "Docker volume binds in `host_path:container_path` format, e.g. `[\"{{ workingDir }}:/tmp\"]` to share the task working directory with the container."
+    )
     @PluginProperty(group = "advanced")
     private Property<List<String>> binds;
 

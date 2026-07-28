@@ -451,7 +451,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     public static class Output extends AIOutput { // we must keep this one to keep the deprecated aiResponse
         @Schema(
             title = "AI Response",
-            description = "The generated response from the AI (Deprecated: use `completion` instead)"
+            description = "The generated response from the AI (Deprecated: use `textOutput` or `jsonOutput` instead)"
         )
         @Deprecated(forRemoval = true, since = "1.0.0")
         private String aiResponse;

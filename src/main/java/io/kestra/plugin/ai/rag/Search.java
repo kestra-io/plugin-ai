@@ -101,7 +101,7 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
 @Schema(
     title = "Search embeddings and optionally return results",
     description = """
-        Runs semantic search against the configured embedding store using the provided query embedding. `maxResults` limits hits and `minScore` filters low-similarity matches. `fetchType` controls output: NONE (metrics only), FETCH/FETCH_ONE (return matches), or STORE (write matches to internal storage)."""
+        Runs semantic search against the configured embedding store using the embedding of the provided `query`. `maxResults` limits hits and `minScore` filters low-similarity matches. `fetchType` controls output: NONE (metrics only), FETCH/FETCH_ONE (return matches), or STORE (write matches to internal storage)."""
 )
 public class Search extends Task implements RunnableTask<Search.Output> {
 
@@ -237,7 +237,10 @@ public class Search extends Task implements RunnableTask<Search.Output> {
         )
         private final URI uri;
 
-        @Schema(title = "Count of fetched or stored items")
+        @Schema(
+            title = "Number of matches",
+            description = "Total number of matches found by the search. For `FETCH_ONE`, this reflects the total matches found, not the single item returned in `results`."
+        )
         private Integer size;
     }
 }

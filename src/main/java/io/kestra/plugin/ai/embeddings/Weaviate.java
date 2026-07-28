@@ -28,7 +28,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @JsonDeserialize
 @Schema(
     title = "Store embeddings in Weaviate",
-    description = "Connects to a Weaviate cluster (HTTP + optional gRPC) using the given host/scheme. Defaults: objectClass \"Default\", avoidDups true, consistency QUORUM. Provide API key when auth is enabled; `drop=true` clears the class contents."
+    description = "Connects to a Weaviate cluster (HTTP + optional gRPC) using the given host/scheme. `apiKey`, `host`, `port`, and `objectClass` are required. Defaults: scheme \"https\", avoidDups true, consistency QUORUM, secured gRPC true. `drop=true` clears the class contents."
 )
 @Plugin(
     examples = {
@@ -48,10 +48,11 @@ import io.kestra.core.models.annotations.PluginProperty;
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.Weaviate
-                      apiKey: "{{ secret('WEAVIATE_API_KEY') }}"   # omit for local/no-auth
-                      scheme: https                                 # http | https
+                      apiKey: "{{ secret('WEAVIATE_API_KEY') }}"
+                      scheme: https                                 # http | https (defaults to https)
                       host: your-cluster-id.weaviate.network        # no protocol
-                      # port: 443                                   # optional; usually omit
+                      port: 443                                     # required (e.g. 443 for https, 80 for http)
+                      objectClass: Documents                        # required; must start with an uppercase letter
                     drop: true
                     fromExternalURLs:
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
@@ -64,7 +65,7 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "API key",
-        description = "Weaviate API key. Omit for local deployments without auth."
+        description = "Weaviate API key. Required to connect to the cluster."
     )
     @NotNull
     @PluginProperty(secret = true, group = "main")
@@ -87,15 +88,17 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Port",
-        description = "Optional port (e.g., 443 for https, 80 for http). Leave unset to use provider defaults."
+        description = "Port for the connection (e.g., 443 for https, 80 for http). Required."
     )
+    @NotNull
     @PluginProperty(group = "connection")
     private Property<Integer> port;
 
     @Schema(
         title = "Object class",
-        description = "Weaviate class to store objects in (must start with an uppercase letter). Defaults to \"Default\" if not set."
+        description = "Weaviate class to store objects in (must start with an uppercase letter). Required."
     )
+    @NotNull
     @PluginProperty(group = "advanced")
     private Property<String> objectClass;
 
@@ -136,7 +139,7 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Secure gRPC",
-        description = "Whether the gRPC connection is secured (TLS)."
+        description = "Whether the gRPC connection is secured (TLS). Defaults to true."
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> securedGrpc;
@@ -151,7 +154,7 @@ public class Weaviate extends EmbeddingStoreProvider {
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
 
-        // dimension is useless since the given embedding dimension will be used inside Qdrant
+        // dimension is useless since the given embedding dimension will be used inside Weaviate
 
         var store = WeaviateEmbeddingStore.builder()
             .apiKey(runContext.render(apiKey).as(String.class).orElseThrow())

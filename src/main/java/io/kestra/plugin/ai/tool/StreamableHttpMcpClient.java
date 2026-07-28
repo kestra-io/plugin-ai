@@ -29,11 +29,11 @@ import io.kestra.core.models.annotations.PluginProperty;
 @Plugin(
     examples = {
         @Example(
-            title = "Agent calling an MCP server via SSE",
+            title = "Agent calling an MCP server via HTTP streaming",
             full = true,
             code = {
                 """
-                    id: mcp_client_sse
+                    id: mcp_client_streamable_http
                     namespace: company.ai
 
                     inputs:
@@ -63,7 +63,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @Schema(
     title = "Call MCP server over HTTP streaming",
     description = """
-        Connects to an MCP server via HTTP streaming (chunked responses) and surfaces its tools to the agent. Requires `url`; `timeout`, `headers`, `logRequests`, and `logResponses` are optional and default to provider values with logging off."""
+        Connects to an MCP server via HTTP streaming (chunked responses) and surfaces its tools to the agent. Requires `url`; `timeout`, `headers`, `logRequests`, and `logResponses` are optional, with request/response logging off by default."""
 )
 public class StreamableHttpMcpClient extends AbstractMcpClient {
     @Schema(title = "URL of the MCP server")

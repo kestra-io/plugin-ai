@@ -65,7 +65,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           type: io.kestra.plugin.ai.provider.AzureOpenAI
                           apiKey: "{{ secret('AZURE_API_KEY') }}"
                           endpoint: https://your-resource.openai.azure.com/
-                          modelName: anthropic.claude-3-sonnet-20240229-v1:0
+                          modelName: gpt-4o-mini
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.

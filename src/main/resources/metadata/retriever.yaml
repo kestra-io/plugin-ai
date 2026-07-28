@@ -1,7 +1,7 @@
 group: io.kestra.plugin.ai.retriever
 name: "retriever"
 title: "Retriever"
-description: "Tasks that pull external context for Retrieval Augmented Generation: web search via Google or Tavily, or SQL database retrieval feeding results into AI prompts."
+description: "Tasks that pull external context for Retrieval Augmented Generation: embedding-store retrieval, web search via Google or Tavily, and SQL database retrieval, feeding results into AI prompts."
 body: ""
 videos: []
 createdBy: "Kestra Core Team"
