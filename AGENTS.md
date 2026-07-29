@@ -51,6 +51,7 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.provider.AzureOpenAI`
 - `io.kestra.plugin.ai.provider.DashScope`
 - `io.kestra.plugin.ai.provider.DeepSeek`
+- `io.kestra.plugin.ai.provider.DockerModel`
 - `io.kestra.plugin.ai.provider.GitHubModels`
 - `io.kestra.plugin.ai.provider.GoogleGemini`
 - `io.kestra.plugin.ai.provider.GoogleVertexAI`

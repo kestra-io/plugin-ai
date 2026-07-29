@@ -55,11 +55,10 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     }
 
     /**
-     * Resolves the API key to use when building models. Subclasses may override to provide a default
-     * (e.g. DockerModel returns "not-needed" since Docker Model Runner ignores the key).
+     * Resolves the API key to use when building models.
      */
-    protected String resolveApiKey(RunContext runContext) throws IllegalVariableEvaluationException {
-        return runContext.render(this.apiKey).as(String.class).orElseThrow();
+    protected final String resolveApiKey(RunContext runContext) throws IllegalVariableEvaluationException {
+        return runContext.render(this.getApiKey()).as(String.class).orElseThrow();
     }
 
     @Override

@@ -15,6 +15,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.completion.ChatCompletion;
+import io.kestra.plugin.ai.completion.ImageGeneration;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
@@ -24,8 +25,7 @@ import jakarta.inject.Inject;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @KestraTest
 class DockerModelTest {
@@ -151,38 +151,95 @@ class DockerModelTest {
 
         ChatCompletion.Output output = task.run(runContext);
 
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getTextOutput(), containsString("John"));
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getTextOutput()).contains("John");
 
         dmrMock.verify(postRequestedFor(urlPathEqualTo("/engines/v1/chat/completions")));
     }
 
     @Test
     void imageModel_shouldRouteToDefaultDiffuserEndpoint() throws Exception {
+        dmrMock.stubFor(
+            post(urlPathEqualTo("/engines/diffusers/v1/images/generations"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"data\": [{\"url\": \"http://localhost/mock-image.png\"}]}")
+                )
+        );
+
+        String wireMockBaseUrl = "http://localhost:" + dmrMock.getPort() + "/engines/v1";
+
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        ImageGeneration task = ImageGeneration.builder()
+            .prompt(Property.ofValue("A cat riding a bicycle"))
+            .provider(
+                DockerModel.builder()
+                    .type(DockerModel.class.getName())
+                    .modelName(Property.ofValue("ai/stable-diffusion"))
+                    .baseUrl(Property.ofValue(wireMockBaseUrl))
+                    .build()
+            )
+            .build();
+
+        ImageGeneration.Output output = task.run(runContext);
+
+        assertThat(output.getImageUrl()).isEqualTo("http://localhost/mock-image.png");
+
+        dmrMock.verify(postRequestedFor(urlPathEqualTo("/engines/diffusers/v1/images/generations")));
+    }
+
+    @Test
+    void imageModel_withCustomBaseUrl_shouldStillRewriteToDiffuserPath() throws Exception {
+        dmrMock.stubFor(
+            post(urlPathEqualTo("/engines/diffusers/v1/images/generations"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"data\": [{\"url\": \"http://localhost/mock-image-2.png\"}]}")
+                )
+        );
+
+        // A different host string that still carries the standard /engines/v1 path segment.
+        String customBaseUrl = "http://127.0.0.1:" + dmrMock.getPort() + "/engines/v1";
+
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        ImageGeneration task = ImageGeneration.builder()
+            .prompt(Property.ofValue("A dog surfing"))
+            .provider(
+                DockerModel.builder()
+                    .type(DockerModel.class.getName())
+                    .modelName(Property.ofValue("ai/stable-diffusion"))
+                    .baseUrl(Property.ofValue(customBaseUrl))
+                    .build()
+            )
+            .build();
+
+        ImageGeneration.Output output = task.run(runContext);
+
+        assertThat(output.getImageUrl()).isEqualTo("http://localhost/mock-image-2.png");
+
+        dmrMock.verify(postRequestedFor(urlPathEqualTo("/engines/diffusers/v1/images/generations")));
+    }
+
+    @Test
+    void imageModel_withNonMatchingBaseUrl_shouldFailFast() {
         var provider = DockerModel.builder()
             .type(DockerModel.class.getName())
             .modelName(Property.ofValue("ai/stable-diffusion"))
+            .baseUrl(Property.ofValue("https://gateway.example.com/dmr"))
             .build();
 
         var runContext = runContextFactory.of(Map.of());
 
-        // Verify the imageModel builds against the diffuser endpoint, not the chat endpoint.
-        // We check by constructing the model and confirming no exception (model builds successfully).
-        // The actual diffuserUrl is validated via the URL rewrite logic in DockerModel.imageModel().
-        String defaultBase = "http://localhost:12434/engines/v1";
-        String expectedDiffuserUrl = "http://localhost:12434/engines/diffusers/v1";
-
-        assertThat(defaultBase.replace("/engines/v1", "/engines/diffusers/v1"))
-            .isEqualTo(expectedDiffuserUrl);
-    }
-
-    @Test
-    void imageModel_withCustomBaseUrl_shouldStillRewriteToDiffuserPath() {
-        String customBase = "http://172.17.0.1:12434/engines/v1";
-        String expected = "http://172.17.0.1:12434/engines/diffusers/v1";
-
-        assertThat(customBase.replace("/engines/v1", "/engines/diffusers/v1"))
-            .isEqualTo(expected);
+        assertThatThrownBy(() -> provider.imageModel(runContext))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("baseUrl")
+            .hasMessageContaining("https://gateway.example.com/dmr");
     }
 
     // --- Live integration test (skipped unless DMR is reachable) ---
@@ -211,7 +268,7 @@ class DockerModelTest {
 
         ChatCompletion.Output output = task.run(runContext);
 
-        assertThat(output.getTextOutput(), notNullValue());
-        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getTextOutput()).isNotNull();
+        assertThat(output.getRequestDuration()).isNotNull();
     }
 }

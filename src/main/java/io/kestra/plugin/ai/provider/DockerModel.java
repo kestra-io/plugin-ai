@@ -103,7 +103,7 @@ public class DockerModel extends OpenAICompliantProvider {
 
     static final String DEFAULT_BASE_URL = "http://localhost:12434/engines/v1";
     private static final String DIFFUSER_PATH = "/engines/diffusers/v1";
-    private static final String CHAT_PATH = "/engines/v1";
+    private static final String BASE_PATH = "/engines/v1";
 
     @Schema(
         title = "API base URL",
@@ -126,11 +126,6 @@ public class DockerModel extends OpenAICompliantProvider {
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey = Property.ofValue("not-needed");
 
-    @Override
-    protected String resolveApiKey(RunContext runContext) throws IllegalVariableEvaluationException {
-        return runContext.render(this.apiKey).as(String.class).orElse("not-needed");
-    }
-
     /**
      * Routes image generation to the Diffusers endpoint by replacing the chat path segment.
      * Requires a diffuser-tagged model (e.g. ai/stable-diffusion).
@@ -138,7 +133,14 @@ public class DockerModel extends OpenAICompliantProvider {
     @Override
     public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         String resolvedBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL);
-        String diffuserUrl = resolvedBaseUrl.replace(CHAT_PATH, DIFFUSER_PATH);
+        if (!resolvedBaseUrl.contains(BASE_PATH)) {
+            throw new IllegalArgumentException(
+                "Cannot derive the Docker Model Runner Diffusers endpoint from baseUrl '" + resolvedBaseUrl +
+                    "': expected it to contain '" + BASE_PATH + "'. Set baseUrl to a Docker Model Runner " +
+                    "OpenAI-compatible endpoint, e.g. http://localhost:12434/engines/v1."
+            );
+        }
+        String diffuserUrl = resolvedBaseUrl.replace(BASE_PATH, DIFFUSER_PATH);
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(resolveApiKey(runContext))
