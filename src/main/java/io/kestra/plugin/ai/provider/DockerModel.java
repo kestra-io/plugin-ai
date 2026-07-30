@@ -67,7 +67,7 @@ import lombok.experimental.SuperBuilder;
                           type: io.kestra.plugin.ai.provider.DockerModel
                           modelName: ai/smollm2
                         messages:
-                          - role: user
+                          - type: USER
                             content: "{{ inputs.prompt }}"
                     """
             }
@@ -92,7 +92,7 @@ import lombok.experimental.SuperBuilder;
                           modelName: ai/smollm2
                           baseUrl: http://model-runner.docker.internal/engines/v1
                         messages:
-                          - role: user
+                          - type: USER
                             content: "{{ inputs.prompt }}"
                     """
             }
