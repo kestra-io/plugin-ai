@@ -242,6 +242,65 @@ class DockerModelTest {
             .hasMessageContaining("https://gateway.example.com/dmr");
     }
 
+    // --- unresolvable host: fail fast instead of a null-message error at inference time ---
+
+    // RFC 2606 reserves .invalid, so this never resolves — unlike model-runner.docker.internal,
+    // which does resolve inside containers on Docker Desktop.
+    private static final String UNRESOLVABLE_BASE_URL = "http://dmr-host-does-not-exist.invalid/engines/v1";
+
+    private DockerModel unresolvableProvider() {
+        return DockerModel.builder()
+            .type(DockerModel.class.getName())
+            .modelName(Property.ofValue("ai/smollm2"))
+            .baseUrl(Property.ofValue(UNRESOLVABLE_BASE_URL))
+            .build();
+    }
+
+    @Test
+    void chatModel_withUnresolvableHost_shouldFailFastWithActionableMessage() {
+        var runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(() -> unresolvableProvider().chatModel(runContext, ChatConfiguration.empty()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("dmr-host-does-not-exist.invalid")
+            .hasMessageContaining(DockerModel.DESKTOP_BASE_URL)
+            .hasMessageContaining(DockerModel.ENGINE_BASE_URL)
+            .hasMessageContaining(DockerModel.DEFAULT_BASE_URL);
+    }
+
+    @Test
+    void embeddingModel_withUnresolvableHost_shouldFailFast() {
+        var runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(() -> unresolvableProvider().embeddingModel(runContext))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("dmr-host-does-not-exist.invalid");
+    }
+
+    @Test
+    void imageModel_withUnresolvableHost_shouldFailFast() {
+        var runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(() -> unresolvableProvider().imageModel(runContext))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("dmr-host-does-not-exist.invalid");
+    }
+
+    @Test
+    void chatModel_withBaseUrlMissingHost_shouldFailFast() {
+        var provider = DockerModel.builder()
+            .type(DockerModel.class.getName())
+            .modelName(Property.ofValue("ai/smollm2"))
+            .baseUrl(Property.ofValue("/engines/v1"))
+            .build();
+
+        var runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(() -> provider.chatModel(runContext, ChatConfiguration.empty()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("no host component");
+    }
+
     // --- Live integration test (skipped unless DMR is reachable) ---
 
     @Test
