@@ -21,6 +21,7 @@ import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 
 import jakarta.inject.Inject;
+import jakarta.validation.Validator;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -32,6 +33,9 @@ class DockerModelTest {
 
     @Inject
     private RunContextFactory runContextFactory;
+
+    @Inject
+    private Validator validator;
 
     @RegisterExtension
     static WireMockExtension dmrMock = WireMockExtension.newInstance()
@@ -93,6 +97,29 @@ class DockerModelTest {
         String resolved = runContext.render(provider.getBaseUrl()).as(String.class).orElseThrow();
 
         assertThat(resolved).isEqualTo(customUrl);
+    }
+
+    // The parent's @NotNull apiKey field stays null behind DockerModel's shadow, so validating the provider
+    // in isolation reports it. This must NOT surface on a real flow: ChatCompletion.provider carries no @Valid,
+    // so provider constraints do not cascade. This test guards that guarantee — it fails if someone adds @Valid.
+    @Test
+    void validation_dockerModelWithoutApiKey_doesNotBreakContainingTask() {
+        ChatCompletion task = ChatCompletion.builder()
+            .id("docker_model_validation")
+            .type(ChatCompletion.class.getName())
+            .messages(Property.ofExpression("{{ messages }}"))
+            .configuration(ChatConfiguration.empty())
+            .provider(
+                DockerModel.builder()
+                    .type(DockerModel.class.getName())
+                    .modelName(Property.ofValue("ai/smollm2"))
+                    .build()
+            )
+            .build();
+
+        assertThat(validator.validate(task))
+            .extracting(v -> v.getPropertyPath().toString())
+            .noneMatch(path -> path.contains("apiKey"));
     }
 
     // --- WireMock-based tests (no live DMR required) ---
@@ -192,9 +219,9 @@ class DockerModelTest {
     }
 
     @Test
-    void imageModel_withCustomBaseUrl_shouldStillRewriteToDiffuserPath() throws Exception {
+    void imageModel_withReverseProxyPrefix_shouldRewriteOnlyTheEngineSegment() throws Exception {
         dmrMock.stubFor(
-            post(urlPathEqualTo("/engines/diffusers/v1/images/generations"))
+            post(urlPathEqualTo("/proxy/engines/diffusers/v1/images/generations"))
                 .willReturn(
                     aResponse()
                         .withStatus(200)
@@ -203,8 +230,9 @@ class DockerModelTest {
                 )
         );
 
-        // A different host string that still carries the standard /engines/v1 path segment.
-        String customBaseUrl = "http://127.0.0.1:" + dmrMock.getPort() + "/engines/v1";
+        // A reverse-proxy style base URL: /engines/v1 sits behind a /proxy prefix. The rewrite must
+        // touch only the engine segment and leave the prefix intact.
+        String customBaseUrl = "http://127.0.0.1:" + dmrMock.getPort() + "/proxy/engines/v1";
 
         RunContext runContext = runContextFactory.of(Map.of());
 
@@ -223,7 +251,7 @@ class DockerModelTest {
 
         assertThat(output.getImageUrl()).isEqualTo("http://localhost/mock-image-2.png");
 
-        dmrMock.verify(postRequestedFor(urlPathEqualTo("/engines/diffusers/v1/images/generations")));
+        dmrMock.verify(postRequestedFor(urlPathEqualTo("/proxy/engines/diffusers/v1/images/generations")));
     }
 
     @Test
@@ -240,6 +268,24 @@ class DockerModelTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("baseUrl")
             .hasMessageContaining("https://gateway.example.com/dmr");
+    }
+
+    // /engines/v1 must match only as a whole path segment; /engines/v10 is a different endpoint and
+    // must fail fast rather than be silently rewritten to /engines/diffusers/v10.
+    @Test
+    void imageModel_withVersionLikeSuffix_shouldFailFast() {
+        var provider = DockerModel.builder()
+            .type(DockerModel.class.getName())
+            .modelName(Property.ofValue("ai/stable-diffusion"))
+            .baseUrl(Property.ofValue("http://localhost:12434/engines/v10"))
+            .build();
+
+        var runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(() -> provider.imageModel(runContext))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("/engines/v1")
+            .hasMessageContaining("/engines/v10");
     }
 
     // --- unresolvable host: fail fast instead of a null-message error at inference time ---

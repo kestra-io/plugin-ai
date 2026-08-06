@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
@@ -121,9 +122,13 @@ public class DockerModel extends OpenAICompliantProvider {
     static final String DEFAULT_BASE_URL = "http://localhost:12434/engines/v1";
     static final String DESKTOP_BASE_URL = "http://model-runner.docker.internal/engines/v1";
     static final String ENGINE_BASE_URL = "http://172.17.0.1:12434/engines/v1";
-    static final String DEFAULT_API_KEY = "not-needed";
+    // Docker Model Runner does no auth, but the OpenAI client requires a non-empty key, so send a placeholder.
+    static final String PLACEHOLDER_API_KEY = "not-needed";
     private static final String DIFFUSER_PATH = "/engines/diffusers/v1";
     private static final String BASE_PATH = "/engines/v1";
+    // Match /engines/v1 only as a whole path segment (end of URL or followed by '/'), so a longer
+    // segment like /engines/v10 does not false-match and get silently rewritten.
+    private static final Pattern BASE_PATH_SEGMENT = Pattern.compile(Pattern.quote(BASE_PATH) + "(?=/|$)");
 
     @Schema(
         title = "API base URL",
@@ -153,7 +158,7 @@ public class DockerModel extends OpenAICompliantProvider {
     )
     @Builder.Default
     @PluginProperty(secret = true, group = "main")
-    private Property<String> apiKey = Property.ofValue(DEFAULT_API_KEY);
+    private Property<String> apiKey = Property.ofValue(PLACEHOLDER_API_KEY);
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
@@ -175,15 +180,16 @@ public class DockerModel extends OpenAICompliantProvider {
     @Override
     public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         String resolvedBaseUrl = runContext.render(getBaseUrl()).as(String.class).orElse(DEFAULT_BASE_URL);
-        if (!resolvedBaseUrl.contains(BASE_PATH)) {
+        var matcher = BASE_PATH_SEGMENT.matcher(resolvedBaseUrl);
+        if (!matcher.find()) {
             throw new IllegalArgumentException(
                 "Cannot derive the Docker Model Runner Diffusers endpoint from baseUrl '" + resolvedBaseUrl +
-                    "': expected it to contain '" + BASE_PATH + "'. Set baseUrl to a Docker Model Runner " +
-                    "OpenAI-compatible endpoint, e.g. http://localhost:12434/engines/v1."
+                    "': expected it to contain the path segment '" + BASE_PATH + "'. Set baseUrl to a Docker Model " +
+                    "Runner OpenAI-compatible endpoint, e.g. http://localhost:12434/engines/v1."
             );
         }
         assertHostResolvable(resolvedBaseUrl);
-        String diffuserUrl = resolvedBaseUrl.replace(BASE_PATH, DIFFUSER_PATH);
+        String diffuserUrl = matcher.replaceFirst(DIFFUSER_PATH);
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(resolveApiKey(runContext))
