@@ -984,8 +984,14 @@ class ChatCompletionTest extends ContainerTest {
             ChatCompletion.Output output = task.run(runContext);
         }, "status code: 401");
 
-        // Verify error message contains 404 details
-        assertThat(exception.getMessage(), containsString("Unauthorized"));
+        // Mistral returns a 401 whose body may be either a plain "Unauthorized"
+        // message or a JSON payload like {"detail":"Invalid API Key"}.
+        assertThat(
+            exception.getMessage(), anyOf(
+                containsString("Unauthorized"),
+                containsString("Invalid API Key")
+            )
+        );
     }
 
     @Test
