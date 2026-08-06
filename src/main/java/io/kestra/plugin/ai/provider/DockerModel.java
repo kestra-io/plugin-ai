@@ -121,6 +121,7 @@ public class DockerModel extends OpenAICompliantProvider {
     static final String DEFAULT_BASE_URL = "http://localhost:12434/engines/v1";
     static final String DESKTOP_BASE_URL = "http://model-runner.docker.internal/engines/v1";
     static final String ENGINE_BASE_URL = "http://172.17.0.1:12434/engines/v1";
+    static final String DEFAULT_API_KEY = "not-needed";
     private static final String DIFFUSER_PATH = "/engines/diffusers/v1";
     private static final String BASE_PATH = "/engines/v1";
 
@@ -152,7 +153,7 @@ public class DockerModel extends OpenAICompliantProvider {
     )
     @Builder.Default
     @PluginProperty(secret = true, group = "main")
-    private Property<String> apiKey = Property.ofValue("not-needed");
+    private Property<String> apiKey = Property.ofValue(DEFAULT_API_KEY);
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
@@ -173,7 +174,7 @@ public class DockerModel extends OpenAICompliantProvider {
      */
     @Override
     public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        String resolvedBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL);
+        String resolvedBaseUrl = runContext.render(getBaseUrl()).as(String.class).orElse(DEFAULT_BASE_URL);
         if (!resolvedBaseUrl.contains(BASE_PATH)) {
             throw new IllegalArgumentException(
                 "Cannot derive the Docker Model Runner Diffusers endpoint from baseUrl '" + resolvedBaseUrl +
@@ -191,7 +192,7 @@ public class DockerModel extends OpenAICompliantProvider {
     }
 
     private void assertHostResolvable(RunContext runContext) throws IllegalVariableEvaluationException {
-        assertHostResolvable(runContext.render(this.baseUrl).as(String.class).orElse(DEFAULT_BASE_URL));
+        assertHostResolvable(runContext.render(getBaseUrl()).as(String.class).orElse(DEFAULT_BASE_URL));
     }
 
     /**
