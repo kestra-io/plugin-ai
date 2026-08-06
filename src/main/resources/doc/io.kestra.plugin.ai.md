@@ -4,7 +4,7 @@ Run AI completions, structured extraction, image generation, RAG pipelines, and 
 
 ## Authentication
 
-All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each provider. Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
+All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each provider. Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
 
 Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses service account credentials.
 
