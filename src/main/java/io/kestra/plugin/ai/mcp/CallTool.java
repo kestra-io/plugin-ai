@@ -102,10 +102,19 @@ public class CallTool extends AbstractMcpTask implements RunnableTask<CallTool.O
         try (McpClient client = client(runContext)) {
             ToolExecutionResult result = client.executeTool(request);
 
+            if (result.isError() && rFailOnToolError) {
+                throw new IllegalStateException("MCP tool '" + rTool + "' returned an error: " + result.resultText());
+            }
+
+            if (result.isError()) {
+                runContext.logger().warn("MCP tool '{}' returned an error: {}", rTool, result.resultText());
+            }
+
             return Output.builder()
                 .result(result.resultText())
                 .structuredContent(result.result())
                 .isError(result.isError())
+                .errorMessage(result.isError() ? result.resultText() : null)
                 .build();
         } catch (ToolExecutionException | ToolArgumentsException e) {
             if (rFailOnToolError) {
