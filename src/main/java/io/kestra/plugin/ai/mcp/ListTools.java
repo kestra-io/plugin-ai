@@ -61,6 +61,11 @@ public class ListTools extends AbstractMcpTask implements RunnableTask<ListTools
         }
     }
 
+    @Override
+    public void kill() {
+        killClient();
+    }
+
     private static ToolDefinition toToolDefinition(ToolSpecification spec) {
         Map<String, Object> parameters = spec.parameters() == null
             ? Map.of()

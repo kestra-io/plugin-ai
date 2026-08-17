@@ -129,6 +129,11 @@ public class CallTool extends AbstractMcpTask implements RunnableTask<CallTool.O
         }
     }
 
+    @Override
+    public void kill() {
+        killClient();
+    }
+
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {

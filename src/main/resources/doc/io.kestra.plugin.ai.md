@@ -40,6 +40,14 @@ All tasks that generate text accept a `configuration` object (`ChatConfiguration
 
 `agent.A2AClient` proxies a prompt to a remote agent over the A2A (Agent-to-Agent) protocol — set `serverUrl` (required) and `prompt` (required). The output includes `textOutput`.
 
+### Direct MCP calls
+
+Unlike the `SseMcpClient` / `StreamableHttpMcpClient` tool providers below (which expose an MCP server's tools to an agent, letting the LLM decide when to call them), `mcp.ListTools` and `mcp.CallTool` connect to an MCP server directly from a flow — no LLM involved.
+
+`mcp.ListTools` returns the tool catalogue of an MCP server — set `url` (required). The output includes `tools` (name, description, and argument JSON schema for each tool).
+
+`mcp.CallTool` invokes a single tool on an MCP server — set `url` (required), `tool` (required), and `arguments`. Set `failOnToolError` (default `true`) to control whether an MCP-reported tool error fails the task or is instead surfaced via `isError`/`errorMessage`. The output includes `result`, `structuredContent`, `isError`, and `errorMessage`.
+
 ## Embedding stores
 
 Configure `embeddings` with one of these subtypes:

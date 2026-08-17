@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -37,6 +38,9 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 public abstract class AbstractMcpTask extends Task {
+    @JsonIgnore
+    private transient McpClient mcpClient;
+
     @Schema(title = "URL of the MCP server", description = "The Streamable HTTP or SSE endpoint of the MCP server.")
     @NotNull
     @PluginProperty(group = "main")
@@ -55,7 +59,7 @@ public abstract class AbstractMcpTask extends Task {
     @PluginProperty(group = "advanced")
     private Property<Map<String, String>> headers;
 
-    @Schema(title = "Connection timeout duration")
+    @Schema(title = "Connection timeout duration", description = "When not set, the underlying MCP client's default timeout applies (no timeout is enforced by this task).")
     @PluginProperty(group = "execution")
     private Property<Duration> timeout;
 
@@ -79,7 +83,7 @@ public abstract class AbstractMcpTask extends Task {
         boolean rLogResponses = runContext.render(logResponses).as(Boolean.class).orElse(false);
         Map<String, String> rHeaders = runContext.render(headers).asMap(String.class, String.class);
 
-        McpTransport transport = switch (runContext.render(this.transport).as(Transport.class).orElseThrow()) {
+        McpTransport transport = switch (runContext.render(this.transport).as(Transport.class).orElse(Transport.STREAMABLE_HTTP)) {
             case STREAMABLE_HTTP -> new StreamableHttpMcpTransport.Builder()
                 .url(rUrl)
                 .timeout(rTimeout)
@@ -101,10 +105,22 @@ public abstract class AbstractMcpTask extends Task {
             );
         };
 
-        return new DefaultMcpClient.Builder()
+        this.mcpClient = new DefaultMcpClient.Builder()
             .transport(transport)
             .logHandler(new CustomMcpLogMessageHandler(runContext.logger()))
             .build();
+
+        return this.mcpClient;
+    }
+
+    protected void killClient() {
+        if (this.mcpClient != null) {
+            try {
+                this.mcpClient.close();
+            } catch (Exception ignored) {
+                // Silently ignore exceptions during kill - cleanup is best-effort
+            }
+        }
     }
 
     public enum Transport {
