@@ -43,6 +43,8 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.embeddings.Redis`
 - `io.kestra.plugin.ai.embeddings.Tablestore`
 - `io.kestra.plugin.ai.embeddings.Weaviate`
+- `io.kestra.plugin.ai.mcp.CallTool`
+- `io.kestra.plugin.ai.mcp.ListTools`
 - `io.kestra.plugin.ai.memory.KestraKVStore`
 - `io.kestra.plugin.ai.memory.PostgreSQL`
 - `io.kestra.plugin.ai.memory.Redis`
