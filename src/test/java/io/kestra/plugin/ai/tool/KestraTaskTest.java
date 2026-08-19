@@ -28,8 +28,10 @@ import io.kestra.plugin.core.execution.Fail;
 import io.kestra.plugin.core.execution.SetVariables;
 import io.kestra.plugin.core.http.Request;
 import io.kestra.plugin.core.log.Log;
+import io.kestra.plugin.kestra.AbstractKestraTask;
 import io.kestra.plugin.kestra.logs.Fetch;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.output.FinishReason;
@@ -39,7 +41,10 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assumptions.abort;
@@ -49,6 +54,11 @@ import static org.junit.jupiter.api.Assumptions.abort;
 @KestraTest
 class KestraTaskTest extends ContainerTest {
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
+
+    @RegisterExtension
+    static WireMockExtension kestraApiMock = WireMockExtension.newInstance()
+        .options(wireMockConfig().dynamicPort())
+        .build();
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -214,6 +224,12 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void fetchTask() throws Exception {
+        // Fetch calls the Kestra API to list logs; stub it instead of requiring a live server.
+        kestraApiMock.stubFor(
+            get(urlPathMatching("/api/v1/.*/logs/.*")).willReturn(okJson("[]"))
+        );
+        String wireMockBaseUrl = "http://localhost:" + kestraApiMock.getPort();
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
@@ -238,7 +254,11 @@ class KestraTaskTest extends ContainerTest {
                 List.of(
                     KestraTask.builder().tasks(
                         List.of(
-                            Fetch.builder().id("fetch").type(Fetch.class.getName()).build()
+                            Fetch.builder().id("fetch").type(Fetch.class.getName())
+                                .kestraUrl(Property.ofValue(wireMockBaseUrl))
+                                .tenantId(Property.ofValue("main"))
+                                .auth(AbstractKestraTask.Auth.builder().apiToken(Property.ofValue("test-token")).build())
+                                .build()
                         )
                     ).build()
                 )
