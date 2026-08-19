@@ -43,21 +43,21 @@ function mockResolveTemplate(template: string, hasExecution: boolean): string {
 // any global mutable state — the intent travels in the request body.
 const RENDER_FAILURE_FLOW_ID = "ai_pebble_render_failure";
 
-// The generated client invokes `axios(config)`; replace that transport with a stub that
-// renders the request's expressions per the rules above. Scoped to the expressions-render
-// endpoint only: any other SDK call throws loudly rather than silently receiving a fake 200,
-// so this module-level transport swap can't mask a real request in a future test that shares
+// The generated client is fetch-based; replace its `fetch` with a stub that renders the
+// request's expressions per the rules above. Scoped to the expressions-render endpoint only:
+// any other SDK call throws loudly rather than silently receiving a fake 200, so this
+// module-level transport swap can't mask a real request in a future test that shares
 // this worker's client singleton.
 client.setConfig({
-    axios: (async (config: {
-        url?: string;
-        data?: unknown;
-        validateStatus?: (status: number) => boolean;
-    }) => {
-        if (!String(config.url ?? "").includes("expressions/render")) {
-            throw new Error(`Stories mock received an unexpected SDK request: ${config.url}`);
+    // The fetch client builds a `new Request(url)`, which requires an absolute URL in the
+    // test runner (no browser origin to resolve against) — any dummy origin works, the stub
+    // below never performs a real network call.
+    baseUrl: "http://storybook.mock",
+    fetch: (async (request: Request) => {
+        if (!request.url.includes("expressions/render")) {
+            throw new Error(`Stories mock received an unexpected SDK request: ${request.url}`);
         }
-        const body = (typeof config.data === "string" ? JSON.parse(config.data) : config.data) as {
+        const body = (await request.clone().json()) as {
             expressions?: string[];
             executionId?: string;
             flowId?: string;
@@ -70,24 +70,11 @@ client.setConfig({
                 rendered[expression] = mockResolveTemplate(expression, hasExecution);
             }
         }
-        const response = {
-            data: status === 200 ? { rendered } : {},
+        return new Response(JSON.stringify(status === 200 ? { rendered } : {}), {
             status,
             statusText: status === 200 ? "OK" : "Forbidden",
-            headers: {},
-            config,
-        };
-        // Mimic axios: reject when the status is not accepted by the caller's validateStatus,
-        // so useRenderedExpressions' try/catch runs exactly as it does against a real server.
-        const accept = config.validateStatus ?? ((s: number) => s >= 200 && s < 300);
-        if (!accept(status)) {
-            const error = new Error(`Request failed with status code ${status}`) as Error & {
-                response?: unknown;
-            };
-            error.response = response;
-            throw error;
-        }
-        return response;
+            headers: { "Content-Type": "application/json" },
+        });
     }) as never,
 });
 
