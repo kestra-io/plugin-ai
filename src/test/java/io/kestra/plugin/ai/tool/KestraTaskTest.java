@@ -27,8 +27,8 @@ import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.core.execution.Fail;
 import io.kestra.plugin.core.execution.SetVariables;
 import io.kestra.plugin.core.http.Request;
+import io.kestra.plugin.core.log.Fetch;
 import io.kestra.plugin.core.log.Log;
-import io.kestra.plugin.kestra.logs.Fetch;
 
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.ToolExecutionException;
