@@ -1,0 +1,8 @@
+group: io.kestra.plugin.ai.mcp
+name: "mcp"
+title: "MCP"
+description: "Tasks that call a Model Context Protocol (MCP) server directly — list its tools or invoke one and return the result — without going through an LLM."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
