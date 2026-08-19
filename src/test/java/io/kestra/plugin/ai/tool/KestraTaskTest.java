@@ -3,7 +3,6 @@ package io.kestra.plugin.ai.tool;
 import java.util.List;
 import java.util.Map;
 
-import io.kestra.plugin.core.log.Fetch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.Execution;
@@ -29,6 +28,7 @@ import io.kestra.plugin.core.execution.Fail;
 import io.kestra.plugin.core.execution.SetVariables;
 import io.kestra.plugin.core.http.Request;
 import io.kestra.plugin.core.log.Log;
+import io.kestra.plugin.kestra.logs.Fetch;
 
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.ToolExecutionException;
