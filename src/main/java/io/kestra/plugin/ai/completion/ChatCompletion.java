@@ -80,7 +80,7 @@ import java.util.List;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           apiKey: "{{ secret('GOOGLE_API_KEY') }}"
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -107,7 +107,7 @@ import java.util.List;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           apiKey: "{{ secret('GOOGLE_API_KEY') }}"
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
@@ -165,7 +165,7 @@ import java.util.List;
                     type: io.kestra.plugin.ai.completion.ChatCompletion
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     configuration:
                       responseFormat:

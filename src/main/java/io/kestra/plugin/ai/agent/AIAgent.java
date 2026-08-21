@@ -127,7 +127,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     values:
                       provider:
                         type: io.kestra.plugin.ai.provider.GoogleGemini
-                        modelName: gemini-2.5-flash
+                        modelName: gemini-3.5-flash-lite
                         apiKey: "{{ secret('GEMINI_API_KEY') }}"
                 """
         ),
@@ -207,7 +207,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     prompt: "{{ inputs.prompt }}"
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
@@ -287,7 +287,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
                     prompt: "{{ inputs.prompt }}"
                     systemMessage: |
                       You are a research assistant that must always follow this process:
@@ -336,7 +336,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
 
                     systemMessage: |
                       You are a data analyst.
@@ -379,7 +379,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
 
                     systemMessage: |
                       You are a release-notes assistant.
@@ -462,7 +462,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
 
                     prompt: |
                       User objective: {{ inputs.objective }}
@@ -505,7 +505,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
 
                     systemMessage: |
                       You are a self-healing automation agent.
@@ -549,7 +549,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
 
                     systemMessage: |
                       You are a local guide.
@@ -592,7 +592,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
 
                     systemMessage: |
                       You are a market research analyst.

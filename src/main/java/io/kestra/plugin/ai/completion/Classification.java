@@ -68,7 +68,7 @@ import java.util.Map;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                     """
             }
         )

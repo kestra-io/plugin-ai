@@ -105,7 +105,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - type: io.kestra.plugin.ai.provider.GoogleGemini
                     values:
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash"""
+                      modelName: gemini-3.5-flash-lite"""
         ),
         @Example(
             full = true,
@@ -119,7 +119,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.rag.ChatCompletion
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     contentRetrievers:
                       - type: io.kestra.plugin.ai.retriever.TavilyWebSearch
@@ -177,7 +177,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - type: io.kestra.plugin.ai.provider.GoogleGemini
                     values:
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash"""
+                      modelName: gemini-3.5-flash-lite"""
         ),
         @Example(
             full = true,

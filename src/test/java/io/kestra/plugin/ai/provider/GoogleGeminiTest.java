@@ -29,7 +29,7 @@ class GoogleGeminiTest {
 
         var provider = GoogleGemini.builder()
             .type(GoogleGemini.class.getName())
-            .modelName(Property.ofValue("gemini-2.5-flash"))
+            .modelName(Property.ofValue("gemini-3.5-flash-lite"))
             .clientPem(Property.ofExpression("{{ clientPem }}"))
             .build();
 
@@ -42,7 +42,7 @@ class GoogleGeminiTest {
 
         var provider = GoogleGemini.builder()
             .type(GoogleGemini.class.getName())
-            .modelName(Property.ofValue("gemini-2.5-flash"))
+            .modelName(Property.ofValue("gemini-3.5-flash-lite"))
             .build();
 
         assertThatThrownBy(() -> provider.resolveAuth(runContext))

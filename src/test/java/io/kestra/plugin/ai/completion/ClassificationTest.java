@@ -54,7 +54,7 @@ class ClassificationTest extends ContainerTest {
                 "prompt", "Is 'This is a joke' a good joke?",
                 "classes", List.of("true", "false"),
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.5-flash"
+                "modelName", "gemini-3.5-flash-lite"
             )
         );
 
@@ -92,7 +92,7 @@ class ClassificationTest extends ContainerTest {
                 "classes", List.of("true", "false"),
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.5-flash"
+                "modelName", "gemini-3.5-flash-lite"
             )
         );
 

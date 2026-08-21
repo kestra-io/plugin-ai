@@ -165,7 +165,7 @@ class KestraTaskTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.5-flash"
+                "modelName", "gemini-3.5-flash-lite"
             )
         );
 
