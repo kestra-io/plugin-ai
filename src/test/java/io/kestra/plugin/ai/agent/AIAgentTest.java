@@ -357,7 +357,7 @@ class AIAgentTest {
     void withGoogleCustomWebSearchContentRetriever() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "apiKey", GOOGLE_API_KEY,
                 "csi", GOOGLE_CSI
             )
@@ -449,7 +449,7 @@ class AIAgentTest {
     void withEmbeddingStoreRetriever() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "googleApiKey", GOOGLE_API_KEY
             )
         );
@@ -524,7 +524,7 @@ class AIAgentTest {
      * <li><b>Two Kestra KVStore embedding stores</b> containing technical and business documents</li>
      * <li><b>Google Gemini</b> for both embedding generation
      * ({@code gemini-embedding-001}) and LLM responses
-     * ({@code gemini-2.5-flash})</li>
+     * ({@code gemini-3.5-flash-lite})</li>
      * <li><b>Tavily Web Search</b> for real-time, general-purpose internet search</li>
      * <li><b>Google Custom Search (CSE)</b> for domain-specific or curated web search results</li>
      * </ul>
@@ -537,7 +537,7 @@ class AIAgentTest {
     void withMultipleEmbeddingStores_andWebSearches() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "googleApiKey", GOOGLE_API_KEY,
                 "tavilyApiKey", TAVILY_API_KEY,
                 "csi", GOOGLE_CSI
@@ -680,7 +680,7 @@ class AIAgentTest {
     void withMultipleDifferentEmbeddingStores_andWebSearch() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "googleApiKey", GOOGLE_API_KEY,
                 "tavilyApiKey", TAVILY_API_KEY,
                 "pineconeApiKey", PINECONE_API_KEY
@@ -1150,7 +1150,7 @@ class AIAgentTest {
     void withSkillTool() throws Exception {
         var runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "apiKey", GOOGLE_API_KEY
             )
         );

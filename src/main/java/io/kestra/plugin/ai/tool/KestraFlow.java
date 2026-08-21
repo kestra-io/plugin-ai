@@ -84,7 +84,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         prompt: Execute a flow that best matches the {{ inputs.use_case }} use case selected by the user
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlow
@@ -165,7 +165,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                           Remember that all those flows are in the tutorial namespace.
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.KestraFlow"""
