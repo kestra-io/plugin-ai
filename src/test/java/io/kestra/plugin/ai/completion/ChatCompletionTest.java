@@ -124,7 +124,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -164,7 +164,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -208,7 +208,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -247,7 +247,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -294,7 +294,7 @@ class ChatCompletionTest extends ContainerTest {
             Map.of(
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -336,7 +336,7 @@ class ChatCompletionTest extends ContainerTest {
             Map.of(
                 "project", VERTEX_AI_PROJECT,
                 "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -378,7 +378,7 @@ class ChatCompletionTest extends ContainerTest {
                 "project", "dummy-project",
                 "location", "us-central1",
                 "endpoint", "https://us-central1-aiplatform.googleapis.com",
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build()
                 )
@@ -2112,7 +2112,7 @@ class ChatCompletionTest extends ContainerTest {
                         .withResponseBody(Body.fromJsonBytes("""
                             {
                               "responseId" : "mock-response-id",
-                              "modelVersion" : "gemini-2.5-flash",
+                              "modelVersion" : "gemini-3.5-flash-lite",
                               "candidates" : [ {
                                 "content" : {
                                   "parts" : [ { "text" : "Hello John from Gemini mTLS" } ],
@@ -2147,7 +2147,7 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "fakeApiKey",
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "baseUrl", baseUrl,
                 "caPem", caPem,
                 "clientPem", clientPem,

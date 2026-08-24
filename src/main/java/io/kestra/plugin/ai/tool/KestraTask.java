@@ -53,7 +53,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                             type: io.kestra.plugin.ai.agent.AIAgent
                             provider:
                               type: io.kestra.plugin.ai.provider.GoogleGemini
-                              modelName: gemini-2.5-flash
+                              modelName: gemini-3.5-flash-lite
                               apiKey: "{{ secret('GEMINI_API_KEY') }}"
                             tools:
                               - type: io.kestra.plugin.ai.tool.KestraTask
@@ -62,7 +62,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                                     type: io.kestra.plugin.core.log.Log
                                     message: "..." # This is a placeholder; the agent will fill it.
                             prompt: "Log the following message: 'Hello World!'"
-                    """
+                        """
             }
         ),
     }

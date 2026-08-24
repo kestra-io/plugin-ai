@@ -41,7 +41,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                     provider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-2.5-flash
+                      modelName: gemini-3.5-flash-lite
                     prompt: What is the square root of 49506838032859?
                     tools:
                       - type: io.kestra.plugin.ai.tool.CodeExecution

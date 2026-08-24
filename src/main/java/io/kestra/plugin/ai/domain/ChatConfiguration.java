@@ -80,7 +80,7 @@ public class ChatConfiguration {
             increase token usage and response time, and is only applicable to compatible models.
 
             For Google Gemini: when neither this property nor `thinkingBudgetTokens` is set, thinking is explicitly disabled \
-            (`thinkingBudget = 0`) to prevent tool-call failures on native thinking models such as gemini-2.5-flash. \
+            (`thinkingBudget = 0`) to prevent tool-call failures on native thinking models such as gemini-3.5-flash. \
             Set `thinkingEnabled: true` or `thinkingBudgetTokens > 0` to opt back in."""
     )
     @PluginProperty(group = "advanced")
@@ -93,7 +93,7 @@ public class ChatConfiguration {
             thoughts or chain-of-thought sequences, allowing the model to perform multi-step reasoning before producing the final output.
 
             For Google Gemini: when neither this property nor `thinkingEnabled` is set, the budget defaults to `0` (thinking disabled) \
-            to prevent tool-call failures on native thinking models such as gemini-2.5-flash. \
+            to prevent tool-call failures on native thinking models such as gemini-3.5-flash. \
             Set this to a positive integer (e.g. `1024`) to allow thinking."""
     )
     @PluginProperty(group = "advanced")
@@ -108,7 +108,7 @@ public class ChatConfiguration {
 
             For Google Gemini: defaults to `true` so that `thought_signature` values on function-call parts \
             are captured and automatically re-sent in subsequent requests, preventing tool-call failures \
-            on native thinking models (e.g. gemini-2.5-flash)."""
+            on native thinking models (e.g. gemini-3.5-flash)."""
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> returnThinking;

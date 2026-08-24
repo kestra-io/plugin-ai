@@ -60,7 +60,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleVertexAI
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                           location: your-google-cloud-region
                           project: your-google-cloud-project-id
                         messages:

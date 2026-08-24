@@ -275,7 +275,7 @@ class ChatCompletionTest extends ContainerTest {
     void testGeminiChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.5-flash-lite",
                 "apiKey", GOOGLE_API_KEY
             )
         );

@@ -50,7 +50,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                         prompt: "{{ inputs.prompt }}"
                         tools:
                           - type: io.kestra.plugin.ai.tool.DockerMcpClient
@@ -76,7 +76,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                          modelName: gemini-2.5-flash
+                          modelName: gemini-3.5-flash-lite
                         prompt: "{{ inputs.prompt }}"
                         systemMessage: |
                           You are a filesystem assistant. Always use the write_file tool with the exact absolute path provided in the user's request.
