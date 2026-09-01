@@ -106,6 +106,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 tasks:
                   - id: multilingual_agent
                     type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-3.5-flash-lite
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     systemMessage: |
                       You are a precise technical assistant.
                       Produce a {{ inputs.summary_length }} summary in {{ inputs.language }}.
@@ -120,15 +124,11 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                   - id: english_brevity
                     type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-3.5-flash-lite
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     prompt: Generate exactly 1 sentence English summary of "{{ outputs.multilingual_agent.textOutput }}"
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.ai.agent.AIAgent
-                    values:
-                      provider:
-                        type: io.kestra.plugin.ai.provider.GoogleGemini
-                        modelName: gemini-3.5-flash-lite
-                        apiKey: "{{ secret('GEMINI_API_KEY') }}"
                 """
         ),
         @Example(
@@ -168,24 +168,29 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 tasks:
                   - id: first_agent
                     type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
+                    memory:
+                      type: io.kestra.plugin.ai.memory.KestraKVStore
+                      memoryId: JOHN
+                      ttl: PT1M
+                      messages: 5
                     prompt: Hi, my name is John and I live in New York!
 
                   - id: second_agent
                     type: io.kestra.plugin.ai.agent.AIAgent
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
+                    memory:
+                      type: io.kestra.plugin.ai.memory.KestraKVStore
+                      memoryId: JOHN
+                      ttl: PT1M
+                      messages: 5
                     prompt: What's my name and where do I live?
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.ai.agent.AIAgent
-                    values:
-                      provider:
-                        type: io.kestra.plugin.ai.provider.OpenAI
-                        apiKey: "{{ secret('OPENAI_API_KEY') }}"
-                        modelName: gpt-5-mini
-                      memory:
-                        type: io.kestra.plugin.ai.memory.KestraKVStore
-                        memoryId: JOHN
-                        ttl: PT1M
-                        messages: 5
                 """
         ),
         @Example(

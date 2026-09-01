@@ -67,12 +67,6 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     id: agent_calling_flows_explicitly
                     namespace: company.ai
 
-                    pluginDefaults:
-                      - type: io.kestra.plugin.ai.tool.KestraFlow
-                        values:
-                          auth:
-                            apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
-
                     inputs:
                       - id: use_case
                         type: SELECT
@@ -100,41 +94,57 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                             namespace: tutorial
                             flowId: business-automation
                             description: Business Automation
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: business-processes
                             description: Business Processes
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: data-engineering-pipeline
                             description: Data Engineering Pipeline
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: dwh-and-analytics
                             description: Data Warehouse and Analytics
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: file-processing
                             description: File Processing
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: hello-world
                             description: Hello World
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: infrastructure-automation
                             description: Infrastructure Automation
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: microservices-and-apis
-                            description: Microservices and APIs"""
+                            description: Microservices and APIs
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}\""""
             }
         ),
         @Example(

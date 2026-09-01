@@ -85,6 +85,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         type: io.kestra.plugin.ai.completion.ChatCompletion
                         provider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
+                          modelName: gemini-3.5-flash-lite
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         messages:
                           - type: USER
                             content: Which features were released in Kestra 0.24?
@@ -93,19 +95,16 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                         type: io.kestra.plugin.ai.rag.ChatCompletion
                         chatProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
+                          modelName: gemini-3.5-flash-lite
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         embeddingProvider:
                           type: io.kestra.plugin.ai.provider.GoogleGemini
                           modelName: gemini-embedding-001
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         embeddings:
                           type: io.kestra.plugin.ai.embeddings.KestraKVStore
                         systemMessage: You are a helpful assistant that can answer questions about Kestra.
-                        prompt: Which features were released in Kestra 0.24?
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.ai.provider.GoogleGemini
-                    values:
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-3.5-flash-lite"""
+                        prompt: Which features were released in Kestra 0.24?"""
         ),
         @Example(
             full = true,
@@ -148,9 +147,12 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.rag.ChatCompletion
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-3.5-flash-lite
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-001
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
@@ -163,21 +165,18 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.ai.rag.ChatCompletion
                     chatProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-3.5-flash-lite
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddingProvider:
                       type: io.kestra.plugin.ai.provider.GoogleGemini
                       modelName: gemini-embedding-001
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                     embeddings:
                       type: io.kestra.plugin.ai.embeddings.KestraKVStore
                     memory:
                       type: io.kestra.plugin.ai.memory.KestraKVStore
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{ inputs.second }}"
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.ai.provider.GoogleGemini
-                    values:
-                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
-                      modelName: gemini-3.5-flash-lite"""
+                    prompt: "{{ inputs.second }}\""""
         ),
         @Example(
             full = true,
