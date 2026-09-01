@@ -2,7 +2,6 @@
 import type { KnownSlotProps } from "@kestra-io/artifact-sdk";
 import { KsTopologyDetails, KsTag, KsAlert } from "@kestra-io/design-system";
 import { computed, ref, watch, useAttrs } from "vue";
-import { useRenderedExpressions } from "../composables/useRenderedExpressions";
 
 const props = defineProps<KnownSlotProps["topology-details"]>();
 const attrs = useAttrs();
@@ -39,19 +38,11 @@ const rawSystemMessage = computed(() =>
 
 const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
 
-const { display } = useRenderedExpressions(
-    () => [rawModelName.value, rawSystemMessage.value, rawPrompt.value],
-    () => ({
-        executionId: props.execution?.id as string | undefined,
-        namespace: props.namespace,
-        flowId: props.flowId,
-        flow: props.source,
-    }),
-);
-
-const modelName = computed(() => display(rawModelName.value));
-const systemMessage = computed(() => display(rawSystemMessage.value));
-const prompt = computed(() => display(rawPrompt.value));
+// Shown raw/unresolved: server-side expression rendering was dropped along with the SDK
+// dependency, so a property like "{{ inputs.x }}" now displays literally instead of resolved.
+const modelName = computed(() => rawModelName.value);
+const systemMessage = computed(() => rawSystemMessage.value);
+const prompt = computed(() => rawPrompt.value);
 
 const toolNames = computed<string[]>(() => {
     const tools = taskConfig.value.tools as any[] | undefined;

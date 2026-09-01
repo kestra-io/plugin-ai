@@ -9,8 +9,6 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { federation } from "@module-federation/vite";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { createHash } from "node:crypto";
 import { createRequire } from "module";
 
@@ -193,27 +191,6 @@ function tryResolve(id: string): string | null {
     }
 }
 
-function getSharedKestraSdk(): Record<string, { singleton: boolean }> {
-    try {
-        const pkg = tryResolve("@kestra-io/kestra-sdk/package.json");
-        if (!pkg) return {};
-        const { exports = {} } = JSON.parse(fs.readFileSync(pkg, "utf-8"));
-        return Object.keys(exports).reduce(
-            (acc: Record<string, { singleton: boolean }>, key: string) => {
-                const name =
-                    key === "."
-                        ? "@kestra-io/kestra-sdk"
-                        : `@kestra-io/kestra-sdk/${key.replace("./", "")}`;
-                acc[name] = { singleton: true };
-                return acc;
-            },
-            {},
-        );
-    } catch {
-        return {};
-    }
-}
-
 function manifestPlugin() {
     return {
         name: "@kestra-io/manifest-plugin",
@@ -283,7 +260,6 @@ export default defineConfig({
                 ...(tryResolve("vue-i18n/package.json")
                     ? { "vue-i18n": { singleton: true, requiredVersion: "^11" } }
                     : {}),
-                ...getSharedKestraSdk(),
             },
             dts: false,
         })]),
