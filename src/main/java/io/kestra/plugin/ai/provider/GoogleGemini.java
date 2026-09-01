@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
@@ -46,8 +47,10 @@ import io.kestra.core.models.annotations.PluginProperty;
         them to the conversation history for every follow-up request (`sendThinking` is always enabled), preventing \
         the `400 INVALID_ARGUMENT – Function call is missing a thought_signature` error.
 
-        In addition, thinking is disabled by default (`thinkingBudget = 0`) to reduce token usage, \
-        unless `thinkingEnabled: true` or `thinkingBudgetTokens > 0` is explicitly set."""
+        In addition, on Gemini 2.x models thinking is disabled by default (`thinkingBudget = 0`) to reduce \
+        token usage, unless `thinkingEnabled: true` or `thinkingBudgetTokens > 0` is explicitly set. \
+        Gemini 3 models cannot have thinking turned off, so no thinking budget is sent for them by default \
+        and the model applies its own; set `thinkingBudgetTokens` to cap it."""
 )
 @Plugin(
     examples = {
@@ -119,6 +122,7 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.provider.GoogleGemini"
 )
 public class GoogleGemini extends ModelProvider {
+    private static final Pattern GEMINI_MAJOR_VERSION = Pattern.compile("gemini-(\\d+)");
 
     @Schema(
         title = "API Key",
@@ -227,17 +231,34 @@ public class GoogleGemini extends ModelProvider {
     GeminiThinkingConfig getThinkingConfig(final ChatConfiguration configuration, final RunContext runContext) throws IllegalVariableEvaluationException {
         var enabled = runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false);
         var maxTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
-        // Default to 0 when thinking is not explicitly requested.
-        // Gemini thinking models (e.g. gemini-3.5-flash) enable thinking when budget is null,
-        // and LangChain4j does not yet propagate thought_signatures in multi-turn conversations,
-        // causing tool calls to fail with 400 INVALID_ARGUMENT.
+
         if (!enabled && maxTokens == null) {
+            // Gemini 2.x thinking models turn thinking on when no budget is given, so we pin the budget
+            // to 0 to keep token usage down.
+            // Gemini 3 models cannot have thinking turned off: they reject `thinkingBudget: 0` with
+            // 400 INVALID_ARGUMENT.  For those, send no thinking configuration at all and let the model
+            // apply its own default.  Thought signatures are still handled: `returnThinking` captures
+            // them and `sendThinking` re-attaches them on follow-up requests.
+            if (thinkingCannotBeDisabled(runContext)) {
+                return null;
+            }
             maxTokens = 0;
         }
+
         return GeminiThinkingConfig.builder()
             .includeThoughts(enabled)
             .thinkingBudget(maxTokens)
             .build();
+    }
+
+    /**
+     * Gemini 3 and later are thinking-only models: they reject a `thinkingBudget` of 0.
+     * Model names that don't carry a recognisable Gemini version are treated as pre-3.
+     */
+    private boolean thinkingCannotBeDisabled(final RunContext runContext) throws IllegalVariableEvaluationException {
+        var rModelName = runContext.render(this.getModelName()).as(String.class).orElse("");
+        var matcher = GEMINI_MAJOR_VERSION.matcher(rModelName);
+        return matcher.find() && Integer.parseInt(matcher.group(1)) >= 3;
     }
 
     @Getter
