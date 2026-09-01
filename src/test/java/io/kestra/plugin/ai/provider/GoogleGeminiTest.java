@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai.provider;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -53,16 +54,16 @@ class GoogleGeminiTest {
     }
 
     @Test
-    void getThinkingConfig_shouldDefaultBudgetToZeroWhenNoConfigSet() throws Exception {
-        // Issue #324: gemini-3.5-flash attaches thought_signatures to function-call parts.
+    void getThinkingConfig_shouldDefaultBudgetToZeroOnGemini2WhenNoConfigSet() throws Exception {
+        // Issue #324: thinking models attach thought_signatures to function-call parts.
         // Primary fix: returnThinking defaults to true (to capture the signature) and
         // sendThinking is always enabled (to re-attach it in follow-up requests), preventing
         // the 400 INVALID_ARGUMENT error from LangChain4j dropping the signature.
-        // Belt-and-suspenders: thinkingBudget defaults to 0 to minimise thinking overhead.
+        // Belt-and-suspenders: on Gemini 2.x, thinkingBudget defaults to 0 to minimise thinking overhead.
         var runContext = runContextFactory.of(Map.of());
         var provider = GoogleGemini.builder()
             .type(GoogleGemini.class.getName())
-            .modelName(Property.ofValue("gemini-3.5-flash"))
+            .modelName(Property.ofValue("gemini-2.5-flash"))
             .apiKey(Property.ofValue("placeholder"))
             .build();
         var config = ChatConfiguration.empty();
@@ -74,7 +75,28 @@ class GoogleGeminiTest {
     }
 
     @Test
+    void getThinkingConfig_shouldSendNoConfigOnGemini3AndLaterWhenNoConfigSet() throws Exception {
+        // Gemini 3+ cannot have thinking turned off and rejects `thinkingBudget: 0` with
+        // 400 INVALID_ARGUMENT, so no thinking configuration must be sent at all.
+        var runContext = runContextFactory.of(Map.of());
+        var config = ChatConfiguration.empty();
+
+        for (var modelName : List.of("gemini-3.5-flash-lite", "gemini-3-pro-preview", "models/gemini-4-flash")) {
+            var provider = GoogleGemini.builder()
+                .type(GoogleGemini.class.getName())
+                .modelName(Property.ofValue(modelName))
+                .apiKey(Property.ofValue("placeholder"))
+                .build();
+
+            assertThat(provider.getThinkingConfig(config, runContext))
+                .as("thinking config for %s", modelName)
+                .isNull();
+        }
+    }
+
+    @Test
     void getThinkingConfig_shouldRespectExplicitBudget() throws Exception {
+        // On a Gemini 3 model an explicit budget is still sent: only the implicit 0 default is skipped.
         var runContext = runContextFactory.of(Map.of());
         var provider = GoogleGemini.builder()
             .type(GoogleGemini.class.getName())

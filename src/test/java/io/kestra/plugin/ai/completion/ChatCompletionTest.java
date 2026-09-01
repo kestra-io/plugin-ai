@@ -164,7 +164,10 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-3.5-flash-lite",
+                // Deliberately a Gemini 2.x model: thinking tokens count towards maxOutputTokens, and
+                // Gemini 3 models cannot have thinking turned off, so a budget of 10 output tokens would
+                // be spent thinking and never reach the answer.  Only on 2.x can we assert the cap exactly.
+                "modelName", "gemini-2.5-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
