@@ -1,7 +1,7 @@
 plugins {
-    id 'io.kestra.gradle.repository-conventions' version '1.2.6'
-    id "io.kestra.gradle.plugin-doc-lint" version "1.2.6"
-    id 'io.kestra.gradle.spotless-conventions' version '1.2.6'
+    id 'io.kestra.gradle.repository-conventions' version '1.2.10'
+    id "io.kestra.gradle.plugin-doc-lint" version "1.2.10"
+    id 'io.kestra.gradle.spotless-conventions' version '1.2.10'
     id 'java-library'
     id "idea"
     id 'jacoco'
@@ -10,14 +10,14 @@ plugins {
     id "com.github.ben-manes.versions" version "0.61.0"
     id 'net.researchgate.release' version '3.1.0'
     id "com.vanniktech.maven.publish" version "0.37.0"
-    id "io.kestra.gradle.inject-bom-versions" version "1.2.6"
+    id "io.kestra.gradle.inject-bom-versions" version "1.2.10"
     id 'com.github.node-gradle.node' version '7.1.0'
 }
 
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
 def langchain4jVersion = "1.19.0"
-def langchain4jBetaVersion = "1.13.0-beta23"
+def langchain4jBetaVersion = "1.19.0-beta29"
 
 repositories {
     mavenLocal()
@@ -86,7 +86,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-watsonx:${langchain4jBetaVersion}"
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
-    implementation "org.apache.tika:tika-core:3.3.2"
+    implementation "org.apache.tika:tika-core:4.0.0"
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0:${langchain4jBetaVersion}"
 
@@ -164,7 +164,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "1.11.4"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.1"
 
     testImplementation 'org.testcontainers:ollama:1.21.4'
     testImplementation 'org.testcontainers:elasticsearch:1.21.4'
