@@ -164,7 +164,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.1"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "1.11.4"
 
     testImplementation 'org.testcontainers:ollama:1.21.4'
     testImplementation 'org.testcontainers:elasticsearch:1.21.4'
