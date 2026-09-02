@@ -1,82 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
-import { within, waitFor, expect } from "storybook/test";
-import { client } from "@kestra-io/kestra-sdk/client";
+import { within, expect } from "storybook/test";
 import AITopologyDetails from "./components/AITopologyDetails.vue";
-
-// ── Mock the POST /expressions/render endpoint ──────────────────────────────
-// Storybook has no Kestra backend, so we stub the generated SDK client's transport
-// to mimic the server-side DisplayExpressionRenderer:
-//   - vars.* / flow.* / globals.* and secret() resolve from the flow context;
-//   - inputs.* / outputs.* / execution.* resolve only when an execution is present;
-//   - env() / kv() are never resolved.
-// Resolution is all-or-nothing per string: one unresolvable reference keeps the
-// whole template raw (matching Pebble's single-pass render). This lets the two
-// "Expression resolution" stories below demonstrate the real pre/post-execution
-// behaviour without a live server.
-const MOCK_VARS: Record<string, string> = {
-    "vars.model": "claude-3-haiku-20240307",
-    "vars.persona": "a precise technical assistant",
-};
-const MOCK_INPUTS: Record<string, string> = {
-    "inputs.question": "What is Kestra in one sentence?",
-    "inputs.tone": "concise",
-};
-
-function mockResolveTemplate(template: string, hasExecution: boolean): string {
-    let resolvable = true;
-    const out = template.replace(/\{\{\s*(.*?)\s*}}/g, (rawMatch, exprSource: string) => {
-        const expr = exprSource.trim();
-        if (Object.hasOwn(MOCK_VARS, expr)) return MOCK_VARS[expr];
-        const secret = expr.match(/^secret\(\s*['"]([^'"]+)['"]\s*\)$/);
-        if (secret) return `[secret: ${secret[1]}]`;
-        if (hasExecution && Object.hasOwn(MOCK_INPUTS, expr)) return MOCK_INPUTS[expr];
-        // env(), kv(), or an execution-scoped reference with no execution → unresolvable.
-        resolvable = false;
-        return rawMatch;
-    });
-    // All-or-nothing: keep the original template if anything could not be resolved.
-    return resolvable ? out : template;
-}
-
-// A story using this flow id makes the stub answer the render request with 403, so we can
-// exercise useRenderedExpressions' failure branch (fall back to the raw template) without
-// any global mutable state — the intent travels in the request body.
-const RENDER_FAILURE_FLOW_ID = "ai_pebble_render_failure";
-
-// The generated client is fetch-based; replace its `fetch` with a stub that renders the
-// request's expressions per the rules above. Scoped to the expressions-render endpoint only:
-// any other SDK call throws loudly rather than silently receiving a fake 200, so this
-// module-level transport swap can't mask a real request in a future test that shares
-// this worker's client singleton.
-client.setConfig({
-    // The fetch client builds a `new Request(url)`, which requires an absolute URL in the
-    // test runner (no browser origin to resolve against) — any dummy origin works, the stub
-    // below never performs a real network call.
-    baseUrl: "http://storybook.mock",
-    fetch: (async (request: Request) => {
-        if (!request.url.includes("expressions/render")) {
-            throw new Error(`Stories mock received an unexpected SDK request: ${request.url}`);
-        }
-        const body = (await request.clone().json()) as {
-            expressions?: string[];
-            executionId?: string;
-            flowId?: string;
-        };
-        const status = body?.flowId === RENDER_FAILURE_FLOW_ID ? 403 : 200;
-        const rendered: Record<string, string> = {};
-        if (status === 200) {
-            const hasExecution = Boolean(body?.executionId);
-            for (const expression of body?.expressions ?? []) {
-                rendered[expression] = mockResolveTemplate(expression, hasExecution);
-            }
-        }
-        return new Response(JSON.stringify(status === 200 ? { rendered } : {}), {
-            status,
-            statusText: status === 200 ? "OK" : "Forbidden",
-            headers: { "Content-Type": "application/json" },
-        });
-    }) as never,
-});
 
 const meta: Meta<typeof AITopologyDetails> = {
     title: "Plugin UI / topology-details / AITopologyDetails",
@@ -402,12 +326,11 @@ export const GuardrailViolation: Story = {
     },
 };
 
-export const ExpressionsPreExecution: Story = {
-    name: "Expression resolution — pre-execution (vars + secret resolve, inputs stay raw)",
+export const ExpressionsShownRaw: Story = {
+    name: "Pebble expressions are shown raw (unresolved)",
     args: {
-        // No execution: Model resolves to "claude-3-haiku-20240307" and the system message
-        // resolves ("...precise technical assistant" + masked secret), but the prompt stays
-        // raw as "{{ inputs.question }}" because inputs need an execution.
+        // Server-side expression rendering was dropped: every field with a "{{ ... }}"
+        // template now displays exactly as configured, with no resolution attempt.
         task: expressionAgentTask,
         namespace: "company.ai",
         flowId: "ai_pebble_resolution_test",
@@ -415,80 +338,8 @@ export const ExpressionsPreExecution: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        // vars.* resolve from the flow context even before any execution exists.
-        await waitFor(() => expect(canvas.getByText("claude-3-haiku-20240307")).toBeInTheDocument());
-        // System message: vars resolved and secret() masked (never revealed).
-        await waitFor(() => expect(canvas.getByText(/a precise technical assistant/)).toBeInTheDocument());
-        expect(canvas.getByText(/\[secret: ANTHROPIC_API_KEY]/)).toBeInTheDocument();
-        // inputs.* cannot resolve without an execution → the prompt stays raw.
+        expect(canvas.getByText(/\{\{ vars\.model }}/)).toBeInTheDocument();
         expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
-    },
-};
-
-export const ExpressionsPostExecution: Story = {
-    name: "Expression resolution — post-execution (inputs resolve too)",
-    args: {
-        // With an execution present, the prompt's "{{ inputs.question }}" now also resolves
-        // to "What is Kestra in one sentence?" alongside the vars/secret already resolved.
-        task: expressionAgentTask,
-        namespace: "company.ai",
-        flowId: "ai_pebble_resolution_test",
-        displayMode: "full",
-        execution: {
-            id: "exec-expr-001",
-            namespace: "company.ai",
-            flowId: "ai_pebble_resolution_test",
-            state: { current: "SUCCESS", startDate: "2024-01-21T12:00:00Z" },
-            taskRunList: [
-                {
-                    id: "tr-expr-001",
-                    taskId: "ai-agent",
-                    executionId: "exec-expr-001",
-                    outputs: {
-                        textOutput:
-                            "Kestra is an open-source orchestration platform for building and scheduling workflows as code.",
-                        finishReason: "STOP",
-                        tokenUsage: {
-                            inputTokenCount: 34,
-                            outputTokenCount: 18,
-                            totalTokenCount: 52,
-                        },
-                        toolExecutions: [],
-                        intermediateResponses: [],
-                        guardrailViolated: false,
-                    },
-                },
-            ],
-        },
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        await waitFor(() => expect(canvas.getByText("claude-3-haiku-20240307")).toBeInTheDocument());
-        // With an execution present, inputs.* now resolve too.
-        await waitFor(() =>
-            expect(canvas.getByText("What is Kestra in one sentence?")).toBeInTheDocument()
-        );
-        // The raw template must be gone.
-        expect(canvas.queryByText(/\{\{ inputs\.question }}/)).toBeNull();
-    },
-};
-
-export const ExpressionsRenderFailure: Story = {
-    name: "Expression resolution — render failure (falls back to raw templates)",
-    args: {
-        // The render endpoint answers 403 for this flow id. useRenderedExpressions must swallow
-        // the error and display every field as its raw, unresolved template.
-        task: expressionAgentTask,
-        namespace: "company.ai",
-        flowId: RENDER_FAILURE_FLOW_ID,
-        displayMode: "full",
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        // Render failed → nothing resolves; the raw Pebble templates remain on screen.
-        await waitFor(() => expect(canvas.getByText(/\{\{ vars\.model }}/)).toBeInTheDocument());
-        expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
-        // The secret stays as its raw expression and is never revealed, even on the failure path.
         expect(canvas.getByText(/\{\{ secret\('ANTHROPIC_API_KEY'\) }}/)).toBeInTheDocument();
     },
 };

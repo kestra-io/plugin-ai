@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import type { KnownSlotProps } from "@kestra-io/artifact-sdk";
 import { KsTopologyDetails, KsTag, KsAlert } from "@kestra-io/design-system";
-import { computed, ref, watch, useAttrs, onUnmounted } from "vue";
-import { resolveTenant, useClient } from "@kestra-io/kestra-sdk";
-import { useRenderedExpressions } from "../composables/useRenderedExpressions";
+import { computed, ref, watch, useAttrs } from "vue";
 
-// `source` (the current, possibly unsaved flow YAML) is provided by the host but not yet part of the
-// shared KnownSlotProps type, so it is declared explicitly here.
-const props = defineProps<KnownSlotProps["topology-details"] & { source?: string }>();
+const props = defineProps<KnownSlotProps["topology-details"]>();
 const attrs = useAttrs();
 const isFullView = computed(() => attrs.displayMode === "full");
 
@@ -22,83 +18,34 @@ function lastSegment(typeStr: string | undefined): string | undefined {
     return typeStr.split(".").at(-1) ?? typeStr;
 }
 
-// In post-execution mode the platform may pass a stripped task (id+type only).
-// fetchedTaskDef holds the full task definition fetched from the flows API.
-const fetchedTaskDef = ref<Record<string, any> | null>(null);
-const effectiveTask = computed<Record<string, any>>(() =>
-    fetchedTaskDef.value
-        ? { ...(props.task as any), ...fetchedTaskDef.value }
-        : (props.task as any) ?? {}
-);
-
-function findTask(tasks: any[] | undefined, id: string): any {
-    if (!tasks?.length) return null;
-    for (const t of tasks) {
-        if (t.id === id) return t;
-        const sub = t.tasks ?? t.errors ?? t.finally;
-        if (sub) {
-            const found = findTask(Array.isArray(sub) ? sub : [sub], id);
-            if (found) return found;
-        }
-    }
-    return null;
-}
-
-async function loadFlowTaskDef() {
-    if (provider.value) return; // already available from props.task
-    const ns = props.namespace as string | undefined;
-    const fid = props.flowId as string | undefined;
-    const tid = taskId.value;
-    if (!ns || !fid || !tid) return;
-    if (ns.startsWith("{") || fid.startsWith("{") || tid.startsWith("{")) return;
-    const tenant = resolveTenant(undefined);
-    if (!tenant || (tenant as string).startsWith("{")) return;
-    try {
-        const client = useClient();
-        const resp = await client.get(
-            `/api/v1/${tenant}/flows/${ns}/${fid}`,
-            { validateStatus: (s: number) => s === 200 || s === 404 },
-        );
-        if (resp.status !== 200) return;
-        const task = findTask(resp.data?.tasks, tid);
-        if (task) fetchedTaskDef.value = task;
-    } catch (e: any) {
-        console.error("[AITopologyDetails] failed to load flow task def", e);
-    }
-}
+// The host merges the graph node's task with the same task parsed out of the flow source,
+// so props.task is already the complete task definition — no need to fetch it separately.
+const taskConfig = computed<Record<string, any>>(() => (props.task as any) ?? {});
 
 const provider = computed(() => {
-    const p = effectiveTask.value[isRag.value ? "chatProvider" : "provider"];
+    const p = taskConfig.value[isRag.value ? "chatProvider" : "provider"];
     return lastSegment(p?.type);
 });
 
 const rawModelName = computed(() => {
     const key = isRag.value ? "chatProvider" : "provider";
-    return effectiveTask.value[key]?.modelName as string | undefined;
+    return taskConfig.value[key]?.modelName as string | undefined;
 });
 
 const rawSystemMessage = computed(() =>
-    (effectiveTask.value.systemPrompt ?? effectiveTask.value.systemMessage) as string | undefined
+    (taskConfig.value.systemPrompt ?? taskConfig.value.systemMessage) as string | undefined
 );
 
-const rawPrompt = computed(() => effectiveTask.value.prompt as string | undefined);
+const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
 
-const { display } = useRenderedExpressions(
-    () => [rawModelName.value, rawSystemMessage.value, rawPrompt.value],
-    () => ({
-        executionId: props.execution?.id as string | undefined,
-        namespace: props.namespace,
-        flowId: props.flowId,
-        flow: props.source,
-    }),
-);
-
-const modelName = computed(() => display(rawModelName.value));
-const systemMessage = computed(() => display(rawSystemMessage.value));
-const prompt = computed(() => display(rawPrompt.value));
+// Shown raw/unresolved: server-side expression rendering was dropped along with the SDK
+// dependency, so a property like "{{ inputs.x }}" now displays literally instead of resolved.
+const modelName = computed(() => rawModelName.value);
+const systemMessage = computed(() => rawSystemMessage.value);
+const prompt = computed(() => rawPrompt.value);
 
 const toolNames = computed<string[]>(() => {
-    const tools = effectiveTask.value.tools as any[] | undefined;
+    const tools = taskConfig.value.tools as any[] | undefined;
     if (!tools?.length) return [];
     return tools.map((t: any) => {
         if (typeof t === "string") return lastSegment(t) ?? t;
@@ -113,9 +60,9 @@ const toArray = (v: any): any[] => {
 };
 
 const retrieverNames = computed<string[]>(() => {
-    const task = effectiveTask.value;
-    const single = task.contentRetriever ?? task.retriever;
-    const multi = toArray(task.contentRetrievers ?? task.retrievers);
+    const cfgTask = taskConfig.value;
+    const single = cfgTask.contentRetriever ?? cfgTask.retriever;
+    const multi = toArray(cfgTask.contentRetrievers ?? cfgTask.retrievers);
     const all = single ? [single, ...multi] : multi;
     return all.map((r: any) => lastSegment(r?.type) ?? String(r)).filter(Boolean);
 });
@@ -123,7 +70,7 @@ const retrieverNames = computed<string[]>(() => {
 const firstRetrieverName = computed(() => retrieverNames.value[0]);
 
 const chatConfigRows = computed(() => {
-    const cfg = effectiveTask.value.configuration as Record<string, any> | undefined;
+    const cfg = taskConfig.value.configuration as Record<string, any> | undefined;
     if (!cfg) return [];
     const LABELS: Record<string, string> = {
         temperature: "Temperature",
@@ -143,20 +90,20 @@ const chatConfigRows = computed(() => {
 });
 
 const maxSeqTools = computed(() => {
-    const v = effectiveTask.value.maxSequentialToolsInvocations;
+    const v = taskConfig.value.maxSequentialToolsInvocations;
     return v != null ? String(v) : undefined;
 });
 
-const memoryType = computed(() => lastSegment(effectiveTask.value.memory?.type));
+const memoryType = computed(() => lastSegment(taskConfig.value.memory?.type));
 
 const observabilityType = computed(() => {
-    const obs = effectiveTask.value.observability;
+    const obs = taskConfig.value.observability;
     if (!obs) return undefined;
     return lastSegment(obs.type) ?? (typeof obs === "object" ? Object.keys(obs)[0] : undefined);
 });
 
 const guardrailsInfo = computed(() => {
-    const g = effectiveTask.value.guardrails as Record<string, any> | undefined;
+    const g = taskConfig.value.guardrails as Record<string, any> | undefined;
     if (!g) return null;
     const inputRules: string[] = toArray(g.inputGuardrails ?? g.input).map((r: any) => lastSegment(r?.type) ?? String(r));
     const outputRules: string[] = toArray(g.outputGuardrails ?? g.output).map((r: any) => lastSegment(r?.type) ?? String(r));
@@ -195,52 +142,33 @@ const taskRun = computed(() => {
 });
 
 const fetchedOutputs = ref<Record<string, any> | null>(null);
-let currentAbort: AbortController | null = null;
+// Guards against out-of-order responses when the execution/task-run switches mid-flight —
+// only the latest request is allowed to write to fetchedOutputs.
+let outputsRequestId = 0;
 
 async function loadTaskOutputs(execId: string) {
     if (!execId || execId.startsWith("{")) return;
-    const tenant = resolveTenant(undefined);
-    if (!tenant || (tenant as string).startsWith("{")) return;
+    const taskRunId = taskRun.value?.id as string | undefined;
+    if (!taskRunId) {
+        fetchedOutputs.value = null;
+        return;
+    }
 
-    currentAbort?.abort();
-    currentAbort = new AbortController();
-    const { signal } = currentAbort;
+    const requestId = ++outputsRequestId;
     fetchedOutputs.value = null;
 
     try {
-        const client = useClient();
-        let list = props.execution?.taskRunList as any[] | undefined;
-        if (!list) {
-            const execResp = await client.get(
-                `/api/v1/${tenant}/executions/${execId}`,
-                { validateStatus: (s: number) => s === 200 || s === 404, signal },
-            );
-            if (signal.aborted || execResp.status !== 200) return;
-            list = execResp.data?.taskRunList as any[] | undefined;
-        }
-        const tr = list?.filter((r: any) => r.taskId === taskId.value).at(-1);
-        if (!tr?.id || signal.aborted) return;
-        const resp = await client.get(
-            `/api/v1/${tenant}/outputs/${execId}/${tr.id}`,
-            { validateStatus: (s: number) => s === 200 || s === 404, signal },
-        );
-        if (!signal.aborted) {
-            fetchedOutputs.value = resp.status === 200 ? (resp.data ?? null) : null;
-        }
+        const result = await props.fetchOutputs?.({ taskRunId });
+        if (requestId === outputsRequestId) fetchedOutputs.value = result ?? null;
     } catch (e: any) {
-        if (e?.name !== "AbortError" && e?.code !== "ERR_CANCELED") {
+        if (requestId === outputsRequestId) {
             console.error("[AITopologyDetails] failed to load task outputs", e);
         }
     }
 }
 
-onUnmounted(() => currentAbort?.abort());
-
 watch(executionId, (id) => {
-    if (id) {
-        loadTaskOutputs(id);
-        loadFlowTaskDef();
-    }
+    if (id) loadTaskOutputs(id);
 }, { immediate: true });
 
 const outputs = computed(() => fetchedOutputs.value ?? taskRun.value?.outputs ?? null);
