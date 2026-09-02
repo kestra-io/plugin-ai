@@ -104,8 +104,14 @@ dependencies {
     // tools
     implementation "dev.langchain4j:langchain4j-web-search-engine-google-custom:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-web-search-engine-tavily:${langchain4jBetaVersion}"
-    implementation "dev.langchain4j:langchain4j-mcp:${langchain4jBetaVersion}"
-    implementation "dev.langchain4j:langchain4j-mcp-docker:${langchain4jBetaVersion}"
+    // Pinned below langchain4jBetaVersion: langchain4j-mcp >= 1.19.0-beta29 dropped
+    // HttpMcpTransport (legacy 2024-11-05 SSE: GET to open the stream, dynamic POST endpoint
+    // via an "endpoint" SSE event) with no replacement - StreamableHttpMcpTransport only speaks
+    // the modern Streamable HTTP protocol (direct POST), so it 404s against legacy SSE-only
+    // servers such as mcp/everything's sse.js.
+    def langchain4jMcpVersion = "1.13.0-beta23"
+    implementation "dev.langchain4j:langchain4j-mcp:${langchain4jMcpVersion}"
+    implementation "dev.langchain4j:langchain4j-mcp-docker:${langchain4jMcpVersion}"
 
     // retrievers
     implementation "dev.langchain4j:langchain4j-experimental-sql:${langchain4jBetaVersion}"
