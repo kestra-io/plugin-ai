@@ -112,8 +112,13 @@ dependencies {
     compileOnly "com.zaxxer:HikariCP"
 
     // agents
-    implementation "dev.langchain4j:langchain4j-agentic:${langchain4jBetaVersion}"
-    implementation "dev.langchain4j:langchain4j-agentic-a2a:${langchain4jBetaVersion}"
+    // Pinned below langchain4jBetaVersion: langchain4j-agentic-a2a >= 1.19.0-beta29 pulls
+    // org.a2aproject.sdk 1.1.0.Final, whose generated grpc classes require a protobuf-java
+    // version newer than the one Kestra's platform BOM enforces (3.25.8), which lacks the
+    // RuntimeVersion gencode-check class and breaks A2AClient at runtime with NoClassDefFoundError.
+    def langchain4jAgenticVersion = "1.13.0-beta23"
+    implementation "dev.langchain4j:langchain4j-agentic:${langchain4jAgenticVersion}"
+    implementation "dev.langchain4j:langchain4j-agentic-a2a:${langchain4jAgenticVersion}"
 
     // skills
     implementation "dev.langchain4j:langchain4j-skills:${langchain4jBetaVersion}"
