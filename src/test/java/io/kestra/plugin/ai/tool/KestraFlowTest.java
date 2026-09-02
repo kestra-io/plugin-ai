@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,10 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.output.FinishReason;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -30,6 +35,7 @@ import io.kestra.plugin.ai.provider.OpenAI;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock("kestra-h2-flyway")
@@ -42,13 +48,17 @@ class KestraFlowTest {
     private int mockPort;
     private final Map<String, String> stubFlowResponses = new ConcurrentHashMap<>();
     private final Map<String, String> stubExecResponses = new ConcurrentHashMap<>();
+    private final Map<String, Integer> stubStatuses = new ConcurrentHashMap<>();
     private final AtomicBoolean executionCreated = new AtomicBoolean(false);
+    private final AtomicInteger requestCount = new AtomicInteger();
 
     @BeforeEach
     void setUp() throws IOException {
         stubFlowResponses.clear();
         stubExecResponses.clear();
+        stubStatuses.clear();
         executionCreated.set(false);
+        requestCount.set(0);
         mockServer = HttpServer.create(new InetSocketAddress(0), 0);
         mockServer.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
@@ -56,9 +66,15 @@ class KestraFlowTest {
             // Drain request body without parsing it as multipart — avoids
             // Apache Commons FileUpload "no multipart boundary" errors
             exchange.getRequestBody().readAllBytes();
+            requestCount.incrementAndGet();
             byte[] responseBytes;
             int status;
-            if ("GET".equalsIgnoreCase(method)) {
+            Integer forcedStatus = stubStatuses.get(path);
+            if (forcedStatus != null) {
+                String errorBody = stubFlowResponses.get(path);
+                responseBytes = (errorBody != null ? errorBody : "{}").getBytes(StandardCharsets.UTF_8);
+                status = forcedStatus;
+            } else if ("GET".equalsIgnoreCase(method)) {
                 String body = stubFlowResponses.get(path);
                 if (body != null) {
                     responseBytes = body.getBytes(StandardCharsets.UTF_8);
@@ -117,10 +133,9 @@ class KestraFlowTest {
 
     @Test
     void helloWorld() throws Exception {
-        // The SDK uses an empty tenant string, producing a double-slash path: /api/v1//flows/...
-        stubFlowResponses.put("/api/v1//flows/company.team/hello-world",
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
             flowJson("company.team", "hello-world", 1, null, null));
-        stubExecResponses.put("/api/v1//executions/company.team/hello-world",
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
             executionJson("test-exec-123", "company.team", "hello-world"));
 
         RunContext runContext = runContextFactory.of(
@@ -147,6 +162,7 @@ class KestraFlowTest {
                         .flowId(Property.ofValue("hello-world"))
                         .description(Property.ofValue("A flow that say Hello World"))
                         .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .auth(apiTokenAuth())
                         .build()
                 )
             )
@@ -176,9 +192,9 @@ class KestraFlowTest {
 
     @Test
     void descriptionFromTheFlow() throws Exception {
-        stubFlowResponses.put("/api/v1//flows/company.team/hello-world-with-description",
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-description",
             flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null));
-        stubExecResponses.put("/api/v1//executions/company.team/hello-world-with-description",
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world-with-description",
             executionJson("test-exec-456", "company.team", "hello-world-with-description"));
 
         RunContext runContext = runContextFactory.of(
@@ -204,6 +220,7 @@ class KestraFlowTest {
                         .namespace(Property.ofValue("company.team"))
                         .flowId(Property.ofValue("hello-world-with-description"))
                         .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .auth(apiTokenAuth())
                         .build()
                 )
             )
@@ -242,9 +259,9 @@ class KestraFlowTest {
     @Test
     void inputsAndLabels() throws Exception {
         String inputsJson = "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":false}]";
-        stubFlowResponses.put("/api/v1//flows/company.team/hello-world-with-input",
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-input",
             flowJson("company.team", "hello-world-with-input", 1, null, inputsJson));
-        stubExecResponses.put("/api/v1//executions/company.team/hello-world-with-input",
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world-with-input",
             executionJson("test-exec-789", "company.team", "hello-world-with-input"));
 
         RunContext runContext = runContextFactory.of(
@@ -271,6 +288,7 @@ class KestraFlowTest {
                         .flowId(Property.ofValue("hello-world-with-input"))
                         .description(Property.ofValue("A flow that say Hello World"))
                         .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .auth(apiTokenAuth())
                         .build()
                 )
             )
@@ -301,9 +319,9 @@ class KestraFlowTest {
 
     @Test
     void helloWorldFromLLM() throws Exception {
-        stubFlowResponses.put("/api/v1//flows/company.team/hello-world",
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
             flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null));
-        stubExecResponses.put("/api/v1//executions/company.team/hello-world",
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
             executionJson("test-exec-llm", "company.team", "hello-world"));
 
         RunContext runContext = runContextFactory.of(
@@ -327,6 +345,7 @@ class KestraFlowTest {
                 List.of(
                     KestraFlow.builder()
                         .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+                        .auth(apiTokenAuth())
                         .build()
                 )
             )
@@ -353,5 +372,150 @@ class KestraFlowTest {
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
         assertThat(executionCreated).isTrue();
         assertThat(output.getTextOutput()).contains("test-exec-llm");
+    }
+    private KestraFlow.Auth apiTokenAuth() {
+        return KestraFlow.Auth.builder().apiToken(Property.ofValue("test-token")).build();
+    }
+
+    private KestraFlow definedFlowTool(String flowId, KestraFlow.Auth auth) {
+        return KestraFlow.builder()
+            .namespace(Property.ofValue("company.team"))
+            .flowId(Property.ofValue(flowId))
+            .description(Property.ofValue("A flow that say Hello World"))
+            .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+            .auth(auth)
+            .build();
+    }
+
+    private ToolExecutor executorOf(KestraFlow tool) throws Exception {
+        return tool.tool(runContextFactory.of(), Map.of()).values().iterator().next();
+    }
+
+    @Test
+    void shouldReportAnAuthenticationFailureWhenTheApiRejectsTheCredentials() {
+        stubStatuses.put("/api/v1/main/flows/company.team/hello-world", 401);
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Authentication failed")
+            .hasMessageContaining("hello-world");
+    }
+
+    @Test
+    void shouldReportAnAuthorizationFailureWhenTheApiForbidsTheFlow() {
+        stubStatuses.put("/api/v1/main/flows/company.team/hello-world", 403);
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Not authorized");
+    }
+
+    @Test
+    void shouldStillReportAMissingFlowWhenTheApiReturnsNotFound() {
+        var tool = definedFlowTool("unknown-flow", apiTokenAuth());
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unable to find the flow 'unknown-flow'");
+    }
+
+    @Test
+    void shouldReportAnAuthenticationFailureWhenTheFlowIsResolvedByTheLlm() throws Exception {
+        stubStatuses.put("/api/v1/main/flows/company.team/hello-world", 401);
+
+        var tool = KestraFlow.builder().kestraUrl(Property.ofValue("http://localhost:" + mockPort)).auth(apiTokenAuth()).build();
+        var executor = executorOf(tool);
+        var request = ToolExecutionRequest.builder()
+            .id("1")
+            .name("kestra_flow")
+            .arguments("{\"namespace\":\"company.team\",\"flowId\":\"hello-world\"}")
+            .build();
+
+        assertThatThrownBy(() -> executor.execute(request, "memory"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageStartingWith("Authentication failed")
+            .cause().hasMessageStartingWith("Authentication failed");
+    }
+
+    @Test
+    void shouldReportAnAuthenticationFailureWhenTheExecutionIsRejected() throws Exception {
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+        stubStatuses.put("/api/v1/main/executions/company.team/hello-world", 401);
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+        var executor = executorOf(tool);
+        var request = ToolExecutionRequest.builder().id("1").name("kestra_flow").arguments("{}").build();
+
+        assertThatThrownBy(() -> executor.execute(request, "memory"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageStartingWith("Authentication failed")
+            .cause().hasMessageStartingWith("Authentication failed");
+    }
+
+    @Test
+    void shouldFailBeforeCallingTheApiWhenNoCredentialsCanBeRetrieved() {
+        var tool = definedFlowTool("hello-world", null);
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No authentication method provided");
+        assertThat(requestCount).hasValue(0);
+    }
+    @Test
+    void shouldReportAMissingInputAsAnArgumentsProblem() throws Exception {
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":true}]"));
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+        var executor = executorOf(tool);
+        var request = ToolExecutionRequest.builder().id("1").name("kestra_flow").arguments("{}").build();
+
+        assertThatThrownBy(() -> executor.execute(request, "memory"))
+            .isInstanceOf(ToolArgumentsException.class)
+            .hasMessageContaining("'name'");
+    }
+    /** The SDK builder defaults to Basic auth, so building a client without credentials would send `Basic base64("null:null")`. */
+    @Test
+    void shouldFailWhenAutoIsDisabledWithoutCredentials() {
+        var tool = definedFlowTool("hello-world", KestraFlow.Auth.builder().auto(Property.ofValue(false)).build());
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No authentication method provided");
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldIncludeTheApiMessageWhenTheStatusIsNotMapped() {
+        stubStatuses.put("/api/v1/main/flows/company.team/hello-world", 500);
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            "{\"message\":\"the database is unreachable\"}");
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("returned the status 500")
+            .hasMessageContaining("the database is unreachable");
+    }
+
+    @Test
+    void shouldReportAnUnreachableApiInsteadOfAMissingFlow() {
+        var tool = KestraFlow.builder()
+            .namespace(Property.ofValue("company.team"))
+            .flowId(Property.ofValue("hello-world"))
+            .description(Property.ofValue("A flow that say Hello World"))
+            .kestraUrl(Property.ofValue("http://localhost:1"))
+            .auth(apiTokenAuth())
+            .build();
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("could not be reached");
     }
 }
