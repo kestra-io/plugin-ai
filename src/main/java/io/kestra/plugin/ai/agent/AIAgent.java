@@ -117,18 +117,18 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                       - Up to 5 paragraphs for 'long'
                     prompt: |
                       Summarize the following content: {{ inputs.text }}
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-3.5-flash-lite
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
 
                   - id: english_brevity
                     type: io.kestra.plugin.ai.agent.AIAgent
                     prompt: Generate exactly 1 sentence English summary of "{{ outputs.multilingual_agent.textOutput }}"
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.ai.agent.AIAgent
-                    values:
-                      provider:
-                        type: io.kestra.plugin.ai.provider.GoogleGemini
-                        modelName: gemini-3.5-flash-lite
-                        apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-3.5-flash-lite
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
                 """
         ),
         @Example(
@@ -169,23 +169,28 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: first_agent
                     type: io.kestra.plugin.ai.agent.AIAgent
                     prompt: Hi, my name is John and I live in New York!
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
+                    memory:
+                      type: io.kestra.plugin.ai.memory.KestraKVStore
+                      memoryId: JOHN
+                      ttl: PT1M
+                      messages: 5
 
                   - id: second_agent
                     type: io.kestra.plugin.ai.agent.AIAgent
                     prompt: What's my name and where do I live?
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.ai.agent.AIAgent
-                    values:
-                      provider:
-                        type: io.kestra.plugin.ai.provider.OpenAI
-                        apiKey: "{{ secret('OPENAI_API_KEY') }}"
-                        modelName: gpt-5-mini
-                      memory:
-                        type: io.kestra.plugin.ai.memory.KestraKVStore
-                        memoryId: JOHN
-                        ttl: PT1M
-                        messages: 5
+                    provider:
+                      type: io.kestra.plugin.ai.provider.OpenAI
+                      apiKey: "{{ secret('OPENAI_API_KEY') }}"
+                      modelName: gpt-5-mini
+                    memory:
+                      type: io.kestra.plugin.ai.memory.KestraKVStore
+                      memoryId: JOHN
+                      ttl: PT1M
+                      messages: 5
                 """
         ),
         @Example(
