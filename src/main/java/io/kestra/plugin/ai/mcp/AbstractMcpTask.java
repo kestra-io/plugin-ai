@@ -17,7 +17,6 @@ import io.kestra.plugin.ai.tool.internal.CustomMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -75,7 +74,6 @@ public abstract class AbstractMcpTask extends Task {
     @PluginProperty(group = "main")
     private Property<Boolean> logResponses = Property.ofValue(false);
 
-    @SuppressWarnings("removal") // HttpMcpTransport (legacy SSE) is deprecated for removal upstream
     protected McpClient client(RunContext runContext) throws IllegalVariableEvaluationException {
         String rUrl = runContext.render(url).as(String.class).orElseThrow();
         Duration rTimeout = runContext.render(timeout).as(Duration.class).orElse(null);
@@ -83,17 +81,11 @@ public abstract class AbstractMcpTask extends Task {
         boolean rLogResponses = runContext.render(logResponses).as(Boolean.class).orElse(false);
         Map<String, String> rHeaders = runContext.render(headers).asMap(String.class, String.class);
 
+        // The dedicated legacy SSE transport was removed upstream; StreamableHttpMcpTransport
+        // now negotiates both the streamable-HTTP and SSE variants of the MCP spec.
         McpTransport transport = switch (runContext.render(this.transport).as(Transport.class).orElse(Transport.STREAMABLE_HTTP)) {
-            case STREAMABLE_HTTP -> new StreamableHttpMcpTransport.Builder()
+            case STREAMABLE_HTTP, SSE -> new StreamableHttpMcpTransport.Builder()
                 .url(rUrl)
-                .timeout(rTimeout)
-                .logRequests(rLogRequests)
-                .logResponses(rLogResponses)
-                .logger(runContext.logger())
-                .customHeaders(rHeaders)
-                .build();
-            case SSE -> new HttpMcpTransport.Builder()
-                .sseUrl(rUrl)
                 .timeout(rTimeout)
                 .logRequests(rLogRequests)
                 .logResponses(rLogResponses)
