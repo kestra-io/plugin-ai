@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.tool;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -17,6 +18,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.SDK;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.tenant.TenantService;
 import io.kestra.core.serializers.ListOrMapOfLabelDeserializer;
 import io.kestra.core.serializers.ListOrMapOfLabelSerializer;
 import io.kestra.core.utils.IdUtils;
@@ -36,6 +38,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -91,41 +94,57 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                             namespace: tutorial
                             flowId: business-automation
                             description: Business Automation
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: business-processes
                             description: Business Processes
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: data-engineering-pipeline
                             description: Data Engineering Pipeline
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: dwh-and-analytics
                             description: Data Warehouse and Analytics
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: file-processing
                             description: File Processing
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: hello-world
                             description: Hello World
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: infrastructure-automation
                             description: Infrastructure Automation
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
 
                           - type: io.kestra.plugin.ai.tool.KestraFlow
                             namespace: tutorial
                             flowId: microservices-and-apis
-                            description: Microservices and APIs"""
+                            description: Microservices and APIs
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}\""""
             }
         ),
         @Example(
@@ -168,7 +187,9 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                           modelName: gemini-3.5-flash-lite
                           apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         tools:
-                          - type: io.kestra.plugin.ai.tool.KestraFlow"""
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}\""""
             }
         ),
     }
@@ -185,6 +206,9 @@ public class KestraFlow extends ToolProvider {
     private static final String TOOL_LLM_DESCRIPTION = """
         This tool executes a Kestra workflow, also called a flow. This tool will respond with the flow execution information.
         The namespace and the ID of the flow must be passed as tool parameters.""";
+
+    private static final String DEFAULT_URL = "http://localhost:8080";
+    private static final String URL_TEMPLATE = "{{ kestra.url }}";
 
     @Schema(
         title = "Description of the flow if not already provided inside the flow itself",
@@ -276,18 +300,33 @@ public class KestraFlow extends ToolProvider {
         return Optional.empty();
     }
 
+    private String resolveUrl(RunContext runContext) throws IllegalVariableEvaluationException {
+        String rUrl = runContext.render(kestraUrl).as(String.class)
+            .filter(Predicate.not(String::isBlank))
+            .orElseGet(() -> configuredUrl(runContext));
+
+        return rUrl.trim().replaceAll("/+$", "");
+    }
+
+    private static String configuredUrl(RunContext runContext) {
+        try {
+            String rUrl = runContext.render(URL_TEMPLATE);
+            return rUrl == null || rUrl.isBlank() ? DEFAULT_URL : rUrl;
+        } catch (IllegalVariableEvaluationException e) {
+            return DEFAULT_URL;
+        }
+    }
+
+    private static IllegalArgumentException noAuthentication() {
+        return new IllegalArgumentException(
+            "No authentication method provided. Set the `auth` property of the tool, or configure a default one with the `kestra.tasks.sdk.authentication` properties."
+        );
+    }
+
     private KestraClient kestraClient(RunContext runContext) throws IllegalVariableEvaluationException {
-        String rKestraUrl = runContext.render(kestraUrl).as(String.class)
-            .orElseGet(() -> {
-                try {
-                    return runContext.render("{{ kestra.url }}");
-                } catch (IllegalVariableEvaluationException e) {
-                    return "http://localhost:8080";
-                }
-            });
-        String normalizedUrl = rKestraUrl.trim().replaceAll("/+$", "");
         var builder = KestraClient.builder();
-        builder.url(normalizedUrl);
+        builder.url(resolveUrl(runContext));
+
         if (auth != null) {
             String rApiToken = runContext.render(auth.apiToken).as(String.class).orElse(null);
             if (rApiToken != null) {
@@ -299,13 +338,23 @@ public class KestraFlow extends ToolProvider {
                 return builder.basicAuth(maybeUsername.get(), maybePassword.get()).build();
             }
             if (runContext.render(auth.auto).as(Boolean.class).orElse(Boolean.TRUE)) {
-                return tryAutoAuth(builder, runContext)
-                    .orElseThrow(() -> new IllegalArgumentException("No authentication method provided"));
+                return tryAutoAuth(builder, runContext).orElseThrow(KestraFlow::noAuthentication);
             }
-            throw new IllegalArgumentException("No authentication method provided");
-        } else {
-            return tryAutoAuth(builder, runContext).orElse(builder.build());
+            throw noAuthentication();
         }
+
+        return tryAutoAuth(builder, runContext).orElseThrow(KestraFlow::noAuthentication);
+    }
+
+    /** A 401 or a 403 from the API is a credentials problem, and reporting it as a missing flow sends the user looking in the wrong place. */
+    private static String apiFailureMessage(ApiException e, String namespace, String flowId) {
+        return switch (e.getCode()) {
+            case 401 -> "Authentication failed when calling the Kestra API for the flow '%s' in the namespace '%s'. Check the credentials set in the `auth` property of the tool.".formatted(flowId, namespace);
+            case 403 -> "Not authorized to access the flow '%s' in the namespace '%s'. Check the permissions of the credentials set in the `auth` property of the tool.".formatted(flowId, namespace);
+            case 404 -> "Unable to find the flow '%s' in the namespace '%s'.".formatted(flowId, namespace);
+            case 0 -> "The Kestra API could not be reached for the flow '%s' in the namespace '%s': %s".formatted(flowId, namespace, e.getMessage());
+            default -> "The Kestra API returned the status %d for the flow '%s' in the namespace '%s': %s".formatted(e.getCode(), flowId, namespace, e.getMessage());
+        };
     }
 
     @Override
@@ -329,7 +378,9 @@ public class KestraFlow extends ToolProvider {
 
         // resolve tenant id: explicit property overrides, otherwise fall back to current execution's tenant
         String rTenantId = runContext.render(this.tenantId).as(String.class, additionalVariables)
-            .orElse(Objects.toString(runContext.flowInfo().tenantId(), ""));
+            .filter(Predicate.not(String::isBlank))
+            .or(() -> Optional.ofNullable(runContext.flowInfo().tenantId()))
+            .orElse(TenantService.MAIN_TENANT);
 
         var client = kestraClient(runContext);
 
@@ -369,7 +420,7 @@ public class KestraFlow extends ToolProvider {
             try {
                 flowWithSource = client.flows().flow(rNamespace, rFlowId, rTenantId, false, rRevision.orElse(null), false);
             } catch (ApiException e) {
-                throw new IllegalArgumentException("Unable to find flow '" + rFlowId + "' in namespace '" + rNamespace + "'", e);
+                throw new IllegalArgumentException(apiFailureMessage(e, rNamespace, rFlowId), e);
             }
 
             var rDescription = runContext.render(this.description).as(String.class, additionalVariables).orElse(flowWithSource.getDescription());
@@ -452,13 +503,15 @@ public class KestraFlow extends ToolProvider {
             try {
                 return client.flows().flow(namespace, flowId, tenantId, false, revision, false);
             } catch (ApiException e) {
-                throw new ToolExecutionException("Flow not found: " + namespace + "." + flowId, e);
+                // langchain4j reports the root cause's message to the agent, so chaining the ApiException would hide this one
+                runContext.logger().warn("Calling the Kestra API failed with the status {}.", e.getCode(), e);
+                throw new ToolExecutionException(apiFailureMessage(e, namespace, flowId));
             }
         }
     }
 
     static abstract class AbstractKestraFlowToolExecutor implements ToolExecutor {
-        private final RunContext runContext;
+        protected final RunContext runContext;
         protected final KestraClient client;
         protected final String tenantId;
         private final Map<String, Object> predefinedInputs;
@@ -522,20 +575,29 @@ public class KestraFlow extends ToolProvider {
                 });
 
                 var executionsApi = new ExecutionsApiWithInputs(client.executions().getApiClient());
-                var response = executionsApi.createExecutionWithInputs(
-                    tenantId,
-                    flowWithSource.getNamespace(),
-                    flowWithSource.getId(),
-                    sdkLabels,
-                    false,
-                    flowWithSource.getRevision(),
-                    scheduledDate.map(ZonedDateTime::toOffsetDateTime).orElse(null),
-                    null,
-                    null,
-                    new HashMap<>(finalInputs)
-                );
+                ExecutionControllerExecutionResponse response;
+                try {
+                    response = executionsApi.createExecutionWithInputs(
+                        tenantId,
+                        flowWithSource.getNamespace(),
+                        flowWithSource.getId(),
+                        sdkLabels,
+                        false,
+                        flowWithSource.getRevision(),
+                        scheduledDate.map(ZonedDateTime::toOffsetDateTime).orElse(null),
+                        null,
+                        null,
+                        new HashMap<>(finalInputs)
+                    );
+                } catch (ApiException e) {
+                    // langchain4j reports the root cause's message to the agent, so chaining the ApiException would hide this one
+                    runContext.logger().warn("Calling the Kestra API failed with the status {}.", e.getCode(), e);
+                    throw new ToolExecutionException(apiFailureMessage(e, flowWithSource.getNamespace(), flowWithSource.getId()));
+                }
 
                 return JacksonMapper.ofJson().writeValueAsString(response);
+            } catch (LangChain4jException e) {
+                throw e;
             } catch (Exception e) {
                 throw new ToolExecutionException(e);
             }
