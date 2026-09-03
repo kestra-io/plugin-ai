@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +33,7 @@ import io.kestra.plugin.ai.provider.Ollama;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock("kestra-h2-flyway")
@@ -219,6 +221,171 @@ class IngestDocumentTest extends ContainerTest {
         String kvKey = (String) output.getEmbeddingStoreOutputs().get("kvName");
         KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
         assertKvStore(kvStore, kvKey, totalDocs);
+    }
+
+    @Test
+    void topLevelMetadataFromInternalURIs() throws Exception {
+        RunContext runContext = ollamaRunContext();
+
+        Path path = runContext.workingDir().createFile("document.txt");
+        Files.write(path, "I'm Loïc".getBytes());
+        URI uri = runContext.storage().putFile(path.toFile());
+
+        var task = ingestTaskBuilder()
+            .metadata(Property.ofValue(Map.of("source", "manual-run", "team", "data")))
+            .fromInternalURIs(Property.ofValue(List.of(uri.toString())))
+            .build();
+
+        IngestDocument.Output output = task.run(runContext);
+        assertThat(output.getIngestedDocuments()).isEqualTo(1);
+
+        List<Map<String, Object>> metadata = storedMetadata(runContext, output);
+        assertThat(metadata).hasSize(1);
+        assertThat(metadata.getFirst()).containsEntry("source", "manual-run").containsEntry("team", "data");
+    }
+
+    @Test
+    void topLevelMetadataFromExternalURLs() throws Exception {
+        RunContext runContext = ollamaRunContext();
+
+        var task = ingestTaskBuilder()
+            .metadata(Property.ofValue(Map.of("source", "manual-run")))
+            .fromExternalURLs(Property.ofValue(List.of("https://dummyjson.com/products/1")))
+            .build();
+
+        IngestDocument.Output output = task.run(runContext);
+        assertThat(output.getIngestedDocuments()).isEqualTo(1);
+
+        List<Map<String, Object>> metadata = storedMetadata(runContext, output);
+        assertThat(metadata).hasSize(1);
+        assertThat(metadata.getFirst()).containsEntry("source", "manual-run");
+    }
+
+    @Test
+    void topLevelMetadataFromPathDoesNotOverwriteLoaderMetadata() throws Exception {
+        RunContext runContext = ollamaRunContext();
+
+        Path path = runContext.workingDir().createFile("ingest/document1.txt");
+        Files.write(path, "I'm Loïc".getBytes());
+
+        var task = ingestTaskBuilder()
+            .metadata(Property.ofValue(Map.of("source", "manual-run", "file_name", "should-not-win.txt")))
+            .fromPath(Property.ofValue("ingest"))
+            .build();
+
+        IngestDocument.Output output = task.run(runContext);
+        assertThat(output.getIngestedDocuments()).isEqualTo(1);
+
+        List<Map<String, Object>> metadata = storedMetadata(runContext, output);
+        assertThat(metadata).hasSize(1);
+        assertThat(metadata.getFirst())
+            .containsEntry("source", "manual-run")
+            .containsEntry("file_name", "document1.txt");
+    }
+
+    @Test
+    void inlineDocumentMetadataTakesPrecedenceOverTopLevelMetadata() throws Exception {
+        RunContext runContext = ollamaRunContext();
+
+        var task = ingestTaskBuilder()
+            .metadata(Property.ofValue(Map.of("source", "manual-run", "team", "data")))
+            .fromDocuments(
+                List.of(
+                    IngestDocument.InlineDocument.builder()
+                        .content(Property.ofValue("I'm Loïc"))
+                        .metadata(Property.ofValue(Map.of("team", "platform")))
+                        .build()
+                )
+            )
+            .build();
+
+        IngestDocument.Output output = task.run(runContext);
+        assertThat(output.getIngestedDocuments()).isEqualTo(1);
+
+        List<Map<String, Object>> metadata = storedMetadata(runContext, output);
+        assertThat(metadata).hasSize(1);
+        assertThat(metadata.getFirst())
+            .containsEntry("source", "manual-run")
+            .containsEntry("team", "platform");
+    }
+
+    @Test
+    void withoutTopLevelMetadataDocumentsKeepTheirOwnMetadata() throws Exception {
+        RunContext runContext = ollamaRunContext();
+
+        var task = ingestTaskBuilder()
+            .fromDocuments(
+                List.of(
+                    IngestDocument.InlineDocument.builder()
+                        .content(Property.ofValue("I'm Loïc"))
+                        .metadata(Property.ofValue(Map.of("team", "platform")))
+                        .build()
+                )
+            )
+            .build();
+
+        IngestDocument.Output output = task.run(runContext);
+        assertThat(output.getIngestedDocuments()).isEqualTo(1);
+
+        List<Map<String, Object>> metadata = storedMetadata(runContext, output);
+        assertThat(metadata).hasSize(1);
+        assertThat(metadata.getFirst()).containsEntry("team", "platform").doesNotContainKey("source");
+    }
+
+    @Test
+    void unsupportedMetadataValueTypeFailsBeforeIngestion() {
+        RunContext runContext = ollamaRunContext();
+
+        var task = ingestTaskBuilder()
+            .metadata(Property.ofValue(Map.of("tags", List.of("a", "b"))))
+            .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
+            .build();
+
+        assertThatThrownBy(() -> task.run(runContext))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("tags")
+            .hasMessageContaining("String, UUID, Integer, Long, Float or Double");
+    }
+
+    private RunContext ollamaRunContext() {
+        return runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "chroma/all-minilm-l6-v2-f32",
+                "endpoint", ollamaEndpoint
+            )
+        );
+    }
+
+    private IngestDocument.IngestDocumentBuilder<?, ?> ingestTaskBuilder() {
+        return IngestDocument.builder()
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(KestraKVStore.builder().build())
+            .drop(Property.ofValue(true));
+    }
+
+    private List<Map<String, Object>> storedMetadata(RunContext runContext, IngestDocument.Output output) throws IOException, ResourceExpiredException {
+        String kvKey = (String) output.getEmbeddingStoreOutputs().get("kvName");
+        KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
+        Optional<KVEntry> kvEntry = kvStore.get(kvKey);
+        assertThat(kvEntry.isPresent()).isTrue();
+        Optional<KVValue> kvValue = kvStore.getValue(kvEntry.get().key());
+        JsonNode jsonNode = JacksonMapper.ofJson().readTree(kvValue.orElseThrow().value().toString());
+
+        List<Map<String, Object>> metadata = new ArrayList<>();
+        for (JsonNode entry : jsonNode.get("entries")) {
+            JsonNode node = entry.get("embedded").get("metadata");
+            if (node.has("metadata")) {
+                node = node.get("metadata");
+            }
+            metadata.add(JacksonMapper.ofJson().convertValue(node, Map.class));
+        }
+        return metadata;
     }
 
     private void assertKvStore(KVStore kvStore, String kvKey, int nbDocuments) throws IOException, ResourceExpiredException {
