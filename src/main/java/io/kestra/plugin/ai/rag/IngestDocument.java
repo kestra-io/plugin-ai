@@ -2,10 +2,14 @@ package io.kestra.plugin.ai.rag;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
@@ -70,6 +74,30 @@ import lombok.experimental.SuperBuilder;
                       - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/content/blogs/release-0-24.md
                 """
         ),
+        @Example(
+            full = true,
+            title = "Attach the same metadata to every ingested document, so it can later be used to filter search results.",
+            code = """
+                id: document_ingestion_with_metadata
+                namespace: company.ai
+
+                tasks:
+                  - id: ingest
+                    type: io.kestra.plugin.ai.rag.IngestDocument
+                    provider:
+                      type: io.kestra.plugin.ai.provider.GoogleGemini
+                      modelName: gemini-embedding-001
+                      apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                    embeddings:
+                      type: io.kestra.plugin.ai.embeddings.KestraKVStore
+                    drop: true
+                    metadata:
+                      source: manual-run
+                      team: data
+                    fromExternalURLs:
+                      - https://raw.githubusercontent.com/kestra-io/docs/refs/heads/main/README.md
+                """
+        ),
     },
     metrics = {
         @Metric(
@@ -112,6 +140,9 @@ import lombok.experimental.SuperBuilder;
     aliases = "io.kestra.plugin.langchain4j.rag.IngestDocument"
 )
 public class IngestDocument extends Task implements RunnableTask<IngestDocument.Output> {
+    private static final Set<Class<?>> SUPPORTED_METADATA_TYPES =
+        Set.of(String.class, UUID.class, Integer.class, Long.class, Float.class, Double.class);
+
     @Schema(
         title = "Language model provider",
         description = "Must be configured with an embedding model."
@@ -146,10 +177,22 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
     @Schema(
         title = "Additional metadata",
-        description = "Note: this top-level property is not currently applied to ingested documents. To attach metadata, set the `metadata` field on each inline document under `fromDocuments`."
+        description = """
+            Metadata attached to every ingested document, whatever its source (`fromPath`, `fromInternalURIs`, `fromExternalURLs` or `fromDocuments`).
+
+            Existing metadata always wins on key collision: the `metadata` of an inline document under `fromDocuments`,
+            and the metadata injected by the document loader (for example `file_name` and `absolute_directory_path` for `fromPath`),
+            are never overwritten by these top-level values.
+
+            Supported value types are String, UUID, Integer, Long, Float and Double; `null` values are ignored.
+            Any other type (a boolean, a list, a map, or a number outside the Integer/Long/Float/Double range such as a
+            YAML big integer) is rejected before any document is ingested — quote the value to send it as a String.
+
+            A value written in a flow can only ever be a String, an Integer, a Long or a Double: UUID and Float are
+            accepted for parity with the underlying model and are only reachable when the property is set programmatically."""
     )
     @PluginProperty(group = "advanced")
-    private Property<Map<String, String>> metadata;
+    private Property<Map<String, Object>> metadata;
 
     @Schema(title = "Document splitter")
     @PluginProperty(group = "advanced")
@@ -171,6 +214,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     public Output run(RunContext runContext) throws Exception {
         String rFromPath = runContext.render(fromPath).as(String.class).orElse(null);
         int rBulkSize = runContext.render(bulkSize).as(Integer.class).orElse(500);
+        Map<String, Object> rMetadata = validateMetadata(runContext.render(metadata).asMap(String.class, Object.class));
 
         var embeddingModel = provider.embeddingModel(runContext);
         runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
@@ -200,6 +244,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             List<Document> docs = FileSystemDocumentLoader.loadDocumentsRecursively(finalPath);
 
             for (Document doc : docs) {
+                applyMetadata(doc, rMetadata);
                 batch.add(doc);
                 if (batch.size() >= rBulkSize) {
                     flushBatch(batch, ingestor, counters);
@@ -215,6 +260,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
                 Metadata.from(metadataMap)
             );
 
+            applyMetadata(doc, rMetadata);
             batch.add(doc);
             if (batch.size() >= rBulkSize) {
                 flushBatch(batch, ingestor, counters);
@@ -224,7 +270,9 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         for (String uri : runContext.render(fromInternalURIs).asList(String.class)) {
             try (InputStream file = runContext.storage().getFile(URI.create(uri))) {
                 byte[] bytes = file.readAllBytes();
-                batch.add(Document.from(new String(bytes)));
+                var doc = Document.from(new String(bytes, StandardCharsets.UTF_8));
+                applyMetadata(doc, rMetadata);
+                batch.add(doc);
             }
 
             if (batch.size() >= rBulkSize) {
@@ -233,7 +281,9 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         }
 
         for (String url : runContext.render(fromExternalURLs).asList(String.class)) {
-            batch.add(UrlDocumentLoader.load(url, new TextDocumentParser()));
+            var doc = UrlDocumentLoader.load(url, new TextDocumentParser());
+            applyMetadata(doc, rMetadata);
+            batch.add(doc);
 
             if (batch.size() >= rBulkSize) {
                 flushBatch(batch, ingestor, counters);
@@ -263,6 +313,48 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             .outputTokenCount(counters.output == 0 ? null : counters.output)
             .totalTokenCount(counters.total == 0 ? null : counters.total)
             .build();
+    }
+
+    /** Adds the top-level metadata to a document, keeping any value already set by the loader or by the inline document. */
+    private static void applyMetadata(Document document, Map<String, Object> base) {
+        if (base.isEmpty()) {
+            return;
+        }
+
+        var missing = new LinkedHashMap<String, Object>();
+        base.forEach((key, value) -> {
+            if (!document.metadata().containsKey(key)) {
+                missing.put(key, value);
+            }
+        });
+
+        if (!missing.isEmpty()) {
+            document.metadata().putAll(missing);
+        }
+    }
+
+    /** Fails the whole task before any ingestion happens, so an unsupported value cannot leave a partially ingested store. */
+    private static Map<String, Object> validateMetadata(Map<String, Object> rendered) {
+        if (rendered.isEmpty()) {
+            return Map.of();
+        }
+
+        var validated = new LinkedHashMap<String, Object>();
+        for (var entry : rendered.entrySet()) {
+            var value = entry.getValue();
+            if (value == null) {
+                continue;
+            }
+            if (!SUPPORTED_METADATA_TYPES.contains(value.getClass())) {
+                throw new IllegalArgumentException(
+                    "The metadata key '" + entry.getKey() + "' has an unsupported value type '" + value.getClass().getSimpleName()
+                        + "' — use one of String, UUID, Integer, Long, Float or Double, or quote the value to send it as a String."
+                );
+            }
+            validated.put(entry.getKey(), value);
+        }
+
+        return validated;
     }
 
     private void flushBatch(List<Document> batch, EmbeddingStoreIngestor ingestor, Counters counters) {
