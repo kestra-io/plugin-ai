@@ -45,25 +45,9 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void inlineDocuments() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
-                "modelName", "chroma/all-minilm-l6-v2-f32",
-                "endpoint", ollamaEndpoint
-            )
-        );
+        RunContext runContext = ollamaRunContext();
 
-        var task = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
-            .embeddings(
-                KestraKVStore.builder().build()
-            )
-            .drop(Property.ofValue(true))
+        var task = ingestTaskBuilder()
             .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
             .build();
 
@@ -77,29 +61,13 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void internalStorageURIs() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
-                "modelName", "chroma/all-minilm-l6-v2-f32",
-                "endpoint", ollamaEndpoint
-            )
-        );
+        RunContext runContext = ollamaRunContext();
 
         Path path = runContext.workingDir().createFile("document.txt");
         Files.write(path, "I'm Loïc".getBytes());
         URI uri = runContext.storage().putFile(path.toFile());
 
-        var task = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
-            .embeddings(
-                KestraKVStore.builder().build()
-            )
-            .drop(Property.ofValue(true))
+        var task = ingestTaskBuilder()
             .fromInternalURIs(Property.ofValue(List.of(uri.toString())))
             .build();
 
@@ -113,30 +81,14 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void workingDirectoryPath() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
-                "modelName", "chroma/all-minilm-l6-v2-f32",
-                "endpoint", ollamaEndpoint
-            )
-        );
+        RunContext runContext = ollamaRunContext();
 
         Path path1 = runContext.workingDir().createFile("ingest/document1.txt");
         Files.write(path1, "I'm Loïc".getBytes());
         Path path2 = runContext.workingDir().createFile("ingest/document2.txt");
         Files.write(path2, "I live in Lille".getBytes());
 
-        var task = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
-            .embeddings(
-                KestraKVStore.builder().build()
-            )
-            .drop(Property.ofValue(true))
+        var task = ingestTaskBuilder()
             .fromPath(Property.ofValue("ingest"))
             .build();
 
@@ -150,25 +102,9 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void externalURLs() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
-                "modelName", "chroma/all-minilm-l6-v2-f32",
-                "endpoint", ollamaEndpoint
-            )
-        );
+        RunContext runContext = ollamaRunContext();
 
-        var task = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
-            .embeddings(
-                KestraKVStore.builder().build()
-            )
-            .drop(Property.ofValue(true))
+        var task = ingestTaskBuilder()
             .fromExternalURLs(Property.ofValue(List.of("https://dummyjson.com/products/1", "https://dummyjson.com/products/2")))
             .build();
 
@@ -182,12 +118,7 @@ class IngestDocumentTest extends ContainerTest {
 
     @Test
     void inlineDocumentsWithBulkSize() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
-                "modelName", "chroma/all-minilm-l6-v2-f32",
-                "endpoint", ollamaEndpoint
-            )
-        );
+        RunContext runContext = ollamaRunContext();
 
         int bulkSize = 5;
         int totalDocs = 12;
@@ -200,16 +131,7 @@ class IngestDocumentTest extends ContainerTest {
             )
             .toList();
 
-        var task = IngestDocument.builder()
-            .provider(
-                Ollama.builder()
-                    .type(Ollama.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .endpoint(Property.ofExpression("{{ endpoint }}"))
-                    .build()
-            )
-            .embeddings(KestraKVStore.builder().build())
-            .drop(Property.ofValue(true))
+        var task = ingestTaskBuilder()
             .bulkSize(Property.ofValue(bulkSize))
             .fromDocuments(docs)
             .build();
@@ -248,9 +170,14 @@ class IngestDocumentTest extends ContainerTest {
     void topLevelMetadataFromExternalURLs() throws Exception {
         RunContext runContext = ollamaRunContext();
 
+        // a file: URL keeps this test offline while still going through UrlDocumentLoader, which injects the `url` metadata key
+        Path path = runContext.workingDir().createFile("external/document.txt");
+        Files.writeString(path, "I'm Loïc");
+        String url = path.toUri().toURL().toString();
+
         var task = ingestTaskBuilder()
-            .metadata(Property.ofValue(Map.of("source", "manual-run")))
-            .fromExternalURLs(Property.ofValue(List.of("https://dummyjson.com/products/1")))
+            .metadata(Property.ofValue(Map.of("source", "manual-run", "url", "should-not-win")))
+            .fromExternalURLs(Property.ofValue(List.of(url)))
             .build();
 
         IngestDocument.Output output = task.run(runContext);
@@ -258,7 +185,9 @@ class IngestDocumentTest extends ContainerTest {
 
         List<Map<String, Object>> metadata = storedMetadata(runContext, output);
         assertThat(metadata).hasSize(1);
-        assertThat(metadata.getFirst()).containsEntry("source", "manual-run");
+        assertThat(metadata.getFirst())
+            .containsEntry("source", "manual-run")
+            .containsEntry("url", url);
     }
 
     @Test

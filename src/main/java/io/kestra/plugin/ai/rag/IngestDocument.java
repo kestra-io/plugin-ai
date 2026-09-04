@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.rag;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -183,7 +184,9 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             and the metadata injected by the document loader (for example `file_name` and `absolute_directory_path` for `fromPath`),
             are never overwritten by these top-level values.
 
-            Supported value types are String, UUID, Integer, Long, Float and Double; `null` values are ignored."""
+            Supported value types are String, UUID, Integer, Long, Float and Double; `null` values are ignored.
+            Any other type (a boolean, a list, a map, or a number outside the Integer/Long/Float/Double range such as a
+            YAML big integer) is rejected before any document is ingested — quote the value to send it as a String."""
     )
     @PluginProperty(group = "advanced")
     private Property<Map<String, Object>> metadata;
@@ -264,7 +267,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         for (String uri : runContext.render(fromInternalURIs).asList(String.class)) {
             try (InputStream file = runContext.storage().getFile(URI.create(uri))) {
                 byte[] bytes = file.readAllBytes();
-                var doc = Document.from(new String(bytes));
+                var doc = Document.from(new String(bytes, StandardCharsets.UTF_8));
                 applyMetadata(doc, rMetadata);
                 batch.add(doc);
             }
@@ -311,6 +314,10 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
     /** Adds the top-level metadata to a document, keeping any value already set by the loader or by the inline document. */
     private static void applyMetadata(Document document, Map<String, Object> base) {
+        if (base.isEmpty()) {
+            return;
+        }
+
         var missing = new LinkedHashMap<String, Object>();
         base.forEach((key, value) -> {
             if (!document.metadata().containsKey(key)) {
@@ -338,7 +345,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             if (!SUPPORTED_METADATA_TYPES.contains(value.getClass())) {
                 throw new IllegalArgumentException(
                     "The metadata key '" + entry.getKey() + "' has an unsupported value type '" + value.getClass().getSimpleName()
-                        + "' — use one of String, UUID, Integer, Long, Float or Double."
+                        + "' — use one of String, UUID, Integer, Long, Float or Double, or quote the value to send it as a String."
                 );
             }
             validated.put(entry.getKey(), value);
