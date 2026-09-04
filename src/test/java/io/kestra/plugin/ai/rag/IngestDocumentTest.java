@@ -15,6 +15,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.kestra.core.context.TestRunContextFactory;
@@ -298,34 +299,35 @@ class IngestDocumentTest extends ContainerTest {
             .drop(Property.ofValue(true));
     }
 
+    private static final TypeReference<Map<String, Object>> METADATA_TYPE = new TypeReference<>() {};
+
     private List<Map<String, Object>> storedMetadata(RunContext runContext, IngestDocument.Output output) throws IOException, ResourceExpiredException {
         String kvKey = (String) output.getEmbeddingStoreOutputs().get("kvName");
         KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
-        Optional<KVEntry> kvEntry = kvStore.get(kvKey);
-        assertThat(kvEntry.isPresent()).isTrue();
-        Optional<KVValue> kvValue = kvStore.getValue(kvEntry.get().key());
-        JsonNode jsonNode = JacksonMapper.ofJson().readTree(kvValue.orElseThrow().value().toString());
 
         List<Map<String, Object>> metadata = new ArrayList<>();
-        for (JsonNode entry : jsonNode.get("entries")) {
+        for (JsonNode entry : readKvJson(kvStore, kvKey).get("entries")) {
             JsonNode node = entry.get("embedded").get("metadata");
             if (node.has("metadata")) {
                 node = node.get("metadata");
             }
-            metadata.add(JacksonMapper.ofJson().convertValue(node, Map.class));
+            metadata.add(JacksonMapper.ofJson().convertValue(node, METADATA_TYPE));
         }
         return metadata;
     }
 
     private void assertKvStore(KVStore kvStore, String kvKey, int nbDocuments) throws IOException, ResourceExpiredException {
+        JsonNode jsonNode = readKvJson(kvStore, kvKey);
+        assertThat(jsonNode.get("entries")).isNotNull();
+        assertThat(jsonNode.get("entries").size()).isEqualTo(nbDocuments);
+    }
+
+    private JsonNode readKvJson(KVStore kvStore, String kvKey) throws IOException, ResourceExpiredException {
         Optional<KVEntry> kvEntry = kvStore.get(kvKey);
         assertThat(kvEntry.isPresent()).isTrue();
         Optional<KVValue> kvValue = kvStore.getValue(kvEntry.get().key());
         assertThat(kvValue.isPresent()).isTrue();
         assertThat(kvValue.get().value()).isNotNull();
-        String value = kvValue.get().value().toString();
-        JsonNode jsonNode = JacksonMapper.ofJson().readTree(value);
-        assertThat(jsonNode.get("entries")).isNotNull();
-        assertThat(jsonNode.get("entries").size()).isEqualTo(nbDocuments);
+        return JacksonMapper.ofJson().readTree(kvValue.get().value().toString());
     }
 }

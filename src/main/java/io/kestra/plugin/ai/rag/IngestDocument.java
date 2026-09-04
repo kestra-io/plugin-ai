@@ -186,7 +186,10 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
             Supported value types are String, UUID, Integer, Long, Float and Double; `null` values are ignored.
             Any other type (a boolean, a list, a map, or a number outside the Integer/Long/Float/Double range such as a
-            YAML big integer) is rejected before any document is ingested — quote the value to send it as a String."""
+            YAML big integer) is rejected before any document is ingested — quote the value to send it as a String.
+
+            A value written in a flow can only ever be a String, an Integer, a Long or a Double: UUID and Float are
+            accepted for parity with the underlying model and are only reachable when the property is set programmatically."""
     )
     @PluginProperty(group = "advanced")
     private Property<Map<String, Object>> metadata;
@@ -332,7 +335,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
     /** Fails the whole task before any ingestion happens, so an unsupported value cannot leave a partially ingested store. */
     private static Map<String, Object> validateMetadata(Map<String, Object> rendered) {
-        if (rendered == null || rendered.isEmpty()) {
+        if (rendered.isEmpty()) {
             return Map.of();
         }
 
