@@ -319,7 +319,7 @@ public class KestraFlow extends ToolProvider {
 
     private static IllegalArgumentException noAuthentication() {
         return new IllegalArgumentException(
-            "No authentication method provided. Set the `auth` property of the tool, or configure a default one with the `kestra.tasks.sdk.authentication` properties. Set `auth.auto` to false to call a Kestra API that requires no authentication."
+            "No authentication method provided. Set the `auth` property of the tool, or configure a default one with the `kestra.tasks.sdk.authentication` properties. If this API requires no authentication, set `auth.auto` to false and leave the credentials unset."
         );
     }
 
