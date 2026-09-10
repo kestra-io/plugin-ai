@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,7 @@ class KestraFlowTest {
     private final Map<String, Integer> stubStatuses = new ConcurrentHashMap<>();
     private final AtomicBoolean executionCreated = new AtomicBoolean(false);
     private final AtomicInteger requestCount = new AtomicInteger();
+    private final AtomicReference<String> lastAuthorizationHeader = new AtomicReference<>();
 
     @BeforeEach
     void setUp() throws IOException {
@@ -59,6 +61,7 @@ class KestraFlowTest {
         stubStatuses.clear();
         executionCreated.set(false);
         requestCount.set(0);
+        lastAuthorizationHeader.set(null);
         mockServer = HttpServer.create(new InetSocketAddress(0), 0);
         mockServer.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
@@ -67,6 +70,7 @@ class KestraFlowTest {
             // Apache Commons FileUpload "no multipart boundary" errors
             exchange.getRequestBody().readAllBytes();
             requestCount.incrementAndGet();
+            lastAuthorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
             byte[] responseBytes;
             int status;
             Integer forcedStatus = stubStatuses.get(path);
@@ -479,15 +483,34 @@ class KestraFlowTest {
             .isInstanceOf(ToolArgumentsException.class)
             .hasMessageContaining("'name'");
     }
-    /** The SDK builder defaults to Basic auth, so building a client without credentials would send `Basic base64("null:null")`. */
+    /**
+     * Opting out of the default authentication without setting any credential is how the tool declares that the
+     * Kestra API it targets requires none, so the call must go out with no `Authorization` header at all.
+     */
     @Test
-    void shouldFailWhenAutoIsDisabledWithoutCredentials() {
+    void shouldSendNoAuthorizationHeaderWhenAutoIsDisabledWithoutCredentials() throws Exception {
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+
         var tool = definedFlowTool("hello-world", KestraFlow.Auth.builder().auto(Property.ofValue(false)).build());
 
-        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("No authentication method provided");
-        assertThat(requestCount).hasValue(0);
+        tool.tool(runContextFactory.of(), Map.of());
+
+        assertThat(requestCount).hasValue(1);
+        assertThat(lastAuthorizationHeader).hasNullValue();
+    }
+
+    /** Counterpart of the test above: a credential still reaches the API, so an absent header there means something. */
+    @Test
+    void shouldSendTheApiTokenAsABearerHeader() throws Exception {
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+
+        tool.tool(runContextFactory.of(), Map.of());
+
+        assertThat(lastAuthorizationHeader).hasValue("Bearer test-token");
     }
 
     @Test
