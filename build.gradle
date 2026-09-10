@@ -27,7 +27,7 @@ repositories {
     }
 }
 
-final targetJavaVersion = JavaVersion.VERSION_21
+final targetJavaVersion = JavaVersion.VERSION_25
 
 java {
     sourceCompatibility = targetJavaVersion
@@ -55,7 +55,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
-    implementation "io.kestra:kestra-api-client:1.3.2"
+    implementation "io.kestra:kestra-api-client:2.0.0"
 
     // compileOnly as it comes from Kestra script library
     compileOnly('com.github.docker-java:docker-java') {
@@ -175,7 +175,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "1.11.4"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.3"
 
     testImplementation 'org.testcontainers:ollama:1.21.4'
     testImplementation 'org.testcontainers:elasticsearch:1.21.4'

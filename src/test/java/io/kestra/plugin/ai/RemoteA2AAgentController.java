@@ -16,19 +16,19 @@ public class RemoteA2AAgentController {
                     "jsonrpc": "2.0",
                     "id": "req_id",
                     "result": {
-                        "kind": "task",
-                        "id": "001",
-                        "contextId": "002",
-                        "status": {
-                            "state": "completed"
-                        },
-                        "artifacts": [{
-                            "artifactId": "001",
-                            "parts": [{
-                                "kind": "text",
-                                "text": "Hello World"
+                        "task": {
+                            "id": "001",
+                            "contextId": "002",
+                            "status": {
+                                "state": "TASK_STATE_COMPLETED"
+                            },
+                            "artifacts": [{
+                                "artifactId": "001",
+                                "parts": [{
+                                    "text": "Hello World"
+                                }]
                             }]
-                        }]
+                        }
                     }
                 }
             """;
@@ -41,6 +41,10 @@ public class RemoteA2AAgentController {
                     "name": "A2A Demo Agent",
                     "description": "Demo JSON-RPC agent that echoes the last two words of user text.",
                     "url": "%s",
+                    "supportedInterfaces": [{
+                        "protocolBinding": "JSONRPC",
+                        "url": "%s"
+                    }],
                     "version": "0.1.0",
                     "defaultInputModes": ["text"],
                     "defaultOutputModes": ["text"],
@@ -54,6 +58,6 @@ public class RemoteA2AAgentController {
                         "tags": ["hello"]
                     }],
                     "supportsAuthenticatedExtendedCard": false
-                }""".formatted(embeddedServer.getURI().toString());
+                }""".formatted(embeddedServer.getURI().toString(), embeddedServer.getURI().toString());
     }
 }

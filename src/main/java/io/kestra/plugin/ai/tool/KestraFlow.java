@@ -319,7 +319,7 @@ public class KestraFlow extends ToolProvider {
 
     private static IllegalArgumentException noAuthentication() {
         return new IllegalArgumentException(
-            "No authentication method provided. Set the `auth` property of the tool, or configure a default one with the `kestra.tasks.sdk.authentication` properties."
+            "No authentication method provided. Set the `auth` property of the tool, or configure a default one with the `kestra.tasks.sdk.authentication` properties. Set `auth.auto` to false to call a Kestra API that requires no authentication."
         );
     }
 
@@ -340,7 +340,8 @@ public class KestraFlow extends ToolProvider {
             if (runContext.render(auth.auto).as(Boolean.class).orElse(Boolean.TRUE)) {
                 return tryAutoAuth(builder, runContext).orElseThrow(KestraFlow::noAuthentication);
             }
-            throw noAuthentication();
+
+            return builder.noAuth().build();
         }
 
         return tryAutoAuth(builder, runContext).orElseThrow(KestraFlow::noAuthentication);
@@ -663,7 +664,10 @@ public class KestraFlow extends ToolProvider {
         @PluginProperty(secret = true, group = "connection")
         private Property<String> password;
 
-        @Schema(title = "Automatically retrieve credentials from Kestra's configuration if available")
+        @Schema(
+            title = "Automatically retrieve credentials from Kestra's configuration if available",
+            description = "Set this to `false` without any credentials to call a Kestra API that requires no authentication."
+        )
         @Builder.Default
         @PluginProperty(group = "advanced")
         private Property<Boolean> auto = Property.ofValue(Boolean.TRUE);
