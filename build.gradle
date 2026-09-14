@@ -121,7 +121,7 @@ dependencies {
     // org.a2aproject.sdk 1.1.0.Final, whose generated grpc classes require a protobuf-java
     // version newer than the one Kestra's platform BOM enforces (3.25.8), which lacks the
     // RuntimeVersion gencode-check class and breaks A2AClient at runtime with NoClassDefFoundError.
-    def langchain4jAgenticVersion = "1.13.0-beta23"
+    def langchain4jAgenticVersion = "1.20.0-beta30"
     implementation "dev.langchain4j:langchain4j-agentic:${langchain4jAgenticVersion}"
     implementation "dev.langchain4j:langchain4j-agentic-a2a:${langchain4jAgenticVersion}"
 
