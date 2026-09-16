@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -121,6 +122,16 @@ public class ChatConfiguration {
     @Nullable
     @PluginProperty(group = "connection")
     private Property<Integer> maxToken;
+
+    @Schema(
+        title = "Maximum cumulative tokens",
+        description = """
+            Maximum total number of input and output tokens that can be consumed by all model calls in one task run.
+            The task fails when this budget is exceeded. The configured model must report token usage."""
+    )
+    @Nullable
+    @PluginProperty(group = "connection")
+    private Property<@Min(1) Integer> maxCumulativeTokens;
 
     @Schema(
         title = "Enable Prompt Caching",
