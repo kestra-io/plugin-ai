@@ -28,6 +28,7 @@ import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
+import io.kestra.plugin.ai.tool.KestraFlow;
 import io.kestra.plugin.ai.tool.KestraTask;
 import io.kestra.plugin.ai.tool.Skill;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
@@ -86,6 +87,88 @@ class AIAgentTest {
 
         var output = agent.run(runContext);
         assertThat(output.getTextOutput()).isNotNull();
+    }
+
+    @Test
+    void toolsAndResponseFormatOnGoogleGeminiIsRejected() {
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .apiKey(Property.ofValue("demo"))
+                    .modelName(Property.ofValue("gemini-3.5-flash"))
+                    .build()
+            )
+            .prompt(Property.ofValue("test"))
+            .configuration(
+                ChatConfiguration.builder()
+                    .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                    .build()
+            )
+            .tools(List.of(
+                KestraFlow.builder()
+                    .type(KestraFlow.class.getName())
+                    .namespace(Property.ofValue("company.team"))
+                    .flowId(Property.ofValue("hello-world"))
+                    .description(Property.ofValue("Say hello"))
+                    .build()
+            ))
+            .build();
+
+        assertThat(agent.isToolsCompatibleWithResponseFormat()).isFalse();
+    }
+
+    @Test
+    void toolsAndResponseFormatOnAnotherProviderIsAllowed() {
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofValue("demo"))
+                    .modelName(Property.ofValue("gpt-4o-mini"))
+                    .build()
+            )
+            .prompt(Property.ofValue("test"))
+            .configuration(
+                ChatConfiguration.builder()
+                    .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                    .build()
+            )
+            .tools(List.of(
+                KestraFlow.builder()
+                    .type(KestraFlow.class.getName())
+                    .namespace(Property.ofValue("company.team"))
+                    .flowId(Property.ofValue("hello-world"))
+                    .description(Property.ofValue("Say hello"))
+                    .build()
+            ))
+            .build();
+
+        assertThat(agent.isToolsCompatibleWithResponseFormat()).isTrue();
+    }
+
+    @Test
+    void toolsWithoutResponseFormatOnGoogleGeminiIsAllowed() {
+        var agent = AIAgent.builder()
+            .provider(
+                GoogleGemini.builder()
+                    .type(GoogleGemini.class.getName())
+                    .apiKey(Property.ofValue("demo"))
+                    .modelName(Property.ofValue("gemini-3.5-flash"))
+                    .build()
+            )
+            .prompt(Property.ofValue("test"))
+            .tools(List.of(
+                KestraFlow.builder()
+                    .type(KestraFlow.class.getName())
+                    .namespace(Property.ofValue("company.team"))
+                    .flowId(Property.ofValue("hello-world"))
+                    .description(Property.ofValue("Say hello"))
+                    .build()
+            ))
+            .build();
+
+        assertThat(agent.isToolsCompatibleWithResponseFormat()).isTrue();
     }
 
     @Test
