@@ -15,6 +15,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.*;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -156,7 +157,11 @@ public class AIAgent extends ToolProvider {
     public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws Exception {
         toolProviders = ListUtils.emptyOnNull(tools);
 
-        var chatModel = provider.chatModel(runContext, configuration);
+        var chatModel = TokenBudgetChatModel.wrap(
+            provider.chatModel(runContext, configuration),
+            runContext,
+            configuration
+        );
         runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
         AiServices<AgentTool> agent = AiServices.builder(AgentTool.class)
             .chatModel(chatModel)

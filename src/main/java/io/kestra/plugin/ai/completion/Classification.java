@@ -15,6 +15,7 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.Guardrails;
@@ -173,7 +174,11 @@ public class Classification extends Task implements RunnableTask<Classification.
         chatMessages.add(CompletionInputContentUtils.toUserMessage(runContext, rPrompt, rContentBlocks));
 
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
-        ChatModel model = this.provider.chatModel(runContext, configuration, taskTimeout);
+        ChatModel model = TokenBudgetChatModel.wrap(
+            this.provider.chatModel(runContext, configuration, taskTimeout),
+            runContext,
+            configuration
+        );
         runContext.metric(Counter.of("ai.provider.calls", 1, "provider", this.provider.getClass().getName()));
         ChatResponse response = model.chat(chatMessages);
 

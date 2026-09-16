@@ -23,6 +23,7 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.AIOutput;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
@@ -321,7 +322,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             // Generate AI response
-            var chatModel = this.provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners());
+            var chatModel = TokenBudgetChatModel.wrap(
+                this.provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners()),
+                runContext,
+                configuration
+            );
             runContext.metric(Counter.of("ai.provider.calls", 1, "provider", this.provider.getClass().getName()));
             var builder = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
