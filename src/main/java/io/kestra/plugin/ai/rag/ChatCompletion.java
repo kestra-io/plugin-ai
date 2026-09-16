@@ -19,6 +19,7 @@ import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
+import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -37,6 +38,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -351,6 +353,15 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Nullable
     @PluginProperty(group = "advanced")
     private Guardrails guardrails;
+
+    @AssertTrue(message = "GoogleGemini provider does not support combining 'tools' with 'responseFormat'")
+    boolean isValidGeminiConfiguration() {
+        return !(chatProvider instanceof GoogleGemini)
+            || tools == null
+            || tools.isEmpty()
+            || chatConfiguration == null
+            || chatConfiguration.getResponseFormat() == null;
+    }
 
     @Override
     public Output run(RunContext runContext) throws Exception {
