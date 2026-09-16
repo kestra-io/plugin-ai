@@ -17,6 +17,7 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
@@ -359,7 +360,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
 
         try {
-            var chatModel = chatProvider.chatModel(runContext, chatConfiguration, taskTimeout);
+            var chatModel = TokenBudgetChatModel.wrap(
+                chatProvider.chatModel(runContext, chatConfiguration, taskTimeout),
+                runContext,
+                chatConfiguration
+            );
             runContext.metric(Counter.of("ai.provider.calls", 1, "provider", chatProvider.getClass().getName()));
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)

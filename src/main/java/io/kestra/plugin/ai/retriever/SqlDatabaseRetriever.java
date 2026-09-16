@@ -14,6 +14,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ContentRetrieverProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
@@ -158,7 +159,11 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
         config.setPoolName("SqlDatabaseRetrieverPool");
 
         DataSource dataSource = new HikariDataSource(config);
-        ChatModel chatModel = provider.chatModel(runContext, configuration);
+        ChatModel chatModel = TokenBudgetChatModel.wrap(
+            provider.chatModel(runContext, configuration),
+            runContext,
+            configuration
+        );
         runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
 
         return SqlDatabaseContentRetriever.builder()
