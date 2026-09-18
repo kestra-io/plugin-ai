@@ -8,7 +8,7 @@ All tasks require a `provider` object that selects the LLM backend and carries i
 
 Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses service account credentials.
 
-Store secrets in [secrets](https://kestra.io/docs/concepts/secret) and apply connection properties globally with [plugin defaults](https://kestra.io/docs/workflow-components/plugin-defaults).
+Store secrets in [secrets](https://kestra.io/docs/concepts/secret) and set connection properties on each task.
 
 ## Common properties
 
