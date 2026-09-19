@@ -20,6 +20,8 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.LangfuseObservability;
+import io.kestra.plugin.ai.domain.ModelProvider;
+import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
@@ -33,9 +35,9 @@ import io.kestra.plugin.ai.tool.Skill;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 import io.kestra.plugin.core.log.Log;
 
-import jakarta.inject.Inject;
-
 import dev.langchain4j.exception.RateLimitException;
+import jakarta.inject.Inject;
+import jakarta.validation.Validator;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -54,6 +56,90 @@ class AIAgentTest {
 
     @Inject
     private StorageInterface storage;
+
+    @Inject
+    private Validator validator;
+
+    @Test
+    void validation_rejectsGoogleGeminiWithToolsAndResponseFormat() {
+        var violations = validator.validate(
+            agent(
+                googleGemini(),
+                ChatConfiguration.builder()
+                    .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                    .build(),
+                tools()
+            )
+        );
+
+        assertThat(violations)
+            .extracting(violation -> violation.getMessage())
+            .containsExactly(
+                "GoogleGemini does not support using `tools` and `responseFormat` together. Remove either `tools` or `responseFormat`."
+            );
+    }
+
+    @Test
+    void validation_allowsSupportedToolsAndResponseFormatCombinations() {
+        assertThat(validator.validate(agent(googleGemini(), ChatConfiguration.empty(), tools())))
+            .as("GoogleGemini with tools only")
+            .isEmpty();
+
+        assertThat(
+            validator.validate(
+                agent(
+                    googleGemini(),
+                    ChatConfiguration.builder()
+                        .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                        .build(),
+                    null
+                )
+            )
+        )
+            .as("GoogleGemini with responseFormat only")
+            .isEmpty();
+
+        assertThat(
+            validator.validate(
+                agent(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .modelName(Property.ofValue("gpt-4o-mini"))
+                        .apiKey(Property.ofValue("placeholder"))
+                        .build(),
+                    ChatConfiguration.builder()
+                        .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                        .build(),
+                    tools()
+                )
+            )
+        )
+            .as("another provider with tools and responseFormat")
+            .isEmpty();
+    }
+
+    private static AIAgent agent(ModelProvider provider, ChatConfiguration configuration, List<ToolProvider> tools) {
+        return AIAgent.builder()
+            .id("validation")
+            .type(AIAgent.class.getName())
+            .prompt(Property.ofValue("Test prompt"))
+            .provider(provider)
+            .configuration(configuration)
+            .tools(tools)
+            .build();
+    }
+
+    private static GoogleGemini googleGemini() {
+        return GoogleGemini.builder()
+            .type(GoogleGemini.class.getName())
+            .modelName(Property.ofValue("gemini-2.5-flash"))
+            .apiKey(Property.ofValue("placeholder"))
+            .build();
+    }
+
+    private static List<ToolProvider> tools() {
+        return List.of(KestraTask.builder().tasks(List.of()).build());
+    }
 
     @Test
     void prompt() throws Exception {
