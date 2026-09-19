@@ -9,6 +9,8 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -26,6 +28,7 @@ import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
+import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -42,6 +45,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -781,6 +785,18 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
     @PluginProperty(group = "destination")
     private Property<List<String>> outputFiles;
+
+    @AssertTrue(
+        message = "GoogleGemini does not support using `tools` and `responseFormat` together. Remove either `tools` or `responseFormat`."
+    )
+    @JsonIgnore
+    public boolean isGoogleGeminiToolsAndResponseFormatValid() {
+        return !(provider instanceof GoogleGemini
+            && tools != null
+            && !tools.isEmpty()
+            && configuration != null
+            && configuration.getResponseFormat() != null);
+    }
 
     @Override
     public AIOutput run(RunContext runContext) throws Exception {
