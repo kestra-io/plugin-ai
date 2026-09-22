@@ -9,8 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.GenericContainer;
 
-import com.redis.testcontainers.RedisStackContainer;
-
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
@@ -20,8 +18,6 @@ import io.kestra.plugin.ai.rag.IngestDocument;
 
 import jakarta.inject.Inject;
 
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ResourceLock("kestra-h2-flyway")
@@ -38,7 +34,8 @@ public class RedisTest extends ContainerTest {
 
     @BeforeAll
     static void startRedis() {
-        redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+        // redis-stack (not plain redis) is required: RedisEmbeddingStore relies on the RediSearch module for vector indexing
+        redis = new GenericContainer<>("redis/redis-stack:latest").withExposedPorts(6379);
         redis.start();
     }
 
@@ -68,7 +65,7 @@ public class RedisTest extends ContainerTest {
             .embeddings(
                 Redis.builder()
                     .host(Property.ofValue(redis.getHost()))
-                    .port(Property.ofValue(redis.getFirstMappedPort()))
+                    .port(Property.ofValue(redis.getMappedPort(6379)))
                     .indexName(Property.ofValue(REDIS_COLLECTION_NAME))
                     .build()
             )
