@@ -4,7 +4,9 @@ Run AI completions, structured extraction, image generation, RAG pipelines, and 
 
 ## Authentication
 
-All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each provider. Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
+All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each provider. Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, `Langdock`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
+
+`Langdock` reaches OpenAI/Azure OpenAI-backed models via `modelFamily: OPENAI` (default) or Claude models via `modelFamily: ANTHROPIC` — set `apiKey`, `modelFamily`, and `region` (`EU` default or `US`). Embeddings always use the OpenAI route and need a workspace key with the Embedding API scope; image generation is unsupported. Use `langdock.ListModels` to discover valid `modelName` values for a given family.
 
 Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses service account credentials.
 
@@ -47,6 +49,10 @@ Unlike the `SseMcpClient` / `StreamableHttpMcpClient` tool providers below (whic
 `mcp.ListTools` returns the tool catalogue of an MCP server — set `url` (required). The output includes `tools` (name, description, and argument JSON schema for each tool).
 
 `mcp.CallTool` invokes a single tool on an MCP server — set `url` (required), `tool` (required), and `arguments`. Set `failOnToolError` (default `true`) to control whether an MCP-reported tool error fails the task or is instead surfaced via `isError`/`errorMessage`. The output includes `result`, `structuredContent`, `isError`, and `errorMessage`.
+
+### Langdock
+
+`langdock.ListModels` lists the model IDs available on a Langdock Completion API route — set `apiKey` (required). Optionally set `modelFamily` (default `OPENAI`), `region` (default `EU`), and `baseUrl` (dedicated deployments). The output includes `models` (each with `id`, and optionally `displayName`, `createdAt`, `ownedBy`) and `count`.
 
 ## Embedding stores
 
