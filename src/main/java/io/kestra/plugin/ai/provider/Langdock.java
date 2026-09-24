@@ -178,7 +178,7 @@ public class Langdock extends ModelProvider {
 
         return switch (rFamily) {
             case OPENAI -> openAiDelegate(rBaseUrl).chatModel(runContext, configuration, timeout, additionalListeners);
-            case ANTHROPIC -> anthropicDelegate(runContext, rBaseUrl).chatModel(runContext, configuration, timeout, additionalListeners);
+            case ANTHROPIC -> anthropicDelegate(rBaseUrl).chatModel(runContext, configuration, timeout, additionalListeners);
         };
     }
 
@@ -231,8 +231,7 @@ public class Langdock extends ModelProvider {
             .build();
     }
 
-    private LangdockAnthropicProvider anthropicDelegate(RunContext runContext, String rBaseUrl) throws IllegalVariableEvaluationException {
-        String rApiKey = runContext.render(this.apiKey).as(String.class).orElseThrow();
+    private LangdockAnthropicProvider anthropicDelegate(String rBaseUrl) {
         return LangdockAnthropicProvider.builder()
             .type(LangdockAnthropicProvider.class.getName())
             .modelName(this.getModelName())
@@ -240,7 +239,6 @@ public class Langdock extends ModelProvider {
             .baseUrl(Property.ofValue(rBaseUrl))
             .clientPem(this.getClientPem())
             .caPem(this.getCaPem())
-            .bearerToken(rApiKey)
             .build();
     }
 
@@ -269,15 +267,16 @@ public class Langdock extends ModelProvider {
     @Getter
     @SuperBuilder
     private static final class LangdockAnthropicProvider extends Anthropic {
-        private String bearerToken;
-
         // See the identical constructor on LangdockOpenAiProvider for why this is needed.
         private LangdockAnthropicProvider(Void discriminator) {
         }
 
+        // Rendered here rather than stored on a field, so the raw key is never held by this object.
         @Override
-        protected Map<String, String> customHeaders(RunContext runContext) {
-            return Map.of("Authorization", "Bearer " + bearerToken);
+        protected Map<String, String> customHeaders(RunContext runContext) throws IllegalVariableEvaluationException {
+            String rApiKey = runContext.render(this.getApiKey()).as(String.class)
+                .orElseThrow(() -> new IllegalArgumentException("'apiKey' is required for the Langdock provider."));
+            return Map.of("Authorization", "Bearer " + rApiKey);
         }
     }
 }
