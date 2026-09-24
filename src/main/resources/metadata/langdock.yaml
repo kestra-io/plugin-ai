@@ -1,0 +1,8 @@
+group: io.kestra.plugin.ai.langdock
+name: "langdock"
+title: "Langdock"
+description: "Tasks that call the Langdock API directly — for example to discover available model IDs — without going through an LLM."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"

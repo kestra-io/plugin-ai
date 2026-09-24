@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -145,7 +146,21 @@ public class Anthropic extends ModelProvider {
             chatModelBuilder.baseUrl(rBaseUrl);
         }
 
+        Map<String, String> customHeaders = customHeaders(runContext);
+        if (!customHeaders.isEmpty()) {
+            chatModelBuilder.customHeaders(customHeaders);
+        }
+
         return chatModelBuilder.build();
+    }
+
+    /**
+     * Extension point for subclasses that need to send additional HTTP headers to an Anthropic-compatible
+     * endpoint (e.g. Langdock's Anthropic route, which requires a Bearer token on top of the {@code x-api-key}
+     * header this class already sends). Empty by default, so existing users see no behaviour change.
+     */
+    protected Map<String, String> customHeaders(RunContext runContext) throws IllegalVariableEvaluationException {
+        return Collections.emptyMap();
     }
 
     @Override
