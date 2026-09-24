@@ -176,19 +176,18 @@ dependencies {
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
     testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.4"
 
-    testImplementation 'org.testcontainers:ollama:1.21.4'
-    testImplementation 'org.testcontainers:elasticsearch:1.21.4'
+    testImplementation 'org.testcontainers:testcontainers-ollama:2.0.5'
+    testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'
 
     // Embeddings stores
-    testImplementation 'com.redis.testcontainers:testcontainers-redis:1.6.4'
     testImplementation "dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:${langchain4jBetaVersion}"
-    testImplementation 'org.testcontainers:chromadb:1.21.4'
-    testImplementation 'org.testcontainers:milvus:1.21.4'
-    testImplementation 'org.testcontainers:mongodb:1.21.4'
-    testImplementation 'org.testcontainers:mariadb:1.21.4'
+    testImplementation 'org.testcontainers:testcontainers-chromadb:2.0.5'
+    testImplementation 'org.testcontainers:testcontainers-milvus:2.0.5'
+    testImplementation 'org.testcontainers:testcontainers-mongodb:2.0.5'
+    testImplementation 'org.testcontainers:testcontainers-mariadb:2.0.5'
 
     // Memories
-    testImplementation "org.testcontainers:postgresql:1.21.4"
+    testImplementation "org.testcontainers:testcontainers-postgresql:2.0.5"
 }
 
 /**********************************************************************************************************************\

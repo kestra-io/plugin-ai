@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -16,10 +17,13 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
+import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
 import io.kestra.plugin.ai.domain.LangfuseObservability;
+import io.kestra.plugin.ai.domain.ModelProvider;
+import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
@@ -33,9 +37,9 @@ import io.kestra.plugin.ai.tool.Skill;
 import io.kestra.plugin.ai.tool.StdioMcpClient;
 import io.kestra.plugin.core.log.Log;
 
-import jakarta.inject.Inject;
-
 import dev.langchain4j.exception.RateLimitException;
+import jakarta.inject.Inject;
+import jakarta.validation.Validator;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -45,6 +49,9 @@ import static org.junit.jupiter.api.Assumptions.abort;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
 class AIAgentTest {
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
+
     private static final String PINECONE_API_KEY = System.getenv("PINECONE_API_KEY");
     private final String GOOGLE_API_KEY = System.getenv("GOOGLE_API_KEY");
     private final String GOOGLE_CSI = System.getenv("GOOGLE_CSI_KEY");
@@ -55,13 +62,97 @@ class AIAgentTest {
     @Inject
     private StorageInterface storage;
 
+    @Inject
+    private Validator validator;
+
+    @Test
+    void validation_rejectsGoogleGeminiWithToolsAndResponseFormat() {
+        var violations = validator.validate(
+            agent(
+                googleGemini(),
+                ChatConfiguration.builder()
+                    .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                    .build(),
+                tools()
+            )
+        );
+
+        assertThat(violations)
+            .extracting(violation -> violation.getMessage())
+            .containsExactly(
+                "GoogleGemini does not support using `tools` and `responseFormat` together. Remove either `tools` or `responseFormat`."
+            );
+    }
+
+    @Test
+    void validation_allowsSupportedToolsAndResponseFormatCombinations() {
+        assertThat(validator.validate(agent(googleGemini(), ChatConfiguration.empty(), tools())))
+            .as("GoogleGemini with tools only")
+            .isEmpty();
+
+        assertThat(
+            validator.validate(
+                agent(
+                    googleGemini(),
+                    ChatConfiguration.builder()
+                        .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                        .build(),
+                    null
+                )
+            )
+        )
+            .as("GoogleGemini with responseFormat only")
+            .isEmpty();
+
+        assertThat(
+            validator.validate(
+                agent(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .modelName(Property.ofValue("gpt-4o-mini"))
+                        .apiKey(Property.ofValue("placeholder"))
+                        .build(),
+                    ChatConfiguration.builder()
+                        .responseFormat(ChatConfiguration.ResponseFormat.builder().build())
+                        .build(),
+                    tools()
+                )
+            )
+        )
+            .as("another provider with tools and responseFormat")
+            .isEmpty();
+    }
+
+    private static AIAgent agent(ModelProvider provider, ChatConfiguration configuration, List<ToolProvider> tools) {
+        return AIAgent.builder()
+            .id("validation")
+            .type(AIAgent.class.getName())
+            .prompt(Property.ofValue("Test prompt"))
+            .provider(provider)
+            .configuration(configuration)
+            .tools(tools)
+            .build();
+    }
+
+    private static GoogleGemini googleGemini() {
+        return GoogleGemini.builder()
+            .type(GoogleGemini.class.getName())
+            .modelName(Property.ofValue("gemini-2.5-flash"))
+            .apiKey(Property.ofValue("placeholder"))
+            .build();
+    }
+
+    private static List<ToolProvider> tools() {
+        return List.of(KestraTask.builder().tasks(List.of()).build());
+    }
+
     @Test
     void prompt() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -99,7 +190,7 @@ class AIAgentTest {
                 Map.of(
                     "apiKey", "demo",
                     "modelName", "gpt-4o-mini",
-                    "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                    "baseUrl", llm.baseUrl()
                 )
             );
 
@@ -135,7 +226,7 @@ class AIAgentTest {
                 Map.of(
                     "apiKey", "demo",
                     "modelName", "gpt-4o-mini",
-                    "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                    "baseUrl", llm.baseUrl()
                 )
             );
 
@@ -185,7 +276,7 @@ class AIAgentTest {
                 Map.of(
                     "apiKey", "demo",
                     "modelName", "gpt-4o-mini",
-                    "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                    "baseUrl", llm.baseUrl()
                 )
             );
             runContext.setTraceParent(traceParent);
@@ -225,11 +316,13 @@ class AIAgentTest {
 
     @Test
     void withTool() throws Exception {
+        llm.callTool("add", "{\"a\":5,\"b\":12}");
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -258,11 +351,14 @@ class AIAgentTest {
 
     @Test
     void withMemory() throws Exception {
+        // only answers with the name if the first turn was replayed from memory
+        llm.reply(messages -> messages.toString().contains("My name is John") && messages.toString().contains("What's my name") ? "Your name is John." : "Nice to meet you.");
+
         RunContext runContext = runContextFactory.of(
             "namespace", Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "labels", Map.of("system", Map.of("correlationId", IdUtils.create()))
             )
         );
@@ -304,11 +400,13 @@ class AIAgentTest {
 
     @Test
     void withOutputFiles() throws Exception {
+        llm.callTool("write_file", "{\"path\":\"/tmp/hello.txt\",\"content\":\"Hello World\"}");
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -400,7 +498,7 @@ class AIAgentTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "apiKey", TAVILY_API_KEY
             )
         );
@@ -808,7 +906,7 @@ class AIAgentTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -849,7 +947,7 @@ class AIAgentTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -892,7 +990,7 @@ class AIAgentTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -933,7 +1031,7 @@ class AIAgentTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -976,7 +1074,7 @@ class AIAgentTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
