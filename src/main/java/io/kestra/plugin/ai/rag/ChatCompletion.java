@@ -176,7 +176,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     memory:
                       type: io.kestra.plugin.ai.memory.KestraKVStore
                     systemMessage: You are a helpful assistant, answer concisely
-                    prompt: "{{ inputs.second }}\""""
+                    prompt: "{{ inputs.second }}"
+                """
         ),
         @Example(
             full = true,

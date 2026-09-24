@@ -8,10 +8,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -20,13 +22,14 @@ import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
@@ -41,6 +44,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest(startRunner = true)
 class KestraFlowTest {
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
+
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -51,6 +57,7 @@ class KestraFlowTest {
     private final Map<String, Integer> stubStatuses = new ConcurrentHashMap<>();
     private final AtomicBoolean executionCreated = new AtomicBoolean(false);
     private final AtomicInteger requestCount = new AtomicInteger();
+    private final AtomicReference<String> lastAuthorizationHeader = new AtomicReference<>();
 
     @BeforeEach
     void setUp() throws IOException {
@@ -59,6 +66,7 @@ class KestraFlowTest {
         stubStatuses.clear();
         executionCreated.set(false);
         requestCount.set(0);
+        lastAuthorizationHeader.set(null);
         mockServer = HttpServer.create(new InetSocketAddress(0), 0);
         mockServer.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
@@ -67,6 +75,7 @@ class KestraFlowTest {
             // Apache Commons FileUpload "no multipart boundary" errors
             exchange.getRequestBody().readAllBytes();
             requestCount.incrementAndGet();
+            lastAuthorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
             byte[] responseBytes;
             int status;
             Integer forcedStatus = stubStatuses.get(path);
@@ -133,6 +142,8 @@ class KestraFlowTest {
 
     @Test
     void helloWorld() throws Exception {
+        llm.callTool("kestra_flow_company_team_hello-world", "{}");
+
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
             flowJson("company.team", "hello-world", 1, null, null));
         stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
@@ -142,7 +153,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -192,6 +203,8 @@ class KestraFlowTest {
 
     @Test
     void descriptionFromTheFlow() throws Exception {
+        llm.callTool("kestra_flow_company_team_hello-world-with-description", "{}");
+
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-description",
             flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null));
         stubExecResponses.put("/api/v1/main/executions/company.team/hello-world-with-description",
@@ -201,7 +214,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -258,6 +271,8 @@ class KestraFlowTest {
 
     @Test
     void inputsAndLabels() throws Exception {
+        llm.callTool("kestra_flow_company_team_hello-world-with-input", "{\"inputs\":[{\"id\":\"name\",\"value\":\"John\"}],\"labels\":[{\"key\":\"llm\",\"value\":\"true\"}]}");
+
         String inputsJson = "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":false}]";
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-input",
             flowJson("company.team", "hello-world-with-input", 1, null, inputsJson));
@@ -268,7 +283,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -319,6 +334,8 @@ class KestraFlowTest {
 
     @Test
     void helloWorldFromLLM() throws Exception {
+        llm.callTool("kestra_flow", "{\"namespace\":\"company.team\",\"flowId\":\"hello-world\"}");
+
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
             flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null));
         stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
@@ -328,7 +345,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -479,15 +496,34 @@ class KestraFlowTest {
             .isInstanceOf(ToolArgumentsException.class)
             .hasMessageContaining("'name'");
     }
-    /** The SDK builder defaults to Basic auth, so building a client without credentials would send `Basic base64("null:null")`. */
+    /**
+     * Opting out of the default authentication without setting any credential is how the tool declares that the
+     * Kestra API it targets requires none, so the call must go out with no `Authorization` header at all.
+     */
     @Test
-    void shouldFailWhenAutoIsDisabledWithoutCredentials() {
+    void shouldSendNoAuthorizationHeaderWhenAutoIsDisabledWithoutCredentials() throws Exception {
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+
         var tool = definedFlowTool("hello-world", KestraFlow.Auth.builder().auto(Property.ofValue(false)).build());
 
-        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of()))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("No authentication method provided");
-        assertThat(requestCount).hasValue(0);
+        tool.tool(runContextFactory.of(), Map.of());
+
+        assertThat(requestCount).hasValue(1);
+        assertThat(lastAuthorizationHeader).hasNullValue();
+    }
+
+    /** Counterpart of the test above: a credential still reaches the API, so an absent header there means something. */
+    @Test
+    void shouldSendTheApiTokenAsABearerHeader() throws Exception {
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+
+        var tool = definedFlowTool("hello-world", apiTokenAuth());
+
+        tool.tool(runContextFactory.of(), Map.of());
+
+        assertThat(lastAuthorizationHeader).hasValue("Bearer test-token");
     }
 
     @Test
