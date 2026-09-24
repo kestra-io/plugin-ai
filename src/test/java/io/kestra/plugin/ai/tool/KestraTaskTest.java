@@ -18,6 +18,7 @@ import io.kestra.core.models.tasks.VoidOutput;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
@@ -60,16 +61,22 @@ class KestraTaskTest extends ContainerTest {
         .options(wireMockConfig().dynamicPort())
         .build();
 
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
+
     @Inject
     private RunContextFactory runContextFactory;
 
     @Test
     void logTask() throws Exception {
+        llm.callTool("kestra_task_log", "{\"message\":\"Hello World!\"}");
+        llm.finalAnswer(result -> "Logged with " + result.toLowerCase());
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -120,7 +127,7 @@ class KestraTaskTest extends ContainerTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -224,6 +231,9 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void fetchTask() throws Exception {
+        llm.callTool("kestra_task_fetch", "{\"tasksId\":[\"task1\",\"task2\",\"task3\"]}");
+        llm.finalAnswer(result -> "The fetch of the logs of task1, task2 and task3 returned " + result);
+
         // Fetch calls the Kestra API to list logs; stub it instead of requiring a live server.
         kestraApiMock.stubFor(
             get(urlPathMatching("/api/v1/.*/logs/.*")).willReturn(okJson("[]"))
@@ -234,7 +244,7 @@ class KestraTaskTest extends ContainerTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "execution", Map.of("id", "executionId")
             )
         );
@@ -284,15 +294,19 @@ class KestraTaskTest extends ContainerTest {
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
         assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_fetch");
         assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
+        kestraApiMock.verify(getRequestedFor(urlPathMatching("/api/v1/.*/logs/.*")));
     }
 
     @Test
     void myAwesomeTaskAISetAll() throws Exception {
+        llm.callTool("kestra_task_awesome", "{\"number\":7,\"string\":\"Hello World\",\"optional\":\"optional\",\"message\":{\"key\":\"mykey\",\"value\":\"myvalue\"}}");
+        llm.finalAnswer(result -> "Called with " + result.toLowerCase());
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "execution", Map.of("id", "executionId")
             )
         );
@@ -351,11 +365,14 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void myAwesomeTaskAISetMandatory() throws Exception {
+        llm.callTool("kestra_task_awesome", "{\"number\":7,\"string\":\"Hello World\",\"message\":{\"key\":\"mykey\",\"value\":\"myvalue\"}}");
+        llm.finalAnswer(result -> "Called with " + result.toLowerCase());
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "execution", Map.of("id", "executionId")
             )
         );
@@ -413,11 +430,14 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void myAwesomeTaskAISetMissingMandatory() throws Exception {
+        llm.callTool("kestra_task_awesome", "{\"string\":\"Hello World\",\"message\":{\"key\":\"mykey\",\"value\":\"myvalue\"}}");
+        llm.finalAnswer(result -> "Called with " + result.toLowerCase());
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "execution", Map.of("id", "executionId")
             )
         );
@@ -477,11 +497,13 @@ class KestraTaskTest extends ContainerTest {
 
     @Test
     void fail() throws Exception {
+        llm.callTool("kestra_task_fail", "{}");
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "execution", Map.of("id", "executionId")
             )
         );
