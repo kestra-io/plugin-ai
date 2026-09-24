@@ -88,6 +88,7 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
     @Schema(title = "API Key")
     @NotNull
     @PluginProperty(secret = true, group = "main")
+    @ToString.Exclude
     private Property<String> apiKey;
 
     @Schema(
@@ -115,7 +116,8 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rApiKey = runContext.render(this.apiKey).as(String.class).orElseThrow();
+        String rApiKey = runContext.render(this.apiKey).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("'apiKey' is required to list Langdock models."));
         LangdockModelFamily rFamily = runContext.render(this.modelFamily).as(LangdockModelFamily.class).orElse(LangdockModelFamily.OPENAI);
         LangdockRegion rRegion = runContext.render(this.region).as(LangdockRegion.class).orElse(LangdockRegion.EU);
         String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElse(null);
