@@ -6,7 +6,7 @@ Run AI completions, structured extraction, image generation, RAG pipelines, and 
 
 All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each provider. Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, `Langdock`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
 
-`Langdock` reaches OpenAI/Azure OpenAI-backed models via `modelFamily: OPENAI` (default) or Claude models via `modelFamily: ANTHROPIC` — set `apiKey`, `modelFamily`, and `region` (`EU` default or `US`). Embeddings always use the OpenAI route and need a workspace key with the Embedding API scope; image generation is unsupported. Use `langdock.ListModels` to discover valid `modelName` values for a given family.
+`Langdock` reaches OpenAI/Azure OpenAI-backed models via `modelFamily: OPENAI` (default) or Claude models via `modelFamily: ANTHROPIC` — set `apiKey`, `modelFamily`, and `region` (`EU` default or `US`). Embeddings always use the OpenAI route (use a workspace key with the Embedding API scope if your key is refused); image generation is unsupported. Use `langdock.ListModels` to discover valid `modelName` values for a given family.
 
 Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses service account credentials.
 

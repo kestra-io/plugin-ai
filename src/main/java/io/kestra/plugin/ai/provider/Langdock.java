@@ -44,9 +44,9 @@ import io.kestra.core.models.annotations.PluginProperty;
         `modelName` you use: Claude models are only reachable when `modelFamily` is `ANTHROPIC`. Use the \
         `langdock.ListModels` task with the matching family to discover valid `modelName` values.
 
-        Embeddings always go through the OpenAI route (only `text-embedding-ada-002` is supported there) \
-        and require a workspace API key with the Embedding API scope — a personal key only works for chat \
-        and model listing. Image generation is not offered by the Completion API.
+        Embeddings always go through the OpenAI route (only `text-embedding-ada-002` is supported there). \
+        If your key is refused for embeddings, use a workspace API key with the Embedding API scope. \
+        Image generation is not offered by the Completion API.
 
         For a dedicated deployment, set `baseUrl` to the route root that matches the operation you are \
         using this provider for, e.g. `https://acme.langdock.com/api/public/openai/eu/v1` for chat/embeddings \
