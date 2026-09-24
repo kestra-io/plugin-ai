@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.provider;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -292,7 +293,7 @@ class LangdockTest {
                     .type(Langdock.class.getName())
                     .apiKey(Property.ofValue(apiKey))
                     .modelFamily(Property.ofValue(LangdockModelFamily.OPENAI))
-                    .modelName(Property.ofValue("gpt-5-mini"))
+                    .modelName(Property.ofValue(Objects.requireNonNullElse(System.getenv("LANGDOCK_OPENAI_MODEL"), "gpt-5.4-mini")))
                     .build()
             )
             .build();

@@ -74,7 +74,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                           type: io.kestra.plugin.ai.provider.Langdock
                           apiKey: "{{ secret('LANGDOCK_API_KEY') }}"
                           modelFamily: OPENAI
-                          modelName: gpt-5-mini
+                          modelName: gpt-5.4-mini
                         messages:
                           - type: SYSTEM
                             content: You are a helpful assistant, answer concisely, avoid overly casual language or unnecessary verbosity.
