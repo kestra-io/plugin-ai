@@ -8,6 +8,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import io.kestra.core.models.executions.AbstractMetricEntry;
+import io.kestra.core.runners.RunContext;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -21,6 +25,9 @@ import dev.langchain4j.model.output.TokenUsage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 class TokenBudgetChatModelTest {
     private static final ChatRequest REQUEST = ChatRequest.builder()
@@ -54,7 +61,10 @@ class TokenBudgetChatModelTest {
 
         assertThatThrownBy(() -> model.chat(REQUEST))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("Cumulative token budget exhausted: consumed 40 tokens, configured `maxCumulativeTokens` is 40.");
+            .hasMessage(
+                "Cumulative token budget exhausted: consumed 40 tokens, configured `maxCumulativeTokens` is 40. " +
+                    "Increase `maxCumulativeTokens`, reduce the prompt or tool outputs, or limit `maxSequentialToolsInvocations`."
+            );
         assertThat(delegate.invocationCount).isEqualTo(2);
     }
 
@@ -66,13 +76,40 @@ class TokenBudgetChatModelTest {
         assertThat(model.chat(REQUEST)).isNotNull();
         assertThatThrownBy(() -> model.chat(REQUEST))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("Cumulative token budget exceeded: consumed 45 tokens, configured `maxCumulativeTokens` is 40.");
+            .hasMessage(
+                "Cumulative token budget exceeded: consumed 45 tokens, configured `maxCumulativeTokens` is 40. " +
+                    "Increase `maxCumulativeTokens`, reduce the prompt or tool outputs, or limit `maxSequentialToolsInvocations`."
+            );
         assertThat(delegate.invocationCount).isEqualTo(2);
 
         assertThatThrownBy(() -> model.chat(REQUEST))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("Cumulative token budget exceeded: consumed 45 tokens, configured `maxCumulativeTokens` is 40.");
+            .hasMessage(
+                "Cumulative token budget exceeded: consumed 45 tokens, configured `maxCumulativeTokens` is 40. " +
+                    "Increase `maxCumulativeTokens`, reduce the prompt or tool outputs, or limit `maxSequentialToolsInvocations`."
+            );
         assertThat(delegate.invocationCount).isEqualTo(2);
+    }
+
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void reportsCumulativeMetricsBeforeFailing() {
+        var delegate = new StubChatModel(response(10, 10), response(15, 10));
+        var runContext = mock(RunContext.class);
+        var model = TokenBudgetChatModel.wrap(delegate, 40, runContext);
+
+        assertThat(model.chat(REQUEST)).isNotNull();
+        assertThatThrownBy(() -> model.chat(REQUEST))
+            .isInstanceOf(IllegalStateException.class);
+
+        var metrics = ArgumentCaptor.forClass(AbstractMetricEntry.class);
+        verify(runContext, times(3)).metric(metrics.capture());
+        assertThat(metrics.getAllValues())
+            .extracting(AbstractMetricEntry::getName)
+            .containsExactly("input.token.count", "output.token.count", "total.token.count");
+        assertThat(metrics.getAllValues())
+            .extracting(metric -> ((Number) metric.getValue()).longValue())
+            .containsExactly(25L, 20L, 45L);
     }
 
     @Test
@@ -82,10 +119,16 @@ class TokenBudgetChatModelTest {
 
         assertThatThrownBy(() -> model.chat(REQUEST))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("Cannot enforce `maxCumulativeTokens` because the model response did not include total token usage.");
+            .hasMessage(
+                "Cannot enforce `maxCumulativeTokens` because the model response did not include total token usage. " +
+                    "Remove `maxCumulativeTokens` from the configuration, or use a provider/model that reports token usage."
+            );
         assertThatThrownBy(() -> model.chat(REQUEST))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("Cannot enforce `maxCumulativeTokens` because the model response did not include total token usage.");
+            .hasMessage(
+                "Cannot enforce `maxCumulativeTokens` because the model response did not include total token usage. " +
+                    "Remove `maxCumulativeTokens` from the configuration, or use a provider/model that reports token usage."
+            );
         assertThat(delegate.invocationCount).isEqualTo(1);
     }
 

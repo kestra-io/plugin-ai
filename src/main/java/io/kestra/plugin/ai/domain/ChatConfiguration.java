@@ -126,11 +126,14 @@ public class ChatConfiguration {
     @Schema(
         title = "Maximum cumulative tokens",
         description = """
-            Maximum total number of input and output tokens that can be consumed by all model calls in one task run.
-            The task fails when this budget is exceeded. The configured model must report token usage."""
+            Maximum total number of input and output tokens that this task's model can consume across all its calls in one task run \
+            (e.g. every iteration of the tool loop). Must be greater than or equal to 1; not set by default (no limit).
+            The task fails as soon as a response pushes the usage over the budget, so the last response is still billed.
+            Nested sub-agents (`io.kestra.plugin.ai.tool.AIAgent`) and SQL retrievers use their own `configuration.maxCumulativeTokens`.
+            The configured model must report token usage."""
     )
     @Nullable
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "reliability")
     private Property<@Min(1) Integer> maxCumulativeTokens;
 
     @Schema(

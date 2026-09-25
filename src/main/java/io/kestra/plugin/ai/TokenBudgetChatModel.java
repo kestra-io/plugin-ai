@@ -20,13 +20,19 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public final class TokenBudgetChatModel implements ChatModel {
     private final ChatModel delegate;
+    private final RunContext runContext;
     private final long maxCumulativeTokens;
 
+    private long consumedInputTokens;
+    private long consumedOutputTokens;
     private long consumedTokens;
+    private boolean tokenUsageRecorded;
+    private boolean failureMetricsSent;
     private String failureMessage;
 
-    private TokenBudgetChatModel(ChatModel delegate, int maxCumulativeTokens) {
+    private TokenBudgetChatModel(ChatModel delegate, RunContext runContext, int maxCumulativeTokens) {
         this.delegate = Objects.requireNonNull(delegate);
+        this.runContext = runContext;
         this.maxCumulativeTokens = maxCumulativeTokens;
     }
 
@@ -34,14 +40,18 @@ public final class TokenBudgetChatModel implements ChatModel {
         ChatModel delegate,
         RunContext runContext,
         ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        Integer maxCumulativeTokens = runContext.render(configuration.getMaxCumulativeTokens())
+        var rMaxCumulativeTokens = runContext.render(configuration.getMaxCumulativeTokens())
             .as(Integer.class)
             .orElse(null);
 
-        return wrap(delegate, maxCumulativeTokens);
+        return wrap(delegate, rMaxCumulativeTokens, runContext);
     }
 
     static ChatModel wrap(ChatModel delegate, Integer maxCumulativeTokens) {
+        return wrap(delegate, maxCumulativeTokens, null);
+    }
+
+    static ChatModel wrap(ChatModel delegate, Integer maxCumulativeTokens, RunContext runContext) {
         if (maxCumulativeTokens == null) {
             return delegate;
         }
@@ -50,7 +60,7 @@ public final class TokenBudgetChatModel implements ChatModel {
             throw new IllegalArgumentException("`maxCumulativeTokens` must be greater than 0.");
         }
 
-        return new TokenBudgetChatModel(delegate, maxCumulativeTokens);
+        return new TokenBudgetChatModel(delegate, runContext, maxCumulativeTokens);
     }
 
     @Override
@@ -83,17 +93,23 @@ public final class TokenBudgetChatModel implements ChatModel {
         return delegate.supportedCapabilities();
     }
 
+    // Model calls within one AI service are sequential, so serializing them has no throughput cost and keeps the counter consistent.
     private synchronized ChatResponse invoke(Supplier<ChatResponse> invocation) {
         ensureBudgetAvailable();
 
-        ChatResponse response = invocation.get();
+        var response = invocation.get();
         var tokenUsage = response.tokenUsage();
         if (tokenUsage == null || tokenUsage.totalTokenCount() == null) {
-            failureMessage = "Cannot enforce `maxCumulativeTokens` because the model response did not include total token usage.";
+            failureMessage = "Cannot enforce `maxCumulativeTokens` because the model response did not include total token usage. " +
+                "Remove `maxCumulativeTokens` from the configuration, or use a provider/model that reports token usage.";
+            sendFailureMetrics();
             throw new IllegalStateException(failureMessage);
         }
 
+        consumedInputTokens += Objects.requireNonNullElse(tokenUsage.inputTokenCount(), 0);
+        consumedOutputTokens += Objects.requireNonNullElse(tokenUsage.outputTokenCount(), 0);
         consumedTokens += tokenUsage.totalTokenCount();
+        tokenUsageRecorded = true;
         if (consumedTokens > maxCumulativeTokens) {
             throw budgetException("exceeded");
         }
@@ -112,9 +128,18 @@ public final class TokenBudgetChatModel implements ChatModel {
     }
 
     private IllegalStateException budgetException(String state) {
+        sendFailureMetrics();
         return new IllegalStateException(
-            "Cumulative token budget %s: consumed %d tokens, configured `maxCumulativeTokens` is %d."
+            ("Cumulative token budget %s: consumed %d tokens, configured `maxCumulativeTokens` is %d. " +
+                "Increase `maxCumulativeTokens`, reduce the prompt or tool outputs, or limit `maxSequentialToolsInvocations`.")
                 .formatted(state, consumedTokens, maxCumulativeTokens)
         );
+    }
+
+    private void sendFailureMetrics() {
+        if (runContext != null && tokenUsageRecorded && !failureMetricsSent) {
+            AIUtils.sendMetrics(runContext, consumedInputTokens, consumedOutputTokens, consumedTokens);
+            failureMetricsSent = true;
+        }
     }
 }
