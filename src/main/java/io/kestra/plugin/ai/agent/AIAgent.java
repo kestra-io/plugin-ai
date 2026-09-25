@@ -25,6 +25,7 @@ import io.kestra.core.runners.FilesService;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.plugin.ai.AIUtils;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.observability.LangfuseObservabilityListeners;
@@ -811,7 +812,11 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
 
         try {
-            var chatModel = provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners());
+            var chatModel = TokenBudgetChatModel.wrap(
+                provider.chatModel(runContext, configuration, taskTimeout, observabilityListeners.chatModelListeners()),
+                runContext,
+                configuration
+            );
             runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
             AiServices<Agent> agent = AiServices.builder(Agent.class)
                 .chatModel(chatModel)
