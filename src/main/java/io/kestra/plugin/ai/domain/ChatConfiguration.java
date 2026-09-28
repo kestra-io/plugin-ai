@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -121,6 +122,19 @@ public class ChatConfiguration {
     @Nullable
     @PluginProperty(group = "connection")
     private Property<Integer> maxToken;
+
+    @Schema(
+        title = "Maximum cumulative tokens",
+        description = """
+            Maximum total number of input and output tokens that this task's model can consume across all its calls in one task run \
+            (e.g. every iteration of the tool loop). Must be greater than or equal to 1; not set by default (no limit).
+            The task fails as soon as a response pushes the usage over the budget, so the last response is still billed.
+            Nested sub-agents (`io.kestra.plugin.ai.tool.AIAgent`) and SQL retrievers use their own `configuration.maxCumulativeTokens`.
+            The configured model must report token usage."""
+    )
+    @Nullable
+    @PluginProperty(group = "reliability")
+    private Property<@Min(1) Integer> maxCumulativeTokens;
 
     @Schema(
         title = "Enable Prompt Caching",
