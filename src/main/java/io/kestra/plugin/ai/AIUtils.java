@@ -62,6 +62,12 @@ public final class AIUtils {
         }
     }
 
+    static void sendMetrics(RunContext runContext, long inputTokenCount, long outputTokenCount, long totalTokenCount) {
+        runContext.metric(Counter.of("input.token.count", "Large Language Model (LLM) input token count", inputTokenCount));
+        runContext.metric(Counter.of("output.token.count", "Large Language Model (LLM) output token count", outputTokenCount));
+        runContext.metric(Counter.of("total.token.count", "Large Language Model (LLM) total token count", totalTokenCount));
+    }
+
     public static Map<String, Object> parseJson(String json) throws JsonProcessingException {
         if (json == null) {
             return null;
