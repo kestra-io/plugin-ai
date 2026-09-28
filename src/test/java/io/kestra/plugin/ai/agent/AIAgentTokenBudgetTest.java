@@ -98,8 +98,11 @@ class AIAgentTokenBudgetTest {
         assertThat(values).containsExactly((double) value);
     }
 
-    private static final class CountingToolProvider extends ToolProvider {
+    public static final class CountingToolProvider extends ToolProvider {
         private final AtomicInteger invocationCount = new AtomicInteger();
+
+        public CountingToolProvider() {
+        }
 
         @Override
         public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) {
