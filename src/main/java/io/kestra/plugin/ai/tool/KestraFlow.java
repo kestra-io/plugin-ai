@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
@@ -18,9 +19,9 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.SDK;
 import io.kestra.core.serializers.JacksonMapper;
-import io.kestra.core.tenant.TenantService;
 import io.kestra.core.serializers.ListOrMapOfLabelDeserializer;
 import io.kestra.core.serializers.ListOrMapOfLabelSerializer;
+import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.ListUtils;
 import io.kestra.core.utils.MapUtils;
@@ -34,7 +35,6 @@ import io.kestra.sdk.internal.Pair;
 import io.kestra.sdk.model.ExecutionControllerExecutionResponse;
 import io.kestra.sdk.model.ExecutionKind;
 import io.kestra.sdk.model.FlowWithSource;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -42,11 +42,14 @@ import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -192,6 +195,32 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                               apiToken: "{{ secret('KESTRA_API_TOKEN') }}\""""
             }
         ),
+        @Example(
+            title = "Limit an agent to explicitly allowed flows",
+            full = true,
+            code = {
+                """
+                    id: agent_calling_allowed_flows
+                    namespace: company.ai
+
+                    tasks:
+                      - id: agent
+                        type: io.kestra.plugin.ai.agent.AIAgent
+                        prompt: Execute the hello-world flow in the tutorial namespace.
+                        provider:
+                          type: io.kestra.plugin.ai.provider.GoogleGemini
+                          modelName: gemini-3.5-flash-lite
+                          apiKey: "{{ secret('GEMINI_API_KEY') }}"
+                        tools:
+                          - type: io.kestra.plugin.ai.tool.KestraFlow
+                            allowedFlows:
+                              - namespace: tutorial
+                                flowId: hello-world
+                            auth:
+                              apiToken: "{{ secret('KESTRA_API_TOKEN') }}"
+                    """
+            }
+        ),
     }
 )
 @JsonDeserialize
@@ -227,6 +256,18 @@ public class KestraFlow extends ToolProvider {
     @Schema(title = "Flow ID of the flow that should be called")
     @PluginProperty(group = "advanced")
     private Property<String> flowId;
+
+    @Schema(
+        title = "Flows the tool is allowed to execute",
+        description = """
+            Optional allowlist of exact namespace and flowId pairs. When omitted, no allowlist restriction is applied.
+            When configured, the list must be nonempty and every entry must resolve to a nonblank namespace and flowId.
+            The permitted pairs are exposed to the model, and a selection outside the list is rejected before any API call.
+            The restriction also applies when namespace and flowId are predefined on the tool."""
+    )
+    @Valid
+    @PluginProperty(group = "connection")
+    private List<AllowedFlow> allowedFlows;
 
     @Schema(title = "Revision of the flow that should be called")
     @PluginProperty(group = "advanced")
@@ -368,6 +409,7 @@ public class KestraFlow extends ToolProvider {
             throw new IllegalArgumentException("Namespace must be specified when you set the flow ID");
         }
 
+        var rAllowedFlows = resolveAllowedFlows(runContext, additionalVariables);
         var rInputs = runContext.render(MapUtils.emptyOnNull(inputs));
 
         // compute labels
@@ -417,6 +459,12 @@ public class KestraFlow extends ToolProvider {
             var rFlowId = runContext.render(this.flowId).as(String.class, additionalVariables).orElseThrow();
             var rRevision = runContext.render(this.revision).as(Integer.class, additionalVariables);
 
+            if (rAllowedFlows != null && !rAllowedFlows.contains(new FlowIdentifier(rNamespace, rFlowId))) {
+                throw new IllegalArgumentException(
+                    "The predefined flow '%s' in namespace '%s' is not in allowedFlows. Add the pair to allowedFlows or select an allowed flow.".formatted(rFlowId, rNamespace)
+                );
+            }
+
             FlowWithSource flowWithSource;
             try {
                 flowWithSource = client.flows().flow(rNamespace, rFlowId, rTenantId, false, rRevision.orElse(null), false);
@@ -454,9 +502,30 @@ public class KestraFlow extends ToolProvider {
                 new KestraDefinedFlowToolExecutor(runContext, client, rTenantId, flowWithSource, rInputs, rInheritedLabels, executionLabels, rLabels)
             );
         } else {
-            jsonSchema.description(TOOL_LLM_DESCRIPTION);
-            jsonSchema.addProperty("namespace", JsonStringSchema.builder().build());
-            jsonSchema.addProperty("flowId", JsonStringSchema.builder().build());
+            var toolDescription = TOOL_LLM_DESCRIPTION;
+            var namespaceDescription = "Namespace of an existing Kestra flow. Must be paired with that flow's ID; do not invent a namespace.";
+            var flowIdDescription = "ID of an existing Kestra flow in the selected namespace. Do not invent a flow ID.";
+            if (rAllowedFlows == null) {
+                jsonSchema.addProperty("namespace", JsonStringSchema.builder().description(namespaceDescription).build());
+                jsonSchema.addProperty("flowId", JsonStringSchema.builder().description(flowIdDescription).build());
+            } else {
+                toolDescription += "\nSelect only one of these exact (namespace, flowId) pairs: " + rAllowedFlows.stream()
+                    .map(flow -> "(%s, %s)".formatted(flow.namespace(), flow.flowId()))
+                    .collect(Collectors.joining(", ")) + ". Do not combine values from different pairs.";
+                jsonSchema.addProperty(
+                    "namespace", JsonEnumSchema.builder()
+                        .description(namespaceDescription)
+                        .enumValues(rAllowedFlows.stream().map(FlowIdentifier::namespace).distinct().toList())
+                        .build()
+                );
+                jsonSchema.addProperty(
+                    "flowId", JsonEnumSchema.builder()
+                        .description(flowIdDescription)
+                        .enumValues(rAllowedFlows.stream().map(FlowIdentifier::flowId).distinct().toList())
+                        .build()
+                );
+            }
+            jsonSchema.description(toolDescription);
             jsonSchema.addProperty("revision", JsonNumberSchema.builder().build());
             jsonSchema.addProperty("inputs", inputsSchema);
             jsonSchema.required("namespace", "flowId");
@@ -464,12 +533,38 @@ public class KestraFlow extends ToolProvider {
             return Map.of(
                 ToolSpecification.builder()
                     .name("kestra_flow")
-                    .description(TOOL_LLM_DESCRIPTION)
+                    .description(toolDescription)
                     .parameters(jsonSchema.build())
                     .build(),
-                new KestraLLMFlowToolExecutor(runContext, client, rTenantId, rInputs, rInheritedLabels, executionLabels, rLabels)
+                new KestraLLMFlowToolExecutor(runContext, client, rTenantId, rInputs, rInheritedLabels, executionLabels, rLabels, rAllowedFlows)
             );
         }
+    }
+
+    private List<FlowIdentifier> resolveAllowedFlows(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
+        if (allowedFlows == null) {
+            return null;
+        }
+        if (allowedFlows.isEmpty()) {
+            throw new IllegalArgumentException("allowedFlows must contain at least one flow when configured. Add an allowed namespace and flowId pair.");
+        }
+        var rAllowedFlows = new ArrayList<FlowIdentifier>();
+        for (var flow : allowedFlows) {
+            if (flow == null) {
+                throw new IllegalArgumentException("Each allowedFlows entry must specify a namespace and flowId; null entries are not allowed.");
+            }
+            var rNamespace = runContext.render(flow.namespace).as(String.class, additionalVariables)
+                .filter(Predicate.not(String::isBlank))
+                .orElseThrow(() -> new IllegalArgumentException("Each allowedFlows entry must specify a nonblank namespace."));
+            var rFlowId = runContext.render(flow.flowId).as(String.class, additionalVariables)
+                .filter(Predicate.not(String::isBlank))
+                .orElseThrow(() -> new IllegalArgumentException("Each allowedFlows entry must specify a nonblank flowId."));
+            rAllowedFlows.add(new FlowIdentifier(rNamespace, rFlowId));
+        }
+        return List.copyOf(rAllowedFlows);
+    }
+
+    private record FlowIdentifier(String namespace, String flowId) {
     }
 
     static class KestraDefinedFlowToolExecutor extends AbstractKestraFlowToolExecutor {
@@ -489,14 +584,23 @@ public class KestraFlow extends ToolProvider {
     }
 
     static class KestraLLMFlowToolExecutor extends AbstractKestraFlowToolExecutor {
-        KestraLLMFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
+        private final List<FlowIdentifier> allowedFlows;
+
+        KestraLLMFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels,
+            List<Label> taskLabels, List<FlowIdentifier> allowedFlows) {
             super(runContext, client, tenantId, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
+            this.allowedFlows = allowedFlows;
         }
 
         @Override
         protected FlowWithSource getFlow(Map<String, Object> parameters) {
             var namespace = (String) parameters.get("namespace");
             var flowId = (String) parameters.get("flowId");
+            if (allowedFlows != null && !allowedFlows.contains(new FlowIdentifier(namespace, flowId))) {
+                throw new ToolArgumentsException(
+                    "The flow '%s' in namespace '%s' is not in allowedFlows. Select an exact namespace and flowId pair from the tool description.".formatted(flowId, namespace)
+                );
+            }
             // revision may come back as Double from JSON parsing, so use Number cast
             var revision = Optional.ofNullable(parameters.get("revision"))
                 .map(v -> ((Number) v).intValue())
@@ -647,6 +751,21 @@ public class KestraFlow extends ToolProvider {
                 inputs != null ? inputs : new HashMap<>(),
                 new TypeReference<ExecutionControllerExecutionResponse>() {});
         }
+    }
+
+    @Builder
+    @Getter
+    @Schema(title = "An allowed flow")
+    public static class AllowedFlow {
+        @Schema(title = "Namespace of the allowed flow")
+        @NotNull
+        @PluginProperty(group = "main")
+        private Property<String> namespace;
+
+        @Schema(title = "ID of the allowed flow")
+        @NotNull
+        @PluginProperty(group = "main")
+        private Property<String> flowId;
     }
 
     @Builder

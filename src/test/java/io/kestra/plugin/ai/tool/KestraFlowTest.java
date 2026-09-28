@@ -3,6 +3,8 @@ package io.kestra.plugin.ai.tool;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,12 +25,15 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -406,6 +411,213 @@ class KestraFlowTest {
 
     private ToolExecutor executorOf(KestraFlow tool) throws Exception {
         return tool.tool(runContextFactory.of(), Map.of()).values().iterator().next();
+    }
+
+    private KestraFlow.AllowedFlow allowedFlow(String namespace, String flowId) {
+        return KestraFlow.AllowedFlow.builder()
+            .namespace(namespace == null ? null : Property.ofValue(namespace))
+            .flowId(flowId == null ? null : Property.ofValue(flowId))
+            .build();
+    }
+
+    private KestraFlow genericFlowTool(List<KestraFlow.AllowedFlow> allowedFlows) {
+        return KestraFlow.builder()
+            .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+            .auth(apiTokenAuth())
+            .allowedFlows(allowedFlows)
+            .build();
+    }
+
+    private void stubSuccessfulFlow(String namespace, String flowId) {
+        stubFlowResponses.put(
+            "/api/v1/main/flows/" + namespace + "/" + flowId,
+            flowJson(namespace, flowId, 1, "An allowed flow", null)
+        );
+        stubExecResponses.put(
+            "/api/v1/main/executions/" + namespace + "/" + flowId,
+            executionJson("test-exec-123", namespace, flowId)
+        );
+    }
+
+    private ToolExecutionRequest flowRequest(String arguments) {
+        return ToolExecutionRequest.builder().id("1").name("kestra_flow").arguments(arguments).build();
+    }
+
+    @Test
+    void shouldDescribeGenericFlowParametersWhenAllowlistIsOmitted() throws Exception {
+        var specification = genericFlowTool(null).tool(runContextFactory.of(), Map.of()).keySet().iterator().next();
+
+        assertThat(specification.parameters().required()).contains("namespace", "flowId");
+        assertThat(specification.parameters().properties().get("namespace"))
+            .isInstanceOfSatisfying(JsonStringSchema.class, schema -> assertThat(schema.description()).contains("existing Kestra flow"));
+        assertThat(specification.parameters().properties().get("flowId"))
+            .isInstanceOfSatisfying(JsonStringSchema.class, schema -> assertThat(schema.description()).contains("selected namespace"));
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldExposeRenderedAllowedFlowPairsFromYaml() throws Exception {
+        var tool = JacksonMapper.ofYaml().readValue("""
+            type: io.kestra.plugin.ai.tool.KestraFlow
+            kestraUrl: http://localhost:%d
+            auth:
+              auto: false
+            allowedFlows:
+              - namespace: "{{ allowedNamespace }}"
+                flowId: hello-world
+              - namespace: company.other
+                flowId: "{{ allowedFlowId }}"
+              - namespace: company.team
+                flowId: goodbye
+            """.formatted(mockPort), KestraFlow.class);
+        var tools = tool.tool(runContextFactory.of(), Map.of("allowedNamespace", "company.team", "allowedFlowId", "goodbye"));
+        var specification = tools.keySet().iterator().next();
+
+        assertThat(specification.description())
+            .contains("(company.team, hello-world)", "(company.other, goodbye)", "(company.team, goodbye)")
+            .contains("Do not combine values from different pairs");
+        assertThat(specification.parameters().properties().get("namespace"))
+            .isInstanceOfSatisfying(JsonEnumSchema.class, schema ->
+            {
+                assertThat(schema.enumValues()).containsExactly("company.team", "company.other");
+                assertThat(schema.description()).contains("existing Kestra flow");
+            });
+        assertThat(specification.parameters().properties().get("flowId"))
+            .isInstanceOfSatisfying(JsonEnumSchema.class, schema -> assertThat(schema.enumValues()).containsExactly("hello-world", "goodbye"));
+
+        stubSuccessfulFlow("company.other", "goodbye");
+        var result = tools.values().iterator().next().execute(flowRequest("{\"namespace\":\"company.other\",\"flowId\":\"goodbye\"}"), "memory");
+        assertThat(JacksonMapper.toMap(result)).containsEntry("id", "test-exec-123").containsEntry("flowId", "goodbye");
+        assertThat(executionCreated).isTrue();
+        assertThat(requestCount).hasValue(2);
+    }
+
+    @Test
+    void shouldRejectDisallowedAndCrossPairedFlowsBeforeCallingTheApi() throws Exception {
+        var tool = genericFlowTool(List.of(allowedFlow("company.team", "hello-world"), allowedFlow("company.other", "goodbye")));
+        var executor = executorOf(tool);
+        var rejectedArguments = List.of(
+            "{\"namespace\":\"company.team\",\"flowId\":\"unknown\"}",
+            "{\"namespace\":\"unknown\",\"flowId\":\"hello-world\"}",
+            "{\"namespace\":\"company.team\",\"flowId\":\"goodbye\"}",
+            "{\"namespace\":\"company.other\",\"flowId\":\"hello-world\"}",
+            "{\"namespace\":\"company.team\"}",
+            "{\"namespace\":\"company.team\",\"flowId\":\"\"}"
+        );
+
+        for (var arguments : rejectedArguments) {
+            assertThatThrownBy(() -> executor.execute(flowRequest(arguments), "memory"))
+                .isInstanceOf(ToolArgumentsException.class)
+                .hasMessageContaining("not in allowedFlows")
+                .hasMessageContaining("Select an exact namespace and flowId pair");
+        }
+        assertThat(executionCreated).isFalse();
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldExecuteGenericFlowWhenAllowlistIsOmitted() throws Exception {
+        stubSuccessfulFlow("company.team", "hello-world");
+
+        var result = executorOf(genericFlowTool(null)).execute(flowRequest("{\"namespace\":\"company.team\",\"flowId\":\"hello-world\"}"), "memory");
+
+        assertThat(JacksonMapper.toMap(result)).containsEntry("id", "test-exec-123");
+        assertThat(executionCreated).isTrue();
+        assertThat(requestCount).hasValue(2);
+    }
+
+    @Test
+    void shouldRejectEmptyAllowlistBeforeCallingTheApi() {
+        assertThatThrownBy(() -> executorOf(genericFlowTool(List.of())))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("allowedFlows must contain at least one flow");
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldRejectNullAllowlistEntryBeforeCallingTheApi() {
+        assertThatThrownBy(() -> executorOf(genericFlowTool(Collections.singletonList(null))))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("null entries are not allowed");
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldRejectMissingOrBlankAllowedFlowIdentifiers() {
+        for (var invalid : Arrays.asList(null, "", " \t")) {
+            assertThatThrownBy(() -> executorOf(genericFlowTool(List.of(allowedFlow(invalid, "hello-world")))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nonblank namespace");
+            assertThatThrownBy(() -> executorOf(genericFlowTool(List.of(allowedFlow("company.team", invalid)))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nonblank flowId");
+        }
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldRejectAllowedFlowExpressionThatRendersBlank() {
+        var tool = genericFlowTool(
+            List.of(
+                KestraFlow.AllowedFlow.builder()
+                    .namespace(Property.ofExpression("{{ allowedNamespace }}"))
+                    .flowId(Property.ofValue("hello-world"))
+                    .build()
+            )
+        );
+
+        assertThatThrownBy(() -> tool.tool(runContextFactory.of(), Map.of("allowedNamespace", " ")))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("nonblank namespace");
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldEnforceAllowlistForPredefinedFlowsBeforeCallingTheApi() {
+        var tool = KestraFlow.builder()
+            .namespace(Property.ofValue("company.team"))
+            .flowId(Property.ofValue("hello-world"))
+            .allowedFlows(List.of(allowedFlow("company.other", "hello-world")))
+            .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+            .auth(apiTokenAuth())
+            .build();
+
+        assertThatThrownBy(() -> executorOf(tool))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("predefined flow 'hello-world'")
+            .hasMessageContaining("not in allowedFlows");
+        assertThat(requestCount).hasValue(0);
+    }
+
+    @Test
+    void shouldExecuteAllowedPredefinedFlowWithoutAcceptingModelTargetOverrides() throws Exception {
+        stubSuccessfulFlow("company.team", "hello-world");
+        var tool = KestraFlow.builder()
+            .namespace(Property.ofValue("company.team"))
+            .flowId(Property.ofValue("hello-world"))
+            .allowedFlows(List.of(allowedFlow("company.team", "hello-world")))
+            .kestraUrl(Property.ofValue("http://localhost:" + mockPort))
+            .auth(apiTokenAuth())
+            .build();
+        var tools = tool.tool(runContextFactory.of(), Map.of());
+        assertThat(tools.keySet().iterator().next().parameters().properties()).doesNotContainKeys("namespace", "flowId");
+
+        var result = tools.values().iterator().next().execute(flowRequest("{\"namespace\":\"other\",\"flowId\":\"denied\"}"), "memory");
+
+        assertThat(JacksonMapper.toMap(result)).containsEntry("id", "test-exec-123").containsEntry("flowId", "hello-world");
+        assertThat(executionCreated).isTrue();
+        assertThat(requestCount).hasValue(2);
+    }
+
+    @Test
+    void shouldExecutePredefinedFlowWhenAllowlistIsOmitted() throws Exception {
+        stubSuccessfulFlow("company.team", "hello-world");
+
+        var result = executorOf(definedFlowTool("hello-world", apiTokenAuth())).execute(flowRequest("{}"), "memory");
+
+        assertThat(JacksonMapper.toMap(result)).containsEntry("id", "test-exec-123");
+        assertThat(executionCreated).isTrue();
+        assertThat(requestCount).hasValue(2);
     }
 
     @Test
