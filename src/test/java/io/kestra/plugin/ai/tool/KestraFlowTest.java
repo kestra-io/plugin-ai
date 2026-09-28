@@ -20,7 +20,14 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.sun.net.httpserver.HttpServer;
-
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.output.FinishReason;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -31,15 +38,6 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.provider.OpenAI;
-
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.service.tool.ToolExecutor;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,8 +68,7 @@ class KestraFlowTest {
         requestCount.set(0);
         lastAuthorizationHeader.set(null);
         mockServer = HttpServer.create(new InetSocketAddress(0), 0);
-        mockServer.createContext("/", exchange ->
-        {
+        mockServer.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
             String method = exchange.getRequestMethod();
             // Drain request body without parsing it as multipart — avoids
@@ -145,14 +142,10 @@ class KestraFlowTest {
 
     @Test
     void helloWorld() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            flowJson("company.team", "hello-world", 1, null, null)
-        );
-        stubExecResponses.put(
-            "/api/v1/main/executions/company.team/hello-world",
-            executionJson("test-exec-123", "company.team", "hello-world")
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
+            executionJson("test-exec-123", "company.team", "hello-world"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -208,14 +201,10 @@ class KestraFlowTest {
 
     @Test
     void descriptionFromTheFlow() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world-with-description",
-            flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null)
-        );
-        stubExecResponses.put(
-            "/api/v1/main/executions/company.team/hello-world-with-description",
-            executionJson("test-exec-456", "company.team", "hello-world-with-description")
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-description",
+            flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null));
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world-with-description",
+            executionJson("test-exec-456", "company.team", "hello-world-with-description"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -279,14 +268,10 @@ class KestraFlowTest {
     @Test
     void inputsAndLabels() throws Exception {
         String inputsJson = "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":false}]";
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world-with-input",
-            flowJson("company.team", "hello-world-with-input", 1, null, inputsJson)
-        );
-        stubExecResponses.put(
-            "/api/v1/main/executions/company.team/hello-world-with-input",
-            executionJson("test-exec-789", "company.team", "hello-world-with-input")
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-input",
+            flowJson("company.team", "hello-world-with-input", 1, null, inputsJson));
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world-with-input",
+            executionJson("test-exec-789", "company.team", "hello-world-with-input"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -343,14 +328,10 @@ class KestraFlowTest {
 
     @Test
     void helloWorldFromLLM() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null)
-        );
-        stubExecResponses.put(
-            "/api/v1/main/executions/company.team/hello-world",
-            executionJson("test-exec-llm", "company.team", "hello-world")
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null));
+        stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
+            executionJson("test-exec-llm", "company.team", "hello-world"));
 
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -401,7 +382,6 @@ class KestraFlowTest {
         assertThat(executionCreated).isTrue();
         assertThat(output.getTextOutput()).contains("test-exec-llm");
     }
-
     private KestraFlow.Auth apiTokenAuth() {
         return KestraFlow.Auth.builder().apiToken(Property.ofValue("test-token")).build();
     }
@@ -679,10 +659,8 @@ class KestraFlowTest {
 
     @Test
     void shouldReportAnAuthenticationFailureWhenTheExecutionIsRejected() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            flowJson("company.team", "hello-world", 1, null, null)
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
         stubStatuses.put("/api/v1/main/executions/company.team/hello-world", 401);
 
         var tool = definedFlowTool("hello-world", apiTokenAuth());
@@ -704,13 +682,10 @@ class KestraFlowTest {
             .hasMessageContaining("No authentication method provided");
         assertThat(requestCount).hasValue(0);
     }
-
     @Test
     void shouldReportAMissingInputAsAnArgumentsProblem() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            flowJson("company.team", "hello-world", 1, null, "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":true}]")
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":true}]"));
 
         var tool = definedFlowTool("hello-world", apiTokenAuth());
         var executor = executorOf(tool);
@@ -720,17 +695,14 @@ class KestraFlowTest {
             .isInstanceOf(ToolArgumentsException.class)
             .hasMessageContaining("'name'");
     }
-
     /**
      * Opting out of the default authentication without setting any credential is how the tool declares that the
      * Kestra API it targets requires none, so the call must go out with no `Authorization` header at all.
      */
     @Test
     void shouldSendNoAuthorizationHeaderWhenAutoIsDisabledWithoutCredentials() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            flowJson("company.team", "hello-world", 1, null, null)
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
 
         var tool = definedFlowTool("hello-world", KestraFlow.Auth.builder().auto(Property.ofValue(false)).build());
 
@@ -743,10 +715,8 @@ class KestraFlowTest {
     /** Counterpart of the test above: a credential still reaches the API, so an absent header there means something. */
     @Test
     void shouldSendTheApiTokenAsABearerHeader() throws Exception {
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            flowJson("company.team", "hello-world", 1, null, null)
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            flowJson("company.team", "hello-world", 1, null, null));
 
         var tool = definedFlowTool("hello-world", apiTokenAuth());
 
@@ -758,10 +728,8 @@ class KestraFlowTest {
     @Test
     void shouldIncludeTheApiMessageWhenTheStatusIsNotMapped() {
         stubStatuses.put("/api/v1/main/flows/company.team/hello-world", 500);
-        stubFlowResponses.put(
-            "/api/v1/main/flows/company.team/hello-world",
-            "{\"message\":\"the database is unreachable\"}"
-        );
+        stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
+            "{\"message\":\"the database is unreachable\"}");
 
         var tool = definedFlowTool("hello-world", apiTokenAuth());
 

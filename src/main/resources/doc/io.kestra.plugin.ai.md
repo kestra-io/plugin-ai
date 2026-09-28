@@ -82,7 +82,7 @@ Configure `tools` on chat and agent tasks with one of these subtypes:
 - **TavilyWebSearch** — set `apiKey` (required)
 - **CodeExecution** — set `apiKey` (required, RapidAPI key for Judge0)
 - **GoogleCustomWebSearch** — set `apiKey` and `csi` (Custom Search Engine ID, both required)
-- **KestraFlow** / **KestraTask** — invoke other Kestra flows or tasks as tools
+- **KestraFlow** / **KestraTask** — invoke other Kestra flows or tasks as tools. For `KestraFlow`, optional `allowedFlows` restricts execution to exact `namespace` and `flowId` pairs; all other selections, including cross-pair combinations, are rejected. This also applies to predefined flows. Omitting `allowedFlows` keeps execution unrestricted.
 - **AIAgent** — call a nested AI agent as a tool (sub-agent delegation); set `name`, `description`, and `provider`
 - **Skill** — provide reusable skills (instructions and resources) to an agent
 - **SseMcpClient** / **StdioMcpClient** / **StreamableHttpMcpClient** / **DockerMcpClient** — connect to MCP servers

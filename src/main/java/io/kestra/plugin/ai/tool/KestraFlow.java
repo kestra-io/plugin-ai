@@ -266,7 +266,7 @@ public class KestraFlow extends ToolProvider {
             The restriction also applies when namespace and flowId are predefined on the tool."""
     )
     @Valid
-    @PluginProperty(group = "reliability")
+    @PluginProperty(group = "connection")
     private List<AllowedFlow> allowedFlows;
 
     @Schema(title = "Revision of the flow that should be called")
@@ -328,8 +328,7 @@ public class KestraFlow extends ToolProvider {
 
     private Optional<KestraClient> tryAutoAuth(KestraClient.KestraClientBuilder builder, RunContext runContext) {
         SDK sdk = runContext.sdk();
-        if (sdk == null)
-            return Optional.empty();
+        if (sdk == null) return Optional.empty();
         Optional<SDK.Auth> autoAuth = sdk.defaultAuthentication();
         if (autoAuth.isPresent()) {
             if (autoAuth.get().apiToken().isPresent()) {
@@ -392,10 +391,8 @@ public class KestraFlow extends ToolProvider {
     /** A 401 or a 403 from the API is a credentials problem, and reporting it as a missing flow sends the user looking in the wrong place. */
     private static String apiFailureMessage(ApiException e, String namespace, String flowId) {
         return switch (e.getCode()) {
-            case 401 -> "Authentication failed when calling the Kestra API for the flow '%s' in the namespace '%s'. Check the credentials set in the `auth` property of the tool."
-                .formatted(flowId, namespace);
-            case 403 ->
-                "Not authorized to access the flow '%s' in the namespace '%s'. Check the permissions of the credentials set in the `auth` property of the tool.".formatted(flowId, namespace);
+            case 401 -> "Authentication failed when calling the Kestra API for the flow '%s' in the namespace '%s'. Check the credentials set in the `auth` property of the tool.".formatted(flowId, namespace);
+            case 403 -> "Not authorized to access the flow '%s' in the namespace '%s'. Check the permissions of the credentials set in the `auth` property of the tool.".formatted(flowId, namespace);
             case 404 -> "Unable to find the flow '%s' in the namespace '%s'.".formatted(flowId, namespace);
             case 0 -> "The Kestra API could not be reached for the flow '%s' in the namespace '%s': %s".formatted(flowId, namespace, e.getMessage());
             default -> "The Kestra API returned the status %d for the flow '%s' in the namespace '%s': %s".formatted(e.getCode(), flowId, namespace, e.getMessage());
@@ -573,8 +570,7 @@ public class KestraFlow extends ToolProvider {
     static class KestraDefinedFlowToolExecutor extends AbstractKestraFlowToolExecutor {
         private final FlowWithSource flowWithSource;
 
-        KestraDefinedFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, FlowWithSource flowWithSource, Map<String, Object> predefinedInputs, boolean inheritedLabels,
-            List<Label> executionLabels,
+        KestraDefinedFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, FlowWithSource flowWithSource, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels,
             List<Label> taskLabels) {
             super(runContext, client, tenantId, predefinedInputs, inheritedLabels, executionLabels, taskLabels);
 
@@ -628,8 +624,7 @@ public class KestraFlow extends ToolProvider {
         private final List<Label> executionLabels;
         private final List<Label> taskLabels;
 
-        AbstractKestraFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels,
-            List<Label> taskLabels) {
+        AbstractKestraFlowToolExecutor(RunContext runContext, KestraClient client, String tenantId, Map<String, Object> predefinedInputs, boolean inheritedLabels, List<Label> executionLabels, List<Label> taskLabels) {
             this.runContext = runContext;
             this.client = client;
             this.tenantId = tenantId;
@@ -678,8 +673,7 @@ public class KestraFlow extends ToolProvider {
                 );
                 var finalInputs = MapUtils.merge(predefinedInputs, inputMap);
                 // check mandatory inputs to fail the tool execution instead of triggering a flow that would fail anyway
-                ListUtils.emptyOnNull(flowWithSource.getInputs()).forEach(input ->
-                {
+                ListUtils.emptyOnNull(flowWithSource.getInputs()).forEach(input -> {
                     if (Boolean.TRUE.equals(input.getRequired()) && input.getDefaults() == null && !finalInputs.containsKey(input.getId())) {
                         throw new ToolArgumentsException("You need to provide an input with the id '" + input.getId() + "'.");
                     }
@@ -740,27 +734,22 @@ public class KestraFlow extends ToolProvider {
         }
 
         ExecutionControllerExecutionResponse createExecutionWithInputs(
-            String tenant, String namespace, String id,
-            List<String> labels, Boolean wait, Integer revision,
-            OffsetDateTime scheduleDate, String breakpoints, ExecutionKind kind,
-            Map<String, Object> inputs) throws ApiException {
+                String tenant, String namespace, String id,
+                List<String> labels, Boolean wait, Integer revision,
+                OffsetDateTime scheduleDate, String breakpoints, ExecutionKind kind,
+                Map<String, Object> inputs) throws ApiException {
             List<Pair> multiLabels = labels == null || labels.isEmpty()
                 ? Collections.emptyList()
                 : apiClient.parameterToPairs("multi", "labels", labels);
-            return invoke(
-                "POST",
+            return invoke("POST",
                 tenantPath(tenant, "executions", namespace, id),
                 null,
-                queryParams(
-                    "wait", wait, "revision", revision,
-                    "scheduleDate", scheduleDate, "breakpoints", breakpoints, "kind", kind
-                ),
+                queryParams("wait", wait, "revision", revision,
+                    "scheduleDate", scheduleDate, "breakpoints", breakpoints, "kind", kind),
                 multiLabels,
                 JSON, MULTIPART,
                 inputs != null ? inputs : new HashMap<>(),
-                new TypeReference<ExecutionControllerExecutionResponse>() {
-                }
-            );
+                new TypeReference<ExecutionControllerExecutionResponse>() {});
         }
     }
 
