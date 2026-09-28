@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -23,16 +24,17 @@ import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.service.tool.ToolExecutor;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
@@ -47,6 +49,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest(startRunner = true)
 class KestraFlowTest {
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
+
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -142,6 +147,8 @@ class KestraFlowTest {
 
     @Test
     void helloWorld() throws Exception {
+        llm.callTool("kestra_flow_company_team_hello-world", "{}");
+
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
             flowJson("company.team", "hello-world", 1, null, null));
         stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
@@ -151,7 +158,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -201,6 +208,8 @@ class KestraFlowTest {
 
     @Test
     void descriptionFromTheFlow() throws Exception {
+        llm.callTool("kestra_flow_company_team_hello-world-with-description", "{}");
+
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-description",
             flowJson("company.team", "hello-world-with-description", 1, "A flow that say Hello World", null));
         stubExecResponses.put("/api/v1/main/executions/company.team/hello-world-with-description",
@@ -210,7 +219,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -267,6 +276,8 @@ class KestraFlowTest {
 
     @Test
     void inputsAndLabels() throws Exception {
+        llm.callTool("kestra_flow_company_team_hello-world-with-input", "{\"inputs\":[{\"id\":\"name\",\"value\":\"John\"}],\"labels\":[{\"key\":\"llm\",\"value\":\"true\"}]}");
+
         String inputsJson = "[{\"id\":\"name\",\"type\":\"STRING\",\"required\":false}]";
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world-with-input",
             flowJson("company.team", "hello-world-with-input", 1, null, inputsJson));
@@ -277,7 +288,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 
@@ -328,6 +339,8 @@ class KestraFlowTest {
 
     @Test
     void helloWorldFromLLM() throws Exception {
+        llm.callTool("kestra_flow", "{\"namespace\":\"company.team\",\"flowId\":\"hello-world\"}");
+
         stubFlowResponses.put("/api/v1/main/flows/company.team/hello-world",
             flowJson("company.team", "hello-world", 1, "A flow that says Hello World", null));
         stubExecResponses.put("/api/v1/main/executions/company.team/hello-world",
@@ -337,7 +350,7 @@ class KestraFlowTest {
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1"
+                "baseUrl", llm.baseUrl()
             )
         );
 

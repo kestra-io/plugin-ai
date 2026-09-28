@@ -7,6 +7,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -17,6 +18,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
@@ -32,6 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
 class SseMcpClientTest {
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
+
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -60,11 +65,13 @@ class SseMcpClientTest {
 
     @Test
     void chat() throws Exception {
+        llm.callTool("add", "{\"a\":5,\"b\":12}");
+
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
-                "baseUrl", "http://langchain4j.dev/demo/openai/v1",
+                "baseUrl", llm.baseUrl(),
                 "mcpSseUrl", "http://localhost:" + mcpContainer.getMappedPort(3001) + "/sse"
             )
         );

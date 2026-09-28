@@ -16,7 +16,7 @@ plugins {
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
 def langchain4jVersion = "1.20.0"
-def langchain4jBetaVersion = "1.19.0-beta29"
+def langchain4jBetaVersion = "1.20.0-beta30"
 
 repositories {
     mavenLocal()
@@ -174,7 +174,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.4"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.5"
 
     testImplementation 'org.testcontainers:testcontainers-ollama:2.0.5'
     testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'
