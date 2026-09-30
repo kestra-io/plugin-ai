@@ -119,14 +119,14 @@ const summaryRows = computed(() => {
     ];
     if (isRag.value && firstRetrieverName.value) {
         rows.push({ label: "Retriever", value: firstRetrieverName.value });
+    } else if (!isRag.value && retrieverNames.value.length > 0) {
+        rows.push({ label: "Retrievers", value: retrieverNames.value.join(", ") });
     }
-    return rows;
-});
-
-const fullViewRows = computed(() => {
-    const rows: { label: string; value: string }[] = [];
     if (toolNames.value.length > 0) {
         rows.push({ label: "Tools", value: toolNames.value.join(", ") });
+    }
+    if (memoryType.value) {
+        rows.push({ label: "Memory", value: memoryType.value });
     }
     return rows;
 });
@@ -267,14 +267,11 @@ const tokenOutputPct = computed(() =>
 
 <template>
     <div class="ai-details">
-        <!-- Provider + model always shown in compact node -->
+        <!-- Provider, model, retrievers, tools and memory always shown in compact node -->
         <KsTopologyDetails :rows="summaryRows" />
 
         <!-- Everything below: full view (modal / drawer) only -->
         <template v-if="isFullView">
-
-            <!-- ── Full-view-only metadata rows (Tools, etc.) ── -->
-            <KsTopologyDetails v-if="fullViewRows.length > 0" :rows="fullViewRows" />
 
             <!-- ── System message ── -->
             <details v-if="systemMessage" class="ai-section" open>
