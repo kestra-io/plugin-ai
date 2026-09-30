@@ -121,7 +121,7 @@ public class AIAgent extends ToolProvider {
     protected Property<String> description;
 
     @Schema(title = "System message", description = "The system message for the language model")
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "main")
     protected Property<String> systemMessage;
 
     @Schema(title = "Language model provider")
