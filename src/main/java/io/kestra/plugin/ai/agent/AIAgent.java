@@ -725,7 +725,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFilesInterface {
 
     @Schema(title = "System message", description = "The system message for the language model")
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "main")
     protected Property<String> systemMessage;
 
     @Schema(title = "Text prompt", description = "The input prompt for the language model")

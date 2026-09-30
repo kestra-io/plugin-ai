@@ -121,7 +121,7 @@ public class Classification extends Task implements RunnableTask<Classification.
         description = "Instruction message for the model. Defaults to a standard classification instruction using the provided classes."
     )
     @Builder.Default
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "main")
     private Property<String> systemMessage = Property.ofExpression(
         "Respond by only one of the following classes by typing just the exact class name: {{ classes }}"
     );
