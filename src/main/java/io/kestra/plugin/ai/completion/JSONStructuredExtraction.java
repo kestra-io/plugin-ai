@@ -169,7 +169,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
 
     @Schema(title = "System message", description = "Optional system instruction for the model.")
     @Builder.Default
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "main")
     private Property<String> systemMessage = Property.ofValue(
         "You are a structured JSON extraction assistant. Always respond with valid JSON."
     );
