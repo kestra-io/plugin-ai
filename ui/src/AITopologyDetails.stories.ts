@@ -60,6 +60,77 @@ const expressionAgentTask = {
     prompt: "{{ inputs.question }}",
 };
 
+const compactFullHouseTask = {
+    id: "ai-agent-full",
+    type: "io.kestra.plugin.ai.agent.AIAgent",
+    provider: openAIProvider,
+    systemPrompt: "You are a helpful assistant that answers questions about Kestra workflows.",
+    prompt: "List the last 3 executions of the etl-pipeline flow.",
+    tools: [
+        { type: "io.kestra.plugin.ai.tool.KestraFlow" },
+        { type: "io.kestra.plugin.ai.tool.TavilyWebSearch" },
+        { type: "io.kestra.plugin.ai.tool.CodeExecution" },
+    ],
+    memory: { type: "io.kestra.plugin.ai.memory.KestraKVStore" },
+    contentRetrievers: [
+        { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
+        { type: "io.kestra.plugin.ai.retriever.TavilyWebSearch" },
+    ],
+};
+
+export const CompactProviderAndModelOnly: Story = {
+    name: "Compact node (provider + model only)",
+    args: {
+        task: chatTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Provider")).toBeInTheDocument();
+        expect(canvas.getByText("OpenAI")).toBeInTheDocument();
+        expect(canvas.getByText("Model")).toBeInTheDocument();
+        expect(canvas.getByText("gpt-4o")).toBeInTheDocument();
+        expect(canvas.queryByText("Tools")).not.toBeInTheDocument();
+        expect(canvas.queryByText("Memory")).not.toBeInTheDocument();
+        expect(canvas.queryByText("Retrievers")).not.toBeInTheDocument();
+    },
+};
+
+export const CompactProviderModelAndTools: Story = {
+    name: "Compact node (provider + model + tools)",
+    args: {
+        task: agentTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Tools")).toBeInTheDocument();
+        expect(canvas.getByText("KestraFlow +1")).toBeInTheDocument();
+        expect(canvas.queryByText("Memory")).not.toBeInTheDocument();
+        expect(canvas.queryByText("Retrievers")).not.toBeInTheDocument();
+    },
+};
+
+export const CompactFullHouse: Story = {
+    name: "Compact node (tools + memory + retrievers, node stays legible)",
+    args: {
+        task: compactFullHouseTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Tools")).toBeInTheDocument();
+        expect(canvas.getByText("KestraFlow +2")).toBeInTheDocument();
+        expect(canvas.getByText("Memory")).toBeInTheDocument();
+        expect(canvas.getByText("KestraKVStore")).toBeInTheDocument();
+        expect(canvas.getByText("Retrievers")).toBeInTheDocument();
+        expect(canvas.getByText("EmbeddingStoreRetriever +1")).toBeInTheDocument();
+    },
+};
+
 export const PreExecution: Story = {
     name: "Pre-execution (AIAgent with tools + system prompt)",
     args: {
