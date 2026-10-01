@@ -80,7 +80,11 @@ public class KestraTask extends ToolProvider {
     // Tool description, it could be fine-tuned if needed
     private static final String TOOL_DESCRIPTION = "This tool allows you to call a Kestra task. A Kestra task will respond with its output, which is a map of key/value pairs.";
 
-    @Schema(title = "List of Kestra runnable tasks")
+    @Schema(
+        title = "Kestra runnable tasks",
+        description = "Runnable tasks exposed to the LLM as callable tools, one tool per task, named after each task's `id`. No default: this property is required.",
+        example = "[{id: \"http_request\", type: \"io.kestra.plugin.core.http.Request\", uri: \"https://api.example.com/status\"}]"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private List<Task> tasks;

@@ -61,22 +61,38 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class Qdrant extends EmbeddingStoreProvider {
 
     @NotNull
-    @Schema(title = "The API key")
+    @Schema(
+        title = "API Key",
+        description = "Qdrant API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('QDRANT_API_KEY') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @NotNull
-    @Schema(title = "The database server host")
+    @Schema(
+        title = "Database server host",
+        description = "Hostname or IP address of the Qdrant server. No default: this property is required.",
+        example = "localhost"
+    )
     @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
-    @Schema(title = "The database server port")
+    @Schema(
+        title = "Database server port",
+        description = "gRPC port the Qdrant server listens on. No default: this property is required.",
+        example = "6334"
+    )
     @PluginProperty(group = "main")
     private Property<Integer> port;
 
     @NotNull
-    @Schema(title = "The collection name")
+    @Schema(
+        title = "Collection name",
+        description = "Qdrant collection that holds the embeddings. No default: this property is required.",
+        example = "my-documents"
+    )
     @PluginProperty(group = "main")
     private Property<String> collectionName;
 

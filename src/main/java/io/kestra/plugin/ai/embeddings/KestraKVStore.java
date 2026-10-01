@@ -67,7 +67,11 @@ public class KestraKVStore extends EmbeddingStoreProvider {
     @JsonIgnore
     private transient InMemoryEmbeddingStore<TextSegment> embeddingStore;
 
-    @Schema(title = "The name of the KV pair to use")
+    @Schema(
+        title = "KV pair name",
+        description = "Key of the Kestra KV pair used to persist the in-memory embedding store between task runs. Defaults to `{{ flow.id }}-embedding-store`.",
+        example = "{{ flow.id }}-embedding-store"
+    )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<String> kvName = Property.ofExpression("{{ flow.id }}-embedding-store");

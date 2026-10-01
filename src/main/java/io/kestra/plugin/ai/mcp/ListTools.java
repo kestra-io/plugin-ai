@@ -77,18 +77,38 @@ public class ListTools extends AbstractMcpTask implements RunnableTask<ListTools
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "The tools exposed by the MCP server")
+        @Schema(
+            title = "Tools",
+            description = "Tools the MCP server exposes, each with its name, description and input schema.",
+            example = "[{name: \"get_current_time\", description: \"Returns the current time in a timezone\"}]"
+        )
         private final List<ToolDefinition> tools;
 
-        @Schema(title = "Number of tools returned")
+        @Schema(
+            title = "Tool count",
+            description = "Number of tools returned by the server.",
+            example = "3"
+        )
         private final Integer count;
     }
 
     @Schema(title = "An MCP tool definition")
     public record ToolDefinition(
-        @Schema(title = "Tool name") String name,
-        @Schema(title = "Tool description") String description,
+        @Schema(
+            title = "Tool name",
+            description = "Name the tool is invoked by, to pass as `tool` on an `io.kestra.plugin.ai.mcp.CallTool` task.",
+            example = "get_current_time"
+        ) String name,
+        @Schema(
+            title = "Tool description",
+            description = "Natural-language summary the server publishes for this tool, which an LLM uses to decide when to call it.",
+            example = "Returns the current time in a given timezone."
+        ) String description,
         // JSON-Schema map produced by dev.langchain4j.internal.JsonSchemaElementUtils.toMap — check that helper on any langchain4j upgrade.
-        @Schema(title = "Tool argument JSON schema") Map<String, Object> parameters) {
+        @Schema(
+            title = "Tool argument JSON schema",
+            description = "JSON Schema describing the arguments the tool accepts, which `CallTool` arguments must conform to.",
+            example = "{\"type\": \"object\", \"properties\": {\"timezone\": {\"type\": \"string\"}}}"
+        ) Map<String, Object> parameters) {
     }
 }

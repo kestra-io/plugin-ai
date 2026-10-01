@@ -155,41 +155,66 @@ import java.util.List;
 )
 public class JSONStructuredExtraction extends Task implements RunnableTask<JSONStructuredExtraction.Output> {
 
-    @Schema(title = "Text prompt", description = "Text input for structured JSON extraction. Use either `prompt` or `contentBlocks`.")
+    @Schema(
+        title = "Text prompt",
+        description = "Text to extract structured data from. Set either this property or `contentBlocks`, not both.",
+        example = "{{ inputs.invoice_text }}"
+    )
     @Nullable
     @PluginProperty(group = "main")
     private Property<String> prompt;
 
     @Schema(
         title = "Content blocks",
-        description = "Multimodal input blocks for extraction (TEXT, IMAGE, PDF). Use either `prompt` or `contentBlocks`. For IMAGE/PDF `uri`, supported smart URI schemes are `kestra://`, `file://`, and `nsfile://`."
+        description = "Multimodal input to extract from, as a list of `TEXT`, `IMAGE` or `PDF` blocks. Set either this property or `prompt`, not both. For `IMAGE` and `PDF` blocks, the `uri` supports the `kestra://`, `file://` and `nsfile://` schemes.",
+        example = "[{type: \"PDF\", uri: \"{{ inputs.invoice }}\"}]"
     )
     @Nullable
     private Property<List<ChatMessage.ContentBlock>> contentBlocks;
 
-    @Schema(title = "System message", description = "Optional system instruction for the model.")
+    @Schema(
+        title = "System message",
+        description = "Instruction steering how the model extracts the fields. Defaults to `You are a structured JSON extraction assistant. Always respond with valid JSON.`.",
+        example = "You are a structured JSON extraction assistant. Always respond with valid JSON."
+    )
     @Builder.Default
     @PluginProperty(group = "main")
     private Property<String> systemMessage = Property.ofValue(
         "You are a structured JSON extraction assistant. Always respond with valid JSON."
     );
 
-    @Schema(title = "Schema Name", description = "The name of the JSON schema for structured extraction")
+    @Schema(
+        title = "Schema name",
+        description = "Name given to the JSON schema the model fills in, which helps the model understand what it is extracting. No default: this property is required.",
+        example = "invoice"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> schemaName;
 
-    @Schema(title = "JSON Fields", description = "List of fields to extract from the text")
+    @Schema(
+        title = "JSON fields",
+        description = "Field names to extract from the input, which become the keys of the returned JSON object. No default: this property is required.",
+        example = "[\"invoice_number\", \"total_amount\", \"due_date\"]"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<List<String>> jsonFields;
 
-    @Schema(title = "Language Model Provider")
+    @Schema(
+        title = "Language model provider",
+        description = "Model provider that performs the extraction. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-3.5-flash-lite\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Chat configuration")
+    @Schema(
+        title = "Chat configuration",
+        description = "Chat model settings (temperature, token limits, and so on). Defaults to an empty configuration, so the provider's own defaults apply; a low temperature gives the most consistent extractions.",
+        example = "{temperature: 0.1}"
+    )
     @NotNull
     @PluginProperty(group = "advanced")
     @Builder.Default
@@ -197,10 +222,8 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
 
     @Schema(
         title = "Guardrails",
-        description = """
-            Input guardrails are evaluated against the prompt before the LLM is called.
-            Output guardrails are evaluated against the extracted JSON before it is returned.
-            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+        description = "Rules validating the call: input guardrails run against the prompt before the LLM is called, output guardrails against the extracted JSON before it is returned. The first failing rule stops execution and sets `guardrailViolated` to `true` in the output. Not set by default.",
+        example = "{input: [{type: \"io.kestra.plugin.ai.guardrail.ExpressionInputGuardrail\", expression: \"{{ prompt | length < 5000 }}\"}]}"
     )
     @PluginProperty(group = "advanced")
     @Nullable
@@ -284,23 +307,47 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "Schema Name", description = "The schema name used for the structured JSON extraction")
+        @Schema(
+            title = "Schema name",
+            description = "Name of the JSON schema that was used for the extraction, echoed back from the input property.",
+            example = "invoice"
+        )
         private String schemaName;
 
-        @Schema(title = "Extracted JSON", description = "The structured JSON output")
+        @Schema(
+            title = "Extracted JSON",
+            description = "Structured JSON object the model produced, with one key per entry of `jsonFields`.",
+            example = "{\"invoice_number\": \"INV-2026-014\", \"total_amount\": \"1240.00\", \"due_date\": \"2026-02-15\"}"
+        )
         private String extractedJson;
 
-        @Schema(title = "Token usage")
+        @Schema(
+            title = "Token usage",
+            description = "Input, output and total tokens billed for the call, when the provider reports them.",
+            example = "{inputTokenCount: 320, outputTokenCount: 48, totalTokenCount: 368}"
+        )
         private TokenUsage tokenUsage;
 
-        @Schema(title = "Finish reason")
+        @Schema(
+            title = "Finish reason",
+            description = "Why the model stopped generating, such as `STOP`, `LENGTH` or `CONTENT_FILTER`, when the provider reports it.",
+            example = "STOP"
+        )
         private FinishReason finishReason;
 
-        @Schema(title = "Guardrail violated", description = "True if a guardrail rule was violated")
+        @Schema(
+            title = "Guardrail violated",
+            description = "Whether a guardrail rule rejected the input or the output. `false` when every rule passed.",
+            example = "false"
+        )
         @Builder.Default
         private boolean guardrailViolated = false;
 
-        @Schema(title = "Guardrail violation message", description = "The message from the first violated guardrail rule")
+        @Schema(
+            title = "Guardrail violation message",
+            description = "Message from the first guardrail rule that failed. Empty when no rule was violated.",
+            example = "Prompt exceeds the allowed length."
+        )
         private String guardrailViolationMessage;
     }
 

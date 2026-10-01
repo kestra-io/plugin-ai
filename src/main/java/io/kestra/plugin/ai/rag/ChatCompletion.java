@@ -285,41 +285,63 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.Output> {
 
-    @Schema(title = "System message", description = "Instruction that sets the assistant's role, tone, and constraints for this task.")
+    @Schema(
+        title = "System message",
+        description = "Instruction setting the assistant's role, tone and constraints for this task. Not set by default.",
+        example = "You are a support assistant. Answer only from the retrieved documents, and say so when they do not cover the question."
+    )
     @PluginProperty(group = "main")
     protected Property<String> systemMessage;
 
-    @Schema(title = "User prompt", description = "The user input for this run. May be templated from flow inputs.")
+    @Schema(
+        title = "User prompt",
+        description = "Question asked of the model, which is also the query used to retrieve relevant documents. No default: this property is required.",
+        example = "{{ inputs.question }}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> prompt;
 
     @Schema(
         title = "Embedding store",
-        description = "Optional when at least one entry is provided in `contentRetrievers`."
+        description = "Vector store searched for documents relevant to the prompt. Optional when at least one entry is provided in `contentRetrievers`, required otherwise.",
+        example = "{type: \"io.kestra.plugin.ai.embeddings.KestraKVStore\"}"
     )
     @PluginProperty(group = "advanced")
     private EmbeddingStoreProvider embeddings;
 
     @Schema(
         title = "Embedding model provider",
-        description = "Optional. If not set, the embedding model is created from `chatProvider`. Ensure the chosen chat provider supports embeddings."
+        description = "Model provider used to embed the prompt before searching the store. Defaults to `chatProvider`, which must then support embeddings. It should use the same embedding model that was used at ingestion time.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-embedding-001\"}"
     )
     @PluginProperty(group = "advanced")
     private ModelProvider embeddingProvider;
 
-    @Schema(title = "Chat model provider")
+    @Schema(
+        title = "Chat model provider",
+        description = "Model provider that generates the answer from the retrieved context. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-3.5-flash-lite\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider chatProvider;
 
-    @Schema(title = "Chat configuration")
+    @Schema(
+        title = "Chat configuration",
+        description = "Chat model settings (temperature, response format, token limits, and so on). Defaults to an empty configuration, so the provider's own defaults apply.",
+        example = "{temperature: 0.3, maxToken: 1024}"
+    )
     @NotNull
     @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration chatConfiguration = ChatConfiguration.empty();
 
-    @Schema(title = "Content retriever configuration")
+    @Schema(
+        title = "Content retriever configuration",
+        description = "How many documents the embedding store returns and how similar they must be, through `maxResults` and `minScore`. Defaults to `maxResults: 3` and `minScore: 0.0`.",
+        example = "{maxResults: 5, minScore: 0.7}"
+    )
     @NotNull
     @PluginProperty(group = "advanced")
     @Builder.Default
@@ -327,28 +349,32 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
     @Schema(
         title = "Additional content retrievers",
-        description = "Some content retrievers like WebSearch can also be used as tools, but using them as content retrievers will ensure that they are always called whereas tools are only used when the LLM decides to."
+        description = "Retrievers queried alongside the embedding store, whose results are always injected into the context, unlike tools, which the LLM calls only when it decides to. Not set by default.",
+        example = "[{type: \"io.kestra.plugin.ai.retriever.TavilyWebSearch\", apiKey: \"{{ secret('TAVILY_API_KEY') }}\"}]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<ContentRetrieverProvider>> contentRetrievers;
 
-    @Schema(title = "Optional tools the LLM may call to augment its response")
+    @Schema(
+        title = "Tools",
+        description = "Tools the LLM may call to augment its answer. Not set by default (no tools).",
+        example = "[{type: \"io.kestra.plugin.ai.tool.TavilyWebSearch\", apiKey: \"{{ secret('TAVILY_API_KEY') }}\"}]"
+    )
     @PluginProperty(group = "destination")
     private List<ToolProvider> tools;
 
     @Schema(
         title = "Chat memory",
-        description = "Stores conversation history and injects it into context on subsequent runs."
+        description = "Store that persists the conversation history and replays it into the context on subsequent runs, so follow-up questions keep their context. Not set by default (each run starts fresh).",
+        example = "{type: \"io.kestra.plugin.ai.memory.KestraKVStore\", memoryId: \"{{ inputs.session_id }}\"}"
     )
     @PluginProperty(group = "execution")
     private MemoryProvider memory;
 
     @Schema(
         title = "Guardrails",
-        description = """
-            Input guardrails are evaluated against the user prompt before the LLM is called.
-            Output guardrails are evaluated against the AI response before it is returned.
-            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+        description = "Rules validating the call: input guardrails run against the user prompt before the LLM is called, output guardrails against the response before it is returned. The first failing rule stops execution and sets `guardrailViolated` to `true` in the output. Not set by default.",
+        example = "{input: [{type: \"io.kestra.plugin.ai.guardrail.ExpressionInputGuardrail\", expression: \"{{ prompt | length < 5000 }}\"}]}"
     )
     @Nullable
     @PluginProperty(group = "advanced")
@@ -492,11 +518,19 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @Builder
     @Getter
     public static class ContentRetrieverConfiguration {
-        @Schema(title = "Maximum results to return from the embedding store")
+        @Schema(
+            title = "Maximum results",
+            description = "Number of matching segments the embedding store returns for the prompt. Defaults to `3`.",
+            example = "5"
+        )
         @Builder.Default
         private Integer maxResults = 3;
 
-        @Schema(title = "Minimum similarity score (0-1 inclusive). Only results with score ≥ minScore are returned.")
+        @Schema(
+            title = "Minimum similarity score",
+            description = "Similarity threshold a match must reach to be injected into the context, from `0.0` (keep everything) to `1.0` (exact match only). Defaults to `0.0`.",
+            example = "0.7"
+        )
         @Builder.Default
         private Double minScore = 0.0D;
     }
@@ -504,7 +538,11 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     @SuperBuilder
     @Getter
     public static class Output extends AIOutput { // we must keep this one to keep the deprecated aiResponse
-        @Schema(title = "Generated text completion", description = "Deprecated. Use `textOutput` or `jsonOutput` instead.")
+        @Schema(
+            title = "Generated text completion",
+            description = "Answer generated by the model. Deprecated: use `textOutput` or `jsonOutput` instead.",
+            example = "Based on the retrieved documents, the refund window is 30 days."
+        )
         @Deprecated(forRemoval = true, since = "1.0.0")
         private String completion;
     }

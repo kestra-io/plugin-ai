@@ -79,28 +79,52 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class AzureOpenAI extends ModelProvider {
 
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Azure OpenAI API key. Provide either this key or the `tenantId`/`clientId`/`clientSecret` trio for Entra ID authentication; the API key takes precedence when both are set. Store it as a Kestra secret rather than inline.",
+        example = "{{ secret('AZURE_OPENAI_API_KEY') }}"
+    )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> apiKey;
 
-    @Schema(title = "API endpoint", description = "The Azure OpenAI endpoint in the format: https://{resource}.openai.azure.com/")
+    @Schema(
+        title = "API endpoint",
+        description = "Azure OpenAI resource endpoint, in the form `https://{resource}.openai.azure.com/`. No default: this property is required.",
+        example = "https://my-resource.openai.azure.com/"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> endpoint;
 
-    @Schema(title = "API version")
+    @Schema(
+        title = "API version",
+        description = "Azure OpenAI REST API version to call. Not set by default, in which case the Azure SDK's latest supported version is used.",
+        example = "2024-10-21"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> serviceVersion;
 
-    @Schema(title = "Tenant ID")
+    @Schema(
+        title = "Tenant ID",
+        description = "Microsoft Entra ID tenant used for service-principal authentication. Required together with `clientId` and `clientSecret` when `apiKey` is not set.",
+        example = "72f988bf-86f1-41af-91ab-2d7cd011db47"
+    )
     @PluginProperty(group = "connection")
     private Property<String> tenantId;
 
-    @Schema(title = "Client ID")
+    @Schema(
+        title = "Client ID",
+        description = "Microsoft Entra ID application (client) ID used for service-principal authentication. Required together with `tenantId` and `clientSecret` when `apiKey` is not set.",
+        example = "00001111-aaaa-2222-bbbb-3333cccc4444"
+    )
     @PluginProperty(group = "connection")
     private Property<String> clientId;
 
-    @Schema(title = "Client secret")
+    @Schema(
+        title = "Client secret",
+        description = "Microsoft Entra ID application client secret used for service-principal authentication. Required together with `tenantId` and `clientId` when `apiKey` is not set. Store it as a Kestra secret rather than inline.",
+        example = "{{ secret('AZURE_CLIENT_SECRET') }}"
+    )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> clientSecret;
 

@@ -61,38 +61,63 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class PGVector extends EmbeddingStoreProvider {
     @NotNull
-    @Schema(title = "The database server host")
+    @Schema(
+        title = "Database server host",
+        description = "Hostname or IP address of the PostgreSQL server running the pgvector extension. No default: this property is required.",
+        example = "localhost"
+    )
     @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
-    @Schema(title = "The database server port")
+    @Schema(
+        title = "Database server port",
+        description = "TCP port the PostgreSQL server listens on. No default: this property is required.",
+        example = "5432"
+    )
     @PluginProperty(group = "main")
     private Property<Integer> port;
 
     @NotNull
-    @Schema(title = "The database user")
+    @Schema(
+        title = "Database user",
+        description = "User connecting to the PostgreSQL database. No default: this property is required.",
+        example = "postgres"
+    )
     @PluginProperty(group = "main")
     private Property<String> user;
 
     @NotNull
-    @Schema(title = "The database password")
+    @Schema(
+        title = "Database password",
+        description = "Password of the database user. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('PGVECTOR_PASSWORD') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @NotNull
-    @Schema(title = "The database name")
+    @Schema(
+        title = "Database name",
+        description = "Name of the PostgreSQL database holding the embeddings table. No default: this property is required.",
+        example = "vectordb"
+    )
     @PluginProperty(group = "main")
     private Property<String> database;
 
     @NotNull
-    @Schema(title = "The table to store embeddings in")
+    @Schema(
+        title = "Table name",
+        description = "Table that stores the embeddings. No default: this property is required. When `drop` is requested by the ingestion task, the table is recreated.",
+        example = "embeddings"
+    )
     @PluginProperty(group = "main")
     private Property<String> table;
 
     @Schema(
-        title = "Whether to use use an IVFFlat index",
-        description = "An IVFFlat index divides vectors into lists, and then searches a subset of those lists closest to the query vector. It has faster build times and uses less memory than HNSW but has lower query performance (in terms of speed-recall tradeoff)."
+        title = "Use an IVFFlat index",
+        description = "If `true`, build an IVFFlat index on the embedding column. IVFFlat divides vectors into lists and searches only the lists closest to the query vector: it builds faster and uses less memory than HNSW, at the cost of a worse speed-recall tradeoff. Defaults to `false`.",
+        example = "true"
     )
     @Builder.Default
     @PluginProperty(group = "advanced")

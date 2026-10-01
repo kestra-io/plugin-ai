@@ -78,14 +78,18 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class Anthropic extends ModelProvider {
     private static final String ENABLED = "enabled";
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Anthropic API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('ANTHROPIC_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
     @Schema(
         title = "Maximum Tokens",
-        description = """
-            Specifies the maximum number of tokens that the model is allowed to generate in its response."""
+        description = "Maximum number of tokens the model may generate in its response. Not set by default, in which case the Anthropic client default applies. When thinking is enabled, this must be greater than `configuration.thinkingBudgetTokens` or the task fails.",
+        example = "1024"
     )
     @PluginProperty(group = "execution")
     private Property<Integer> maxTokens;

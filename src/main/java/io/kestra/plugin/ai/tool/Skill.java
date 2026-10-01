@@ -114,11 +114,9 @@ import lombok.experimental.SuperBuilder;
 public class Skill extends ToolProvider {
 
     @Schema(
-        title = "List of skill definitions",
-        description = """
-            Each skill defines a set of structured instructions that the agent can activate.
-            A skill must have a name, description, and either inline content or a content URI
-            pointing to Kestra internal storage."""
+        title = "Skill definitions",
+        description = "Structured instruction sets the agent can activate on demand. Each skill needs a name, a description, and either inline `content` or a `contentUri` pointing to Kestra internal storage. No default: this property is required.",
+        example = "[{name: \"code-review\", description: \"Reviews a diff for bugs\", content: \"Review the diff and list correctness issues.\"}]"
     )
     @NotNull
     @PluginProperty(group = "main")
@@ -211,33 +209,44 @@ public class Skill extends ToolProvider {
     @Builder
     @Schema(title = "A skill definition")
     public static class SkillDefinition {
-        @Schema(title = "Name of the skill")
+        @Schema(
+            title = "Skill name",
+            description = "Identifier the LLM uses to activate the skill. No default: this property is required.",
+            example = "code-review"
+        )
         @NotNull
         @PluginProperty(group = "main")
         private Property<String> name;
 
-        @Schema(title = "Description of the skill used by the LLM to decide when to activate it")
+        @Schema(
+            title = "Skill description",
+            description = "Natural-language summary of what the skill does, used by the LLM to decide when to activate it. No default: this property is required.",
+            example = "Reviews a code diff and reports correctness issues."
+        )
         @NotNull
         @PluginProperty(group = "main")
         private Property<String> description;
 
         @Schema(
-            title = "Inline content of the skill",
-            description = "Mutually exclusive with 'contentUri'. At least one of 'content' or 'contentUri' must be set."
+            title = "Inline skill content",
+            description = "Instructions making up the skill, written inline. Mutually exclusive with `contentUri`; exactly one of the two must be set.",
+            example = "Review the provided diff and list any correctness issues you find."
         )
         @PluginProperty(group = "advanced")
         private Property<String> content;
 
         @Schema(
-            title = "URI to the skill content in Kestra internal storage",
-            description = "Mutually exclusive with 'content'. At least one of 'content' or 'contentUri' must be set."
+            title = "Skill content URI",
+            description = "Kestra internal storage URI of a file holding the skill instructions. Mutually exclusive with `content`; exactly one of the two must be set.",
+            example = "{{ outputs.download_skill.uri }}"
         )
         @PluginProperty(internalStorageURI = true, group = "advanced")
         private Property<String> contentUri;
 
         @Schema(
-            title = "Additional resources attached to this skill",
-            description = "Resources the agent can read separately using the 'read_skill_resource' tool."
+            title = "Skill resources",
+            description = "Extra files attached to the skill, which the agent reads on demand through the `read_skill_resource` tool rather than receiving them upfront. Not set by default.",
+            example = "[{relativePath: \"checklist.md\", content: \"- Check error handling\\n- Check test coverage\"}]"
         )
         @PluginProperty(group = "advanced")
         private List<ResourceDefinition> resources;
@@ -247,12 +256,22 @@ public class Skill extends ToolProvider {
     @Builder
     @Schema(title = "A skill resource definition")
     public static class ResourceDefinition {
-        @Schema(title = "Relative path of the resource within the skill")
+        @Schema(
+            title = "Resource relative path",
+            description = "Path identifying the resource within the skill, as the agent refers to it when reading the file. No default: this property is required.",
+            example = "checklist.md"
+        )
         @NotNull
         @PluginProperty(group = "main")
         private Property<String> relativePath;
 
-        @Schema(title = "Content of the resource")
+        @Schema(
+            title = "Resource content",
+            description = "Body of the resource file, returned verbatim when the agent reads it. No default: this property is required.",
+            example = """
+                - Check error handling
+                - Check test coverage"""
+        )
         @NotNull
         @PluginProperty(group = "main")
         private Property<String> content;

@@ -62,26 +62,46 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class Pinecone extends EmbeddingStoreProvider {
 
     @NotNull
-    @Schema(title = "The API key")
+    @Schema(
+        title = "API Key",
+        description = "Pinecone API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('PINECONE_API_KEY') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @NotNull
-    @Schema(title = "The cloud provider")
+    @Schema(
+        title = "Cloud provider",
+        description = "Cloud provider hosting the Pinecone serverless index. No default: this property is required.",
+        example = "AWS"
+    )
     @PluginProperty(group = "main")
     private Property<String> cloud;
 
     @NotNull
-    @Schema(title = "The cloud provider region")
+    @Schema(
+        title = "Cloud provider region",
+        description = "Region of the cloud provider hosting the serverless index. No default: this property is required.",
+        example = "us-east-1"
+    )
     @PluginProperty(group = "main")
     private Property<String> region;
 
     @NotNull
-    @Schema(title = "The index")
+    @Schema(
+        title = "Index name",
+        description = "Pinecone index that stores the embeddings. It is created as a serverless index if it does not exist. No default: this property is required.",
+        example = "my-documents"
+    )
     @PluginProperty(group = "main")
     private Property<String> index;
 
-    @Schema(title = "The namespace (default will be used if not provided)")
+    @Schema(
+        title = "Namespace",
+        description = "Namespace that partitions vectors inside the index. Not set by default, in which case Pinecone's default namespace is used.",
+        example = "production"
+    )
     @PluginProperty(group = "connection")
     private Property<String> namespace;
 

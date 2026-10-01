@@ -58,17 +58,29 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.retriever.GoogleCustomWebSearch"
 )
 public class GoogleCustomWebSearch extends ContentRetrieverProvider {
-    @Schema(title = "Custom Search Engine ID", description = "The Programmable Search Engine ID, referred to as `cx` in Google's documentation.")
+    @Schema(
+        title = "Custom Search Engine ID",
+        description = "Identifier of the Programmable Search Engine to query, referred to as `cx` in Google's documentation. No default: this property is required.",
+        example = "{{ secret('GOOGLE_SEARCH_CSI') }}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> csi;
 
-    @Schema(title = "API key")
+    @Schema(
+        title = "API key",
+        description = "Google Custom Search JSON API key. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
-    @Schema(title = "Maximum number of results")
+    @Schema(
+        title = "Maximum results",
+        description = "Number of search results retrieved for each query. Defaults to `3`.",
+        example = "5"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")

@@ -64,12 +64,20 @@ import io.kestra.core.models.annotations.PluginProperty;
     }
 )
 public class WatsonxAI extends ModelProvider {
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "IBM Cloud API key used to authenticate against watsonx.ai. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('WATSONX_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
-    @Schema(title = "Project Id")
+    @Schema(
+        title = "Project ID",
+        description = "Identifier of the watsonx.ai project the model runs under. No default: this property is required.",
+        example = "12ac4cf1-252f-424b-b52d-5cdd9814987f"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> projectId;

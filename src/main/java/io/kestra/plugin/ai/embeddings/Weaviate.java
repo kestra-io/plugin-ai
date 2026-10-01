@@ -65,7 +65,8 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "API key",
-        description = "Weaviate API key. Required to connect to the cluster."
+        description = "Weaviate API key used to authenticate against the cluster. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('WEAVIATE_API_KEY') }}"
     )
     @NotNull
     @PluginProperty(secret = true, group = "main")
@@ -73,14 +74,16 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Scheme",
-        description = "Cluster scheme: \"https\" (recommended) or \"http\"."
+        description = "Protocol used to reach the cluster: `https` (recommended) or `http`. Defaults to `https`.",
+        example = "https"
     )
     @PluginProperty(group = "advanced")
     private Property<String> scheme;
 
     @Schema(
         title = "Host",
-        description = "Cluster host name without protocol, e.g., \"abc123.weaviate.network\"."
+        description = "Cluster hostname, without protocol or port. No default: this property is required.",
+        example = "abc123.weaviate.network"
     )
     @NotNull
     @PluginProperty(group = "main")
@@ -88,7 +91,8 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Port",
-        description = "Port for the connection (e.g., 443 for https, 80 for http). Required."
+        description = "Port of the Weaviate HTTP endpoint, typically `443` for `https` and `80` or `8080` for `http`. No default: this property is required.",
+        example = "443"
     )
     @NotNull
     @PluginProperty(group = "connection")
@@ -96,7 +100,8 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Object class",
-        description = "Weaviate class to store objects in (must start with an uppercase letter). Required."
+        description = "Weaviate class that stores the embedded objects. It must start with an uppercase letter. No default: this property is required.",
+        example = "Documents"
     )
     @NotNull
     @PluginProperty(group = "advanced")
@@ -104,49 +109,56 @@ public class Weaviate extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Consistency level",
-        description = "Write consistency: ONE, QUORUM (default), or ALL."
+        description = "Write consistency applied to each object: `ONE`, `QUORUM` or `ALL`. Defaults to `QUORUM`.",
+        example = "QUORUM"
     )
     @PluginProperty(group = "advanced")
     private Property<ConsistencyLevel> consistencyLevel;
 
     @Schema(
         title = "Avoid duplicates",
-        description = "If true (default), a hash-based ID is derived from each text segment to prevent duplicates. If false, a random ID is used."
+        description = "If `true`, each object ID is derived from a hash of its text segment, so re-ingesting the same text overwrites the existing object instead of duplicating it. If `false`, a random ID is assigned. Defaults to `true`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> avoidDups;
 
     @Schema(
         title = "Metadata field name",
-        description = "Field used to store metadata. Defaults to \"_metadata\" if not set."
+        description = "Property used to store document metadata on the object. Not set by default, in which case the Weaviate client's own default field name applies.",
+        example = "_metadata"
     )
     @PluginProperty(group = "advanced")
     private Property<String> metadataFieldName;
 
     @Schema(
         title = "Metadata keys",
-        description = "The list of metadata keys to store - if not provided, it will default to an empty list."
+        description = "Metadata keys to persist alongside each object. Defaults to an empty list, meaning no metadata is stored.",
+        example = "[\"source\", \"author\"]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<String>> metadataKeys;
 
     @Schema(
         title = "Use gRPC for batch inserts",
-        description = "If true, use gRPC for batch inserts. HTTP remains required for search operations."
+        description = "If `true`, batch inserts go over gRPC, which is faster for large ingestions; searches still use HTTP. Requires `grpcPort`. Defaults to `false`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> useGrpcForInserts;
 
     @Schema(
         title = "Secure gRPC",
-        description = "Whether the gRPC connection is secured (TLS). Defaults to true."
+        description = "Whether the gRPC connection uses TLS. Defaults to `true`. Only relevant when `useGrpcForInserts` is `true`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> securedGrpc;
 
     @Schema(
         title = "gRPC port",
-        description = "Port for gRPC if enabled (e.g., 50051)."
+        description = "Port of the Weaviate gRPC endpoint. Required when `useGrpcForInserts` is `true`. Not set by default.",
+        example = "50051"
     )
     @PluginProperty(group = "connection")
     private Property<Integer> grpcPort;
