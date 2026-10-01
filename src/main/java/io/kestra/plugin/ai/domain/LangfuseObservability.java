@@ -22,16 +22,25 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class LangfuseObservability extends Observability {
     @Schema(
         title = "Langfuse OTLP endpoint",
-        description = "Langfuse OTLP endpoint (for example: https://us.cloud.langfuse.com/api/public/otel)."
+        description = "OTLP endpoint traces are exported to, which differs per Langfuse region or self-hosted install. Not set by default, in which case nothing is exported.",
+        example = "https://us.cloud.langfuse.com/api/public/otel"
     )
     @PluginProperty(group = "connection")
     private Property<String> endpoint;
 
-    @Schema(title = "Langfuse public key")
+    @Schema(
+        title = "Langfuse public key",
+        description = "Public half of the Langfuse API key pair, sent as the basic-auth username. No default: required for export to work.",
+        example = "{{ secret('LANGFUSE_PUBLIC_KEY') }}"
+    )
     @PluginProperty(group = "connection")
     private Property<String> publicKey;
 
-    @Schema(title = "Langfuse secret key")
+    @Schema(
+        title = "Langfuse secret key",
+        description = "Secret half of the Langfuse API key pair, sent as the basic-auth password. Store it as a Kestra secret rather than inline. No default: required for export to work.",
+        example = "{{ secret('LANGFUSE_SECRET_KEY') }}"
+    )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> secretKey;
 }

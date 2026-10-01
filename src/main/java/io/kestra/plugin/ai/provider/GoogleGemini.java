@@ -126,12 +126,17 @@ public class GoogleGemini extends ModelProvider {
 
     @Schema(
         title = "API Key",
-        description = "Required unless certificate-based authentication is configured with `clientPem` (optionally with `caPem`)."
+        description = "Google AI Studio API key used to authenticate requests. Store it as a Kestra secret rather than inline. Required unless certificate-based authentication is configured through `clientPem`, optionally with `caPem`.",
+        example = "{{ secret('GEMINI_API_KEY') }}"
     )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> apiKey;
 
-    @Schema(title = "The configuration for embeddingModel")
+    @Schema(
+        title = "Embedding model configuration",
+        description = "Settings applied when this provider is used to generate embeddings rather than chat completions. Not set by default, in which case the Gemini client defaults apply.",
+        example = "{taskType: \"RETRIEVAL_DOCUMENT\", outputDimensionality: 768}"
+    )
     @PluginProperty(group = "advanced")
     private EmbeddingModelConfiguration embeddingModelConfiguration;
 
@@ -265,24 +270,41 @@ public class GoogleGemini extends ModelProvider {
     @Builder
     private static class EmbeddingModelConfiguration {
         @Schema(
-            title = "The headline or name of the document (passed to the model as metadata).",
-            description = "If set, this help improving retrieval quality by providing context for a document."
+            title = "Document title metadata key",
+            description = "Metadata key whose value is passed to the model as the document's title, which improves retrieval quality by giving the document context. Not set by default.",
+            example = "title"
         )
         @PluginProperty(group = "connection")
         private Property<String> titleMetadataKey;
 
-        @Schema(title = "Used to convey intended downstream application to help the model produce better embeddings.")
+        @Schema(
+            title = "Embedding task type",
+            description = "Downstream use the embeddings are optimized for, such as `RETRIEVAL_DOCUMENT`, `RETRIEVAL_QUERY`, `SEMANTIC_SIMILARITY` or `CLASSIFICATION`. Use the matching pair at ingestion and query time. Not set by default, in which case the Gemini default applies.",
+            example = "RETRIEVAL_DOCUMENT"
+        )
         private Property<GoogleAiEmbeddingModel.TaskType> taskType;
 
-        @Schema(title = "Maximum number of retries for failed requests")
+        @Schema(
+            title = "Maximum retries",
+            description = "Number of times a failed embedding request is retried before the task fails. Not set by default, in which case the Gemini client default applies.",
+            example = "3"
+        )
         @PluginProperty(group = "execution")
         private Property<Integer> maxRetries;
 
-        @Schema(title = "Timeout in seconds for each request")
+        @Schema(
+            title = "Request timeout",
+            description = "Maximum time to wait for each embedding request. Not set by default, in which case the Gemini client default applies.",
+            example = "PT60S"
+        )
         @PluginProperty(group = "execution")
         private Property<Duration> timeout;
 
-        @Schema(title = "Used to specify output embedding size", description = "If set, output embeddings will be truncated to the size specified.")
+        @Schema(
+            title = "Output embedding size",
+            description = "Length the embedding vectors are truncated to, which trades a little accuracy for smaller storage. It must match the dimensionality already used in the embedding store. Not set by default (the model's full dimensionality).",
+            example = "768"
+        )
         @PluginProperty(group = "advanced")
         private Property<Integer> outputDimensionality;
     }

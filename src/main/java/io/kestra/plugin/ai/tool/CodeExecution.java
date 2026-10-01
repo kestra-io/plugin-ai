@@ -60,7 +60,8 @@ public class CodeExecution extends ToolProvider {
 
     @Schema(
         title = "RapidAPI key for Judge0",
-        description = "You can obtain it from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing)."
+        description = "RapidAPI key authorizing calls to the Judge0 code-execution API, obtainable from the [RapidAPI website](https://rapidapi.com/judge0-official/api/judge0-ce/pricing). Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('RAPIDAPI_KEY') }}"
     )
     @NotNull
     @PluginProperty(secret = true, group = "main")

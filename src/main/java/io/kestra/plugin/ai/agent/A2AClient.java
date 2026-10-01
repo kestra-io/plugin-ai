@@ -47,12 +47,20 @@ import io.kestra.core.models.annotations.PluginProperty;
     }
 )
 public class A2AClient extends Task implements RunnableTask<A2AClient.Output> {
-    @Schema(title = "Server URL", description = "The URL of the remote agent A2A server")
+    @Schema(
+        title = "Server URL",
+        description = "Base URL of the remote agent's A2A server. No default: this property is required.",
+        example = "http://localhost:10001"
+    )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> serverUrl;
 
-    @Schema(title = "Text prompt", description = "The input prompt sent to the remote A2A agent")
+    @Schema(
+        title = "Text prompt",
+        description = "Message sent to the remote A2A agent. No default: this property is required.",
+        example = "{{ inputs.question }}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> prompt;
@@ -81,7 +89,9 @@ public class A2AClient extends Task implements RunnableTask<A2AClient.Output> {
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "Remote agent output"
+            title = "Remote agent output",
+            description = "Text the remote A2A agent returned in response to the prompt.",
+            example = "The weather in Paris today is 18°C and cloudy."
         )
         private String textOutput;
     }

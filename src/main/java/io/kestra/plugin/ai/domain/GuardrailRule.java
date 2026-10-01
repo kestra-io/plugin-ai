@@ -14,15 +14,8 @@ public class GuardrailRule {
 
     @Schema(
         title = "Pebble expression",
-        description = """
-            A Pebble expression that must evaluate to `true` for the guardrail to pass.
-            For input guardrails, the variable `message` contains the user message text.
-            For output guardrails, the variable `response` contains the AI response text,
-            `finishReason` contains the finish reason, `inputTokenCount` and `outputTokenCount`
-            contain the respective token counts.
-            Example: `{{ message.length < 10000 }}`
-            Example: `{{ not (response contains 'CONFIDENTIAL') }}`
-            """
+        description = "Condition that must evaluate to `true` for the guardrail to pass. Input guardrails can read `message` (the user message text); output guardrails can read `response` (the AI response text), `finishReason`, `inputTokenCount` and `outputTokenCount`. No default: this property is required and must not be blank.",
+        example = "{{ not (response contains 'CONFIDENTIAL') }}"
     )
     @NotBlank
     @PluginProperty(group = "advanced")
@@ -30,7 +23,8 @@ public class GuardrailRule {
 
     @Schema(
         title = "Violation message",
-        description = "The message returned when the expression evaluates to `false`."
+        description = "Text reported in the task output when the expression evaluates to `false`. No default: this property is required and must not be blank.",
+        example = "Response leaked confidential content."
     )
     @NotBlank
     @PluginProperty(group = "advanced")

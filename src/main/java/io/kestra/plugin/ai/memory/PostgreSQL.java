@@ -73,33 +73,54 @@ public class PostgreSQL extends MemoryProvider {
     private transient ChatMemory chatMemory;
 
     @NotNull
-    @Schema(title = "PostgreSQL host", description = "The hostname of your PostgreSQL server")
+    @Schema(
+        title = "PostgreSQL host",
+        description = "Hostname or IP address of the PostgreSQL server storing the chat memory. No default: this property is required.",
+        example = "localhost"
+    )
     @PluginProperty(group = "main")
     private Property<String> host;
 
-    @Schema(title = "PostgreSQL port", description = "The port of your PostgreSQL server")
+    @Schema(
+        title = "PostgreSQL port",
+        description = "TCP port the PostgreSQL server listens on. Defaults to `5432`.",
+        example = "5432"
+    )
     @Builder.Default
     @PluginProperty(group = "connection")
     private Property<Integer> port = Property.ofValue(5432);
 
     @NotNull
-    @Schema(title = "Database name", description = "The name of the PostgreSQL database")
+    @Schema(
+        title = "Database name",
+        description = "Name of the PostgreSQL database holding the chat memory table. No default: this property is required.",
+        example = "kestra"
+    )
     @PluginProperty(group = "main")
     private Property<String> database;
 
     @NotNull
-    @Schema(title = "Database user", description = "The username to connect to PostgreSQL")
+    @Schema(
+        title = "Database user",
+        description = "User connecting to the PostgreSQL database. No default: this property is required.",
+        example = "postgres"
+    )
     @PluginProperty(group = "main")
     private Property<String> user;
 
     @NotNull
-    @Schema(title = "Database password", description = "The password to connect to PostgreSQL")
+    @Schema(
+        title = "Database password",
+        description = "Password of the database user. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('POSTGRES_PASSWORD') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @Schema(
         title = "Table name",
-        description = "The name of the table used to store chat memory. Defaults to 'chat_memory'."
+        description = "Table used to persist the chat memory, created with `CREATE TABLE IF NOT EXISTS` on first use. Must match `^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`, or the task fails before connecting; this is enforced to prevent SQL injection, since the name is interpolated into the statements. Defaults to `chat_memory`.",
+        example = "chat_memory"
     )
     @Builder.Default
     @PluginProperty(group = "advanced")

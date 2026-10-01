@@ -39,7 +39,11 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 @AllArgsConstructor
 @JsonDeserialize
 public abstract class OpenAICompliantProvider extends ModelProvider {
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "API key used to authenticate against the provider. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('OPENAI_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;

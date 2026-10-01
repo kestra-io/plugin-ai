@@ -105,32 +105,56 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
 )
 public class Search extends Task implements RunnableTask<Search.Output> {
 
-    @Schema(title = "Query string")
+    @Schema(
+        title = "Query string",
+        description = "Text embedded and matched against the stored vectors. No default: this property is required.",
+        example = "{{ inputs.question }}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> query;
 
-    @Schema(title = "Maximum number of results")
+    @Schema(
+        title = "Maximum results",
+        description = "Number of matching segments returned by the embedding store. No default: this property is required.",
+        example = "5"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<Integer> maxResults;
 
-    @Schema(title = "Minimum similarity score")
+    @Schema(
+        title = "Minimum similarity score",
+        description = "Similarity threshold a match must reach to be returned, from `0.0` (keep everything) to `1.0` (exact match only). No default: this property is required.",
+        example = "0.7"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<Double> minScore;
 
-    @Schema(title = "Embedding model provider")
+    @Schema(
+        title = "Embedding model provider",
+        description = "Model provider used to embed the query. It should use the same embedding model that was used at ingestion time. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-embedding-001\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Embedding store provider")
+    @Schema(
+        title = "Embedding store provider",
+        description = "Vector store searched for segments matching the query. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.embeddings.KestraKVStore\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private EmbeddingStoreProvider embeddings;
 
-    @Schema(title = "Controls the output: NONE returns metrics only, FETCH/FETCH_ONE return matches, STORE writes matches to internal storage")
+    @Schema(
+        title = "Fetch type",
+        description = "What the task returns: `NONE` emits only the match count, `FETCH` returns all matches in `results`, `FETCH_ONE` returns the single best match, and `STORE` writes the matches to Kestra internal storage and emits their `uri`. Defaults to `NONE`.",
+        example = "FETCH"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -228,18 +252,24 @@ public class Search extends Task implements RunnableTask<Search.Output> {
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
 
-        @Schema(title = "List of matching text results")
+        @Schema(
+            title = "Matching text results",
+            description = "Text segments matching the query, ordered by descending similarity. Populated only when `fetchType` is `FETCH` or `FETCH_ONE`.",
+            example = "[\"Refunds are accepted within 30 days of purchase.\"]"
+        )
         private final List<String> results;
 
         @Schema(
-            title = "Output file URI in Kestra’s internal storage",
-            description = "Only available when `fetchType` is set to `STORE`"
+            title = "Output file URI",
+            description = "Kestra internal storage URI of the ion file holding the matches. Available only when `fetchType` is `STORE`.",
+            example = "kestra:///company/team/rag_search/executions/abc123/tasks/search/output.ion"
         )
         private final URI uri;
 
         @Schema(
             title = "Number of matches",
-            description = "Total number of matches found by the search. For `FETCH_ONE`, this reflects the total matches found, not the single item returned in `results`."
+            description = "Total number of matches the search found. For `FETCH_ONE` this is still the total, not the single item returned in `results`.",
+            example = "5"
         )
         private Integer size;
     }

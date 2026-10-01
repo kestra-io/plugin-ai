@@ -62,26 +62,46 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class Tablestore extends EmbeddingStoreProvider {
 
     @NotNull
-    @Schema(title = "Endpoint URL", description = "The base URL for the Tablestore database endpoint.")
+    @Schema(
+        title = "Endpoint URL",
+        description = "Base URL of the Tablestore instance endpoint. No default: this property is required.",
+        example = "https://my-instance.cn-hangzhou.ots.aliyuncs.com"
+    )
     @PluginProperty(group = "main")
     private Property<String> endpoint;
 
     @NotNull
-    @Schema(title = "Instance Name", description = "The name of the Tablestore database instance.")
+    @Schema(
+        title = "Instance name",
+        description = "Name of the Tablestore instance holding the embeddings. No default: this property is required.",
+        example = "my-instance"
+    )
     @PluginProperty(group = "main")
     private Property<String> instanceName;
 
     @NotNull
-    @Schema(title = "Access Key ID", description = "The access key ID used for authentication with the database.")
+    @Schema(
+        title = "Access Key ID",
+        description = "Alibaba Cloud access key ID used to authenticate against Tablestore. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('TABLESTORE_ACCESS_KEY_ID') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> accessKeyId;
 
     @NotNull
-    @Schema(title = "Access Key Secret", description = "The access key secret used for authentication with the database.")
+    @Schema(
+        title = "Access Key Secret",
+        description = "Alibaba Cloud access key secret paired with `accessKeyId`. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('TABLESTORE_ACCESS_KEY_SECRET') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> accessKeySecret;
 
-    @Schema(title = "Metadata Schema List", description = "Optional list of metadata field schemas for the collection.")
+    @Schema(
+        title = "Metadata schema list",
+        description = "Tablestore field schemas describing the metadata columns to index, so they can be filtered on at search time. Not set by default (no metadata indexed).",
+        example = "[{fieldName: \"source\", fieldType: \"KEYWORD\"}]"
+    )
     @PluginProperty(group = "advanced")
     private Property<List<FieldSchema>> metadataSchemaList;
 

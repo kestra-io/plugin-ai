@@ -145,67 +145,83 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
     @Schema(
         title = "Language model provider",
-        description = "Must be configured with an embedding model."
+        description = "Model provider used to embed the documents, which must be configured with an embedding model. Use the same model at query time, or the vectors will not match. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-embedding-001\"}"
     )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Embedding store provider")
+    @Schema(
+        title = "Embedding store provider",
+        description = "Vector store the embedded documents are written to. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.embeddings.KestraKVStore\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private EmbeddingStoreProvider embeddings;
 
     @Schema(
-        title = "Path in the task working directory containing documents to ingest",
-        description = "Each document in the directory will be ingested into the embedding store. Ingestion is recursive and protected against path traversal (CWE-22)."
+        title = "Source directory path",
+        description = "Directory in the task working directory whose documents are ingested. Traversal is recursive and guarded against path traversal (CWE-22). Not set by default; combine it freely with the other `from*` sources.",
+        example = "documents"
     )
     @PluginProperty(group = "source")
     private Property<String> fromPath;
 
-    @Schema(title = "List of internal storage URIs for documents")
+    @Schema(
+        title = "Source internal storage URIs",
+        description = "Kestra internal storage URIs of the documents to ingest, typically produced by an upstream task. Not set by default; combine it freely with the other `from*` sources.",
+        example = "[\"{{ outputs.download.uri }}\"]"
+    )
     @PluginProperty(internalStorageURI = true, group = "connection")
     private Property<List<String>> fromInternalURIs;
 
-    @Schema(title = "List of document URLs from external sources")
+    @Schema(
+        title = "Source external URLs",
+        description = "Public URLs the documents are downloaded from before ingestion. Not set by default; combine it freely with the other `from*` sources.",
+        example = "[\"https://kestra.io/docs/index.html\"]"
+    )
     @PluginProperty(group = "connection")
     private Property<List<String>> fromExternalURLs;
 
-    @Schema(title = "List of inline documents")
+    @Schema(
+        title = "Inline documents",
+        description = "Documents supplied directly in the flow, each with its own `content` and optional `metadata`. Not set by default; combine it freely with the other `from*` sources.",
+        example = "[{content: \"Refunds are accepted within 30 days.\", metadata: {source: \"policy\"}}]"
+    )
     @PluginProperty(group = "source")
     private List<InlineDocument> fromDocuments;
 
     @Schema(
         title = "Additional metadata",
-        description = """
-            Metadata attached to every ingested document, whatever its source (`fromPath`, `fromInternalURIs`, `fromExternalURLs` or `fromDocuments`).
-
-            Existing metadata always wins on key collision: the `metadata` of an inline document under `fromDocuments`,
-            and the metadata injected by the document loader (for example `file_name` and `absolute_directory_path` for `fromPath`),
-            are never overwritten by these top-level values.
-
-            Supported value types are String, UUID, Integer, Long, Float and Double; `null` values are ignored.
-            Any other type (a boolean, a list, a map, or a number outside the Integer/Long/Float/Double range such as a
-            YAML big integer) is rejected before any document is ingested — quote the value to send it as a String.
-
-            A value written in a flow can only ever be a String, an Integer, a Long or a Double: UUID and Float are
-            accepted for parity with the underlying model and are only reachable when the property is set programmatically."""
+        description = "Metadata attached to every ingested document, whatever its source. Existing metadata always wins on a key collision: the `metadata` of an inline document, and the keys injected by the document loader such as `file_name` and `absolute_directory_path`, are never overwritten. Supported value types are String, UUID, Integer, Long, Float and Double; `null` values are ignored, and any other type (a boolean, a list, a map, or a number outside those ranges such as a YAML big integer) is rejected before ingestion starts, so quote such values to send them as strings. From a flow a value can only be a String, Integer, Long or Double; UUID and Float exist for parity with the underlying model and are reachable only programmatically. Not set by default.",
+        example = "{source: \"handbook\", version: \"2026.1\"}"
     )
     @PluginProperty(group = "advanced")
     private Property<Map<String, Object>> metadata;
 
-    @Schema(title = "Document splitter")
+    @Schema(
+        title = "Document splitter",
+        description = "How each document is chunked into segments before embedding. Not set by default, in which case documents are ingested without additional splitting.",
+        example = "{splitter: \"RECURSIVE\", maxSegmentSizeInChars: 1000, maxOverlapSizeInChars: 200}"
+    )
     @PluginProperty(group = "advanced")
     private DocumentSplitter documentSplitter;
 
-    @Schema(title = "Drop the store before ingestion (useful for testing)")
+    @Schema(
+        title = "Drop the store before ingestion",
+        description = "If `true`, wipe the embedding store before ingesting, which is useful when re-indexing or testing. Defaults to `false`.",
+        example = "true"
+    )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<Boolean> drop = Property.ofValue(Boolean.FALSE);
 
     @Schema(
         title = "Bulk ingestion size",
-        description = "Maximum number of documents sent per ingestion request."
+        description = "Maximum number of documents sent per ingestion request; lower it if the embedding provider rejects large batches. Must be at least `1`. Defaults to `500`.",
+        example = "500"
     )
     @Builder.Default
     private Property<@Min(1) Integer> bulkSize = Property.ofValue(500);
@@ -405,10 +421,18 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     @AllArgsConstructor
     public static class InlineDocument {
         @NotNull
-        @Schema(title = "Document content")
+        @Schema(
+            title = "Document content",
+            description = "Text of the inline document to ingest. No default: this property is required on each inline document.",
+            example = "Refunds are accepted within 30 days of purchase."
+        )
         private Property<String> content;
 
-        @Schema(title = "Document metadata")
+        @Schema(
+            title = "Document metadata",
+            description = "Metadata attached to this inline document, which takes precedence over the task-level `metadata` on key collisions. Not set by default.",
+            example = "{source: \"policy\", section: \"refunds\"}"
+        )
         @PluginProperty(group = "advanced")
         private Property<Map<String, Object>> metadata;
     }
@@ -421,20 +445,26 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
         @NotNull
         @Builder.Default
         @Schema(
-            title = "DocumentSplitter type",
-            description = """
-                Recommended: RECURSIVE for generic text.
-                It splits into paragraphs first and fits as many as possible into a single TextSegment.
-                If paragraphs are too long, they are recursively split into lines, then sentences, then words, then characters until they fit into a segment."""
+            title = "Splitter type",
+            description = "Granularity at which documents are chunked: `RECURSIVE`, `PARAGRAPH`, `LINE`, `SENTENCE` or `WORD`. `RECURSIVE` is recommended for generic text, as it packs whole paragraphs into a segment and only falls back to lines, sentences, words and characters when a paragraph does not fit. Defaults to `RECURSIVE`.",
+            example = "RECURSIVE"
         )
         private Type splitter = Type.RECURSIVE;
 
         @NotNull
-        @Schema(title = "Maximum segment size (characters)")
+        @Schema(
+            title = "Maximum segment size (characters)",
+            description = "Largest size, in characters, of a single text segment sent to the embedding model. No default: this property is required when a `documentSplitter` is configured.",
+            example = "1000"
+        )
         private Integer maxSegmentSizeInChars;
 
         @NotNull
-        @Schema(title = "Maximum overlap size (characters). Only full sentences are considered for overlap.")
+        @Schema(
+            title = "Maximum overlap size (characters)",
+            description = "Number of characters repeated between consecutive segments, which preserves context across chunk boundaries. Only whole sentences are used for the overlap. No default: this property is required when a `documentSplitter` is configured.",
+            example = "200"
+        )
         private Integer maxOverlapSizeInChars;
 
         enum Type {
@@ -468,19 +498,39 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
     @Getter
     @Builder
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "Number of ingested documents")
+        @Schema(
+            title = "Ingested documents",
+            description = "Number of documents written to the embedding store by this task run.",
+            example = "42"
+        )
         private Integer ingestedDocuments;
 
-        @Schema(title = "Input token count")
+        @Schema(
+            title = "Input token count",
+            description = "Tokens consumed embedding the documents, when the provider reports them.",
+            example = "15320"
+        )
         private Integer inputTokenCount;
 
-        @Schema(title = "Output token count")
+        @Schema(
+            title = "Output token count",
+            description = "Tokens produced by the embedding model, when the provider reports them. Usually `0`, since embedding models return vectors rather than text.",
+            example = "0"
+        )
         private Integer outputTokenCount;
 
-        @Schema(title = "Total token count")
+        @Schema(
+            title = "Total token count",
+            description = "Sum of input and output tokens billed for the ingestion, when the provider reports them.",
+            example = "15320"
+        )
         private Integer totalTokenCount;
 
-        @Schema(title = "Additional outputs from the embedding store")
+        @Schema(
+            title = "Embedding store outputs",
+            description = "Extra outputs the embedding store reports after ingestion, whose keys depend on the store implementation.",
+            example = "{kvName: \"my_flow-embedding-store\"}"
+        )
         private Map<String, Object> embeddingStoreOutputs;
     }
 

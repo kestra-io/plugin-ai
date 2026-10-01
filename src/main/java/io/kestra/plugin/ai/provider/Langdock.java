@@ -140,18 +140,19 @@ import io.kestra.core.models.annotations.PluginProperty;
     }
 )
 public class Langdock extends ModelProvider {
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Langdock API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('LANGDOCK_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
         title = "Model family",
-        description = """
-            Selects which Langdock Completion API route serves the request:
-            - `OPENAI` (default): the OpenAI-compatible route, for OpenAI/Azure OpenAI-backed models.
-            - `ANTHROPIC`: the Anthropic Messages-compatible route, required to reach Claude models.
-            Ignored for embeddings, which always use the OpenAI route."""
+        description = "Langdock Completion API route serving the request: `OPENAI` for OpenAI and Azure OpenAI-backed models, or `ANTHROPIC`, which is required to reach Claude models. Defaults to `OPENAI`. Ignored for embeddings, which always use the OpenAI route.",
+        example = "ANTHROPIC"
     )
     @Builder.Default
     @PluginProperty(group = "main")
@@ -159,7 +160,8 @@ public class Langdock extends ModelProvider {
 
     @Schema(
         title = "Region",
-        description = "The Langdock region that serves the request. Ignored when a dedicated-deployment `baseUrl` is set."
+        description = "Langdock region that serves the request: `EU` or `US`. Defaults to `EU`. Ignored when `baseUrl` points at a dedicated deployment.",
+        example = "EU"
     )
     @Builder.Default
     @PluginProperty(group = "connection")

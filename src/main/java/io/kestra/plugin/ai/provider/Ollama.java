@@ -75,7 +75,11 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.provider.Ollama"
 )
 public class Ollama extends ModelProvider {
-    @Schema(title = "Model endpoint")
+    @Schema(
+        title = "Model endpoint",
+        description = "Base URL of the Ollama server exposing the model. No default: this property is required.",
+        example = "http://localhost:11434"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> endpoint;

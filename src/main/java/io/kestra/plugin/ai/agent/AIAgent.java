@@ -724,61 +724,86 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFilesInterface {
 
-    @Schema(title = "System message", description = "The system message for the language model")
+    @Schema(
+        title = "System message",
+        description = "Instructions prepended to the conversation, defining the agent's role, tone and constraints. Not set by default.",
+        example = "You are a helpful assistant. Answer concisely and cite your sources."
+    )
     @PluginProperty(group = "main")
     protected Property<String> systemMessage;
 
-    @Schema(title = "Text prompt", description = "The input prompt for the language model")
+    @Schema(
+        title = "Text prompt",
+        description = "Task given to the agent, which drives the whole tool and retrieval loop. No default: this property is required.",
+        example = "{{ inputs.question }}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> prompt;
 
-    @Schema(title = "Language model provider")
+    @Schema(
+        title = "Language model provider",
+        description = "Model provider backing the agent. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-3.5-flash-lite\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Language model configuration")
+    @Schema(
+        title = "Language model configuration",
+        description = "Chat model settings (temperature, response format, token limits, and so on). Defaults to an empty configuration, so the provider's own defaults apply.",
+        example = "{temperature: 0.7, maxToken: 1024}"
+    )
     @NotNull
     @PluginProperty(group = "advanced")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
-    @Schema(title = "Tools that the LLM may use to augment its response")
+    @Schema(
+        title = "Tools",
+        description = "Tools the agent may call to augment its answer, invoked only when the LLM decides to. Not set by default (no tools).",
+        example = "[{type: \"io.kestra.plugin.ai.tool.TavilyWebSearch\", apiKey: \"{{ secret('TAVILY_API_KEY') }}\"}]"
+    )
     @PluginProperty(group = "destination")
     private List<ToolProvider> tools;
 
-    @Schema(title = "Maximum sequential tools invocations")
+    @Schema(
+        title = "Maximum sequential tool invocations",
+        description = "Cap on how many tool calls the agent may chain within one run, which guards against runaway tool loops. Defaults to no limit.",
+        example = "10"
+    )
     @PluginProperty(group = "execution")
     private Property<Integer> maxSequentialToolsInvocations;
 
     @Schema(
         title = "Content retrievers",
-        description = "Some content retrievers, like WebSearch, can also be used as tools. However, when configured as content retrievers, they will always be used, whereas tools are only invoked when the LLM decides to use them."
+        description = "Retrievers whose results are always injected into the agent's context, unlike tools, which the LLM calls only when it decides to. Some sources, such as web search, can act as either. Not set by default.",
+        example = "[{type: \"io.kestra.plugin.ai.retriever.TavilyWebSearch\", apiKey: \"{{ secret('TAVILY_API_KEY') }}\"}]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<ContentRetrieverProvider>> contentRetrievers;
 
     @Schema(
         title = "Agent memory",
-        description = "Agent memory will store messages and add them as history to the LLM context."
+        description = "Store that persists the conversation and replays it as history into the LLM context on subsequent runs, so follow-up prompts keep their context. Not set by default (each run starts fresh).",
+        example = "{type: \"io.kestra.plugin.ai.memory.KestraKVStore\", memoryId: \"{{ inputs.session_id }}\"}"
     )
     @PluginProperty(group = "execution")
     private MemoryProvider memory;
 
     @Schema(
         title = "Observability",
-        description = "OpenTelemetry observability export. Disabled by default; prompt/output/tool payload capture is opt-in."
+        description = "OpenTelemetry export of the agent's model calls. Disabled by default, and capturing prompts, outputs and tool payloads is opt-in on top of enabling it.",
+        example = "{type: \"io.kestra.plugin.ai.domain.LangfuseObservability\", publicKey: \"{{ secret('LANGFUSE_PUBLIC_KEY') }}\", secretKey: \"{{ secret('LANGFUSE_SECRET_KEY') }}\"}"
     )
     @PluginProperty(group = "advanced")
     private Observability observability;
 
     @Schema(
         title = "Guardrails",
-        description = """
-            Input guardrails are evaluated against the user prompt before the LLM is called.
-            Output guardrails are evaluated against the AI response before it is returned.
-            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+        description = "Rules validating the call: input guardrails run against the user prompt before the LLM is called, output guardrails against the response before it is returned. The first failing rule stops execution and sets `guardrailViolated` to `true` in the output. Not set by default.",
+        example = "{input: [{type: \"io.kestra.plugin.ai.guardrail.ExpressionInputGuardrail\", expression: \"{{ prompt | length < 5000 }}\"}]}"
     )
     @Nullable
     @PluginProperty(group = "advanced")

@@ -67,7 +67,11 @@ import io.kestra.core.models.annotations.PluginProperty;
         Uses Tavily's web search API to fetch live results for the agent. Requires a Tavily API key; queries count against your Tavily quota and follow Tavily relevance settings."""
 )
 public class TavilyWebSearch extends ToolProvider {
-    @Schema(title = "Tavily API Key - you can obtain one from [the Tavily website](https://www.tavily.com/#pricing)")
+    @Schema(
+        title = "Tavily API Key",
+        description = "Tavily API key authorizing web-search calls, obtainable from [the Tavily website](https://www.tavily.com/#pricing). Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('TAVILY_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;

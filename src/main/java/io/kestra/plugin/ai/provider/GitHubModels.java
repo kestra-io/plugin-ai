@@ -75,7 +75,8 @@ public class GitHubModels extends ModelProvider {
 
     @Schema(
         title = "GitHub Token",
-        description = "Personal Access Token (PAT) used to access GitHub Models."
+        description = "GitHub Personal Access Token (PAT) used to access GitHub Models. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('GITHUB_TOKEN') }}"
     )
     @NotNull
     @PluginProperty(secret = true, group = "main")

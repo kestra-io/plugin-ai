@@ -41,12 +41,20 @@ public abstract class AbstractMcpTask extends Task {
     @JsonIgnore
     private transient McpClient mcpClient;
 
-    @Schema(title = "URL of the MCP server", description = "The Streamable HTTP or SSE endpoint of the MCP server.")
+    @Schema(
+        title = "URL of the MCP server",
+        description = "Streamable HTTP or SSE endpoint of the MCP server, matching the chosen `transport`. No default: this property is required.",
+        example = "http://localhost:8080/mcp"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> url;
 
-    @Schema(title = "Transport used to connect to the MCP server")
+    @Schema(
+        title = "Transport",
+        description = "Protocol used to reach the MCP server: `STREAMABLE_HTTP` or `SSE`. Defaults to `STREAMABLE_HTTP`.",
+        example = "STREAMABLE_HTTP"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
@@ -54,22 +62,35 @@ public abstract class AbstractMcpTask extends Task {
 
     @Schema(
         title = "Custom headers",
-        description = "Useful, for example, for adding authentication tokens via the `Authorization` header."
+        description = "Extra HTTP headers sent with every request, typically to carry an authentication token via the `Authorization` header. Not set by default.",
+        example = "{Authorization: \"Bearer {{ secret('MCP_TOKEN') }}\"}"
     )
     @PluginProperty(group = "advanced")
     private Property<Map<String, String>> headers;
 
-    @Schema(title = "Connection timeout duration", description = "When not set, the underlying MCP client's default timeout applies (no timeout is enforced by this task).")
+    @Schema(
+        title = "Connection timeout duration",
+        description = "Maximum time to wait for a response from the MCP server. Not set by default, in which case the underlying MCP client's own default applies and this task enforces no timeout.",
+        example = "PT30S"
+    )
     @PluginProperty(group = "execution")
     private Property<Duration> timeout;
 
-    @Schema(title = "Log requests")
+    @Schema(
+        title = "Log requests",
+        description = "If `true`, requests sent to the MCP server are logged at INFO level. Defaults to `false`.",
+        example = "true"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
     private Property<Boolean> logRequests = Property.ofValue(false);
 
-    @Schema(title = "Log responses")
+    @Schema(
+        title = "Log responses",
+        description = "If `true`, responses received from the MCP server are logged at INFO level. Defaults to `false`.",
+        example = "true"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
