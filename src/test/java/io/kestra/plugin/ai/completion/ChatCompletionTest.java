@@ -70,7 +70,7 @@ class ChatCompletionTest extends ContainerTest {
         : DASHSCOPE_INTL_URL;
     private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");
     private final String WATSONX_API_KEY = System.getenv("WATSONX_API_KEY");
-    private final String WATSONX_PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");;
+    private final String WATSONX_PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
     private final String VERTEX_AI_PROJECT = System.getenv("VERTEX_AI_PROJECT");
     private final String VERTEX_AI_LOCATION = System.getenv("VERTEX_AI_LOCATION");
 
@@ -589,6 +589,7 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getRequestDuration(), greaterThanOrEqualTo(0L));
     }
 
     @Test
@@ -2104,6 +2105,7 @@ class ChatCompletionTest extends ContainerTest {
         )
         .build();
 
+  
     @Test
     void testGeminiChatCompletion_withClientAndCaPem_shouldUseMtls() throws Exception {
         // Mock Gemini API mTLS endpoint
