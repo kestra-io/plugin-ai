@@ -134,6 +134,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
     public static AIOutputBuilder<?, ?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
+        Long requestDuration = extractTiming(runContext, result.finalResponse().id());
         return AIOutput.builder()
             .textOutput(responseFormatType == ResponseFormatType.TEXT ? result.content().text() : null)
             .jsonOutput(responseFormatType == ResponseFormatType.JSON ? JacksonMapper.toMap(result.content().text()) : null)
@@ -155,7 +156,7 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
                     .map(throwFunction(ContentSource::from))
                     .toList()
             )
-            .requestDuration(extractTiming(runContext, result.finalResponse().id()));
+            .requestDuration(requestDuration);
     }
 
     public static AIOutput from(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
@@ -165,6 +166,10 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
     private static Long extractTiming(RunContext runContext, String id) {
         if (id == null) {
+            Long fallback = TimingChatModelListener.pollLastDuration();
+            if (fallback != null) {
+                return fallback;
+            }
             runContext.logger().info("The model provider doesn't include any identifier in its responses, thus timing the response is currently not possible");
             return null;
         }

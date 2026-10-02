@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.provider;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang3.time.StopWatch;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 public class TimingChatModelListener implements ChatModelListener {
     private static final Map<Integer, StopWatch> TIMERS = new ConcurrentHashMap<>();
     private static final Map<String, Integer> TIMER_ID_BY_RESPONSE_ID = new ConcurrentHashMap<>();
+    private static final ThreadLocal<Long> FALLBACK_DURATION = new ThreadLocal<>();
 
     // ponytail: static so IDs are globally unique across instances sharing the static maps
     private static final AtomicInteger counter = new AtomicInteger(0);
@@ -22,13 +24,21 @@ public class TimingChatModelListener implements ChatModelListener {
         return timerId != null ? TIMERS.remove(timerId) : null;
     }
 
+    public static Long pollLastDuration() {
+        Long duration = FALLBACK_DURATION.get();
+        FALLBACK_DURATION.remove();
+        return duration;
+    }
+
     public static void clear() {
         TIMERS.clear();
         TIMER_ID_BY_RESPONSE_ID.clear();
+        FALLBACK_DURATION.remove();
     }
 
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
+        FALLBACK_DURATION.remove();
         Integer timerId = counter.incrementAndGet();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -52,6 +62,7 @@ public class TimingChatModelListener implements ChatModelListener {
             TIMER_ID_BY_RESPONSE_ID.put(responseId, timerId);
         } else {
             TIMERS.remove(timerId);
+            FALLBACK_DURATION.set(stopWatch.getTime(TimeUnit.MILLISECONDS));
         }
     }
 }

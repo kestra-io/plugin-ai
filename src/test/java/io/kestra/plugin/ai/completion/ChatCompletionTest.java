@@ -436,6 +436,8 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getRequestDuration(), notNullValue());
+        assertThat(output.getRequestDuration(), greaterThan(0L));
     }
 
     @Test
