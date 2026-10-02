@@ -2,6 +2,8 @@ package io.kestra.plugin.ai.agent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -26,6 +29,7 @@ import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.memory.KestraKVStore;
 import io.kestra.plugin.ai.provider.GoogleGemini;
+import io.kestra.plugin.ai.provider.Fallback;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.rag.IngestDocument;
 import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
@@ -177,6 +181,175 @@ class AIAgentTest {
 
         var output = agent.run(runContext);
         assertThat(output.getTextOutput()).isNotNull();
+    }
+
+    @Test
+    void fallbackProviderRetriesThroughAgentAndPreservesOriginalMessages() throws Exception {
+        WireMockServer unavailableProvider = new WireMockServer(wireMockConfig().dynamicPort());
+        unavailableProvider.start();
+        try {
+            unavailableProvider.stubFor(
+                post(urlEqualTo("/v1/chat/completions"))
+                    .willReturn(
+                        aResponse()
+                            .withStatus(503)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                {"error":{"message":"simulated provider outage","type":"server_error"}}
+                                """)
+                    )
+            );
+
+            String systemMessage = "Keep the answer concise and follow this system instruction.";
+            String prompt = "Return the exact phrase: fallback integration succeeded.";
+            String expectedResponse = "fallback integration succeeded";
+            AtomicInteger successfulProviderCalls = new AtomicInteger();
+            AtomicReference<JsonNode> receivedMessages = new AtomicReference<>();
+            llm.reply(messages -> {
+                successfulProviderCalls.incrementAndGet();
+                receivedMessages.set(messages.deepCopy());
+                return expectedResponse;
+            });
+
+            var fallback = Fallback.builder()
+                .type(Fallback.class.getName())
+                .providers(
+                    Property.ofValue(
+                        List.of(
+                            OpenAI.builder()
+                                .type(OpenAI.class.getName())
+                                .modelName(Property.ofValue("gpt-4o-mini"))
+                                .apiKey(Property.ofValue("test-key"))
+                                .baseUrl(Property.ofValue(unavailableProvider.baseUrl() + "/v1"))
+                                .build(),
+                            OpenAI.builder()
+                                .type(OpenAI.class.getName())
+                                .modelName(Property.ofValue("gpt-4o-mini"))
+                                .apiKey(Property.ofValue("test-key"))
+                                .baseUrl(Property.ofValue(llm.baseUrl()))
+                                .build()
+                        )
+                    )
+                )
+                .build();
+
+            var agent = AIAgent.builder()
+                .id("fallback-agent")
+                .type(AIAgent.class.getName())
+                .provider(fallback)
+                .systemMessage(Property.ofValue(systemMessage))
+                .prompt(Property.ofValue(prompt))
+                .configuration(ChatConfiguration.empty())
+                .guardrails(
+                    Guardrails.builder()
+                        .output(
+                            List.of(
+                                GuardrailRule.builder()
+                                    .expression("{{ response.length > 0 }}")
+                                    .message("Response must not be empty")
+                                    .build()
+                            )
+                        )
+                        .build()
+                )
+                .build();
+
+            var output = agent.run(runContextFactory.of());
+
+            unavailableProvider.verify(postRequestedFor(urlEqualTo("/v1/chat/completions")));
+            assertThat(successfulProviderCalls).hasValue(1);
+            assertThat(output.isGuardrailViolated()).isFalse();
+            assertThat(output.getTextOutput()).isEqualTo(expectedResponse);
+            assertThat(receivedMessages.get()).isNotNull();
+            assertThat(receivedMessages.get().toString()).contains(systemMessage, prompt);
+        } finally {
+            unavailableProvider.stop();
+        }
+    }
+
+    @Test
+    void outputGuardrailViolationDoesNotTriggerFallback() throws Exception {
+        WireMockServer unusedFallbackProvider = new WireMockServer(wireMockConfig().dynamicPort());
+        unusedFallbackProvider.start();
+        try {
+            unusedFallbackProvider.stubFor(
+                post(urlEqualTo("/v1/chat/completions"))
+                    .willReturn(
+                        aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                {
+                                  "id":"chatcmpl-fallback",
+                                  "object":"chat.completion",
+                                  "created":0,
+                                  "model":"gpt-4o-mini",
+                                  "choices":[{"index":0,"message":{"role":"assistant","content":"second provider response"},"finish_reason":"stop"}],
+                                  "usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}
+                                }
+                                """)
+                    )
+            );
+
+            AtomicInteger firstProviderCalls = new AtomicInteger();
+            llm.reply(messages -> {
+                firstProviderCalls.incrementAndGet();
+                return "first provider response that fails the output guardrail";
+            });
+
+            var fallback = Fallback.builder()
+                .type(Fallback.class.getName())
+                .providers(
+                    Property.ofValue(
+                        List.of(
+                            OpenAI.builder()
+                                .type(OpenAI.class.getName())
+                                .modelName(Property.ofValue("gpt-4o-mini"))
+                                .apiKey(Property.ofValue("test-key"))
+                                .baseUrl(Property.ofValue(llm.baseUrl()))
+                                .build(),
+                            OpenAI.builder()
+                                .type(OpenAI.class.getName())
+                                .modelName(Property.ofValue("gpt-4o-mini"))
+                                .apiKey(Property.ofValue("test-key"))
+                                .baseUrl(Property.ofValue(unusedFallbackProvider.baseUrl() + "/v1"))
+                                .build()
+                        )
+                    )
+                )
+                .build();
+
+            var agent = AIAgent.builder()
+                .id("fallback-guardrail-agent")
+                .type(AIAgent.class.getName())
+                .provider(fallback)
+                .systemMessage(Property.ofValue("Return a concise response."))
+                .prompt(Property.ofValue("Say hello."))
+                .configuration(ChatConfiguration.empty())
+                .guardrails(
+                    Guardrails.builder()
+                        .output(
+                            List.of(
+                                GuardrailRule.builder()
+                                    .expression("{{ response.length < 1 }}")
+                                    .message("Response failed the output guardrail")
+                                    .build()
+                            )
+                        )
+                        .build()
+                )
+                .build();
+
+            var output = agent.run(runContextFactory.of());
+
+            assertThat(firstProviderCalls).hasValue(1);
+            assertThat(output.isGuardrailViolated()).isTrue();
+            assertThat(output.getGuardrailViolationMessage()).contains("Response failed the output guardrail");
+            assertThat(output.getTextOutput()).isNull();
+            unusedFallbackProvider.verify(0, postRequestedFor(urlEqualTo("/v1/chat/completions")));
+        } finally {
+            unusedFallbackProvider.stop();
+        }
     }
 
     @Test
