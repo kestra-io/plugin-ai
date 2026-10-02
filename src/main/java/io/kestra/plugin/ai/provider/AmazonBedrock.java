@@ -80,17 +80,29 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class AmazonBedrock extends ModelProvider {
 
-    @Schema(title = "AWS Access Key ID")
+    @Schema(
+        title = "AWS Access Key ID",
+        description = "AWS access key ID used to sign Bedrock requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('AWS_ACCESS_KEY_ID') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> accessKeyId;
 
-    @Schema(title = "AWS Secret Access Key")
+    @Schema(
+        title = "AWS Secret Access Key",
+        description = "AWS secret access key paired with `accessKeyId`. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('AWS_SECRET_ACCESS_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> secretAccessKey;
 
-    @Schema(title = "Amazon Bedrock Embedding Model Type")
+    @Schema(
+        title = "Amazon Bedrock Embedding Model Type",
+        description = "Family of the Bedrock embedding model, which selects the request/response format used for embeddings. One of `COHERE` or `TITAN`. Defaults to `COHERE`. Ignored for chat and image models.",
+        example = "TITAN"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")

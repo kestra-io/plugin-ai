@@ -67,29 +67,46 @@ import lombok.experimental.SuperBuilder;
         Connects to an MCP server that streams Server-Sent Events and exposes its tools to the agent. Requires `sseUrl`; `timeout` is optional. Request/response logging is disabled by default; add `headers` for auth tokens."""
 )
 public class SseMcpClient extends AbstractMcpClient {
-    @Schema(title = "SSE URL of the MCP server")
+    @Schema(
+        title = "SSE URL of the MCP server",
+        description = "Server-Sent Events endpoint of the MCP server exposing the tools. No default: this property is required.",
+        example = "http://localhost:8080/sse"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> sseUrl;
 
-    @Schema(title = "Connection timeout duration")
+    @Schema(
+        title = "Connection timeout duration",
+        description = "Maximum time to wait for a response from the MCP server. Not set by default, in which case the MCP transport's own default applies.",
+        example = "PT30S"
+    )
     @PluginProperty(group = "execution")
     private Property<Duration> timeout;
 
     @Schema(
         title = "Custom headers",
-        description = "Could be useful, for example, to add authentication tokens via the `Authorization` header."
+        description = "Extra HTTP headers sent with every request, typically to carry an authentication token via the `Authorization` header. Not set by default.",
+        example = "{Authorization: \"Bearer {{ secret('MCP_TOKEN') }}\"}"
     )
     @PluginProperty(group = "advanced")
     private Property<Map<String, String>> headers;
 
-    @Schema(title = "Log requests")
+    @Schema(
+        title = "Log requests",
+        description = "If `true`, requests sent to the MCP server are logged at INFO level. Defaults to `false`.",
+        example = "true"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
     private Property<Boolean> logRequests = Property.ofValue(false);
 
-    @Schema(title = "Log responses")
+    @Schema(
+        title = "Log responses",
+        description = "If `true`, responses received from the MCP server are logged at INFO level. Defaults to `false`.",
+        example = "true"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")

@@ -240,49 +240,58 @@ public class KestraFlow extends ToolProvider {
     private static final String URL_TEMPLATE = "{{ kestra.url }}";
 
     @Schema(
-        title = "Description of the flow if not already provided inside the flow itself",
-        description = """
-            Use it only if you define the flow in the tool definition.
-            The LLM needs a tool description to identify whether to call it.
-            If the flow has a description, the tool will use it. Otherwise, the description property must be explicitly defined."""
+        title = "Tool description",
+        description = "Natural-language summary of what the called flow does, which the LLM uses to decide whether to call it. Not set by default: the target flow's own description is used, so this property is only needed when that flow has none, or when the flow is chosen dynamically through `allowedFlows`.",
+        example = "Sends a Slack notification to the on-call channel."
     )
     @PluginProperty(group = "advanced")
     private Property<String> description;
 
-    @Schema(title = "Namespace of the flow that should be called")
+    @Schema(
+        title = "Flow namespace",
+        description = "Namespace of the flow to execute. Not set by default, in which case the LLM chooses the namespace, constrained by `allowedFlows` when it is configured.",
+        example = "company.team"
+    )
     @PluginProperty(group = "connection")
     private Property<String> namespace;
 
-    @Schema(title = "Flow ID of the flow that should be called")
+    @Schema(
+        title = "Flow ID",
+        description = "Identifier of the flow to execute. Not set by default, in which case the LLM chooses the flow, constrained by `allowedFlows` when it is configured.",
+        example = "send_notification"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> flowId;
 
     @Schema(
-        title = "Flows the tool is allowed to execute",
-        description = """
-            Optional allowlist of exact namespace and flowId pairs. When omitted, no allowlist restriction is applied.
-            When configured, the list must be nonempty and every entry must resolve to a nonblank namespace and flowId.
-            The permitted pairs are exposed to the model, and a selection outside the list is rejected before any API call.
-            The restriction also applies when namespace and flowId are predefined on the tool."""
+        title = "Allowed flows",
+        description = "Allowlist of exact namespace and flow ID pairs the tool may execute. Not set by default, meaning no restriction. When set, it must be non-empty and every entry must resolve to a non-blank namespace and flow ID; the permitted pairs are exposed to the model and any selection outside the list is rejected before the API is called. The restriction applies even when `namespace` and `flowId` are predefined on the tool.",
+        example = "[{namespace: \"company.team\", flowId: \"send_notification\"}]"
     )
     @Valid
     @PluginProperty(group = "connection")
     private List<AllowedFlow> allowedFlows;
 
-    @Schema(title = "Revision of the flow that should be called")
+    @Schema(
+        title = "Flow revision",
+        description = "Specific revision of the flow to execute. Not set by default, in which case the latest revision runs.",
+        example = "3"
+    )
     @PluginProperty(group = "advanced")
     private Property<Integer> revision;
 
     @Schema(
-        title = "Input values that should be passed to flow's execution",
-        description = "Any inputs passed by the LLM will override those defined here."
+        title = "Flow execution inputs",
+        description = "Input values passed to the triggered execution. Any input the LLM supplies overrides the value defined here. Not set by default.",
+        example = "{channel: \"#on-call\", severity: \"high\"}"
     )
     @PluginProperty(dynamic = true, group = "advanced")
     private Map<String, Object> inputs;
 
     @Schema(
-        title = "Labels that should be added to the flow's execution",
-        description = "Any labels passed by the LLM will override those defined here.",
+        title = "Flow execution labels",
+        description = "Labels added to the triggered execution. Any label the LLM supplies overrides the value defined here. Not set by default.",
+        example = "{triggeredBy: \"ai-agent\"}",
         implementation = Object.class, oneOf = { List.class, Map.class }
     )
     @PluginProperty(dynamic = true, group = "advanced")
@@ -292,37 +301,42 @@ public class KestraFlow extends ToolProvider {
 
     @Builder.Default
     @Schema(
-        title = "Whether the flow should inherit labels from the execution that triggered it",
-        description = """
-            By default, labels are not inherited. If you set this option to `true`, the flow execution will inherit all labels from the agent's execution.
-            Any labels passed by the LLM will override those defined here."""
+        title = "Inherit labels from the calling execution",
+        description = "If `true`, the triggered execution inherits all labels from the agent's own execution. Defaults to `false`. Any label the LLM supplies still takes precedence.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     private final Property<Boolean> inheritLabels = Property.ofValue(false);
 
     @Schema(
-        title = "Schedule the flow execution at a later date",
-        description = "If the LLM sets a scheduleDate, it will override the one defined here."
+        title = "Scheduled execution date",
+        description = "Date and time at which the execution should start, rather than immediately. Not set by default (immediate execution). A `scheduleDate` supplied by the LLM overrides this value.",
+        example = "2026-01-01T09:00:00Z"
     )
     @PluginProperty(group = "advanced")
     private Property<ZonedDateTime> scheduleDate;
 
     @Schema(
-        title = "Override Kestra API endpoint",
-        description = """
-            URL used for calls to the Kestra API. When null, renders `{{ kestra.url }}` from configuration; if still empty, defaults to `http://localhost:8080`."""
+        title = "Kestra API endpoint",
+        description = "Base URL used for calls to the Kestra API. Not set by default, in which case `{{ kestra.url }}` is rendered from configuration, falling back to `http://localhost:8080`.",
+        example = "https://kestra.internal:8080"
     )
     @PluginProperty(group = "connection")
     private Property<String> kestraUrl;
 
     @Schema(
-        title = "Select API authentication",
-        description = "Use either an API token or HTTP Basic (username/password); do not provide both."
+        title = "API authentication",
+        description = "Credentials used to call the Kestra API: either an API token or HTTP Basic username/password, never both. Not set by default, in which case credentials are taken from Kestra's own configuration.",
+        example = "{apiToken: \"{{ secret('KESTRA_API_TOKEN') }}\"}"
     )
     @PluginProperty(group = "connection")
     private Auth auth;
 
-    @Schema(title = "Override target tenant", description = "Tenant identifier applied to API calls; defaults to the current execution tenant.")
+    @Schema(
+        title = "Target tenant",
+        description = "Tenant the API calls are made against. Defaults to the tenant of the current execution.",
+        example = "main"
+    )
     @PluginProperty(group = "connection")
     private Property<String> tenantId;
 
@@ -757,12 +771,20 @@ public class KestraFlow extends ToolProvider {
     @Getter
     @Schema(title = "An allowed flow")
     public static class AllowedFlow {
-        @Schema(title = "Namespace of the allowed flow")
+        @Schema(
+            title = "Allowed flow namespace",
+            description = "Namespace of a flow the tool is permitted to execute. No default: this property is required on each allowlist entry.",
+            example = "company.team"
+        )
         @NotNull
         @PluginProperty(group = "main")
         private Property<String> namespace;
 
-        @Schema(title = "ID of the allowed flow")
+        @Schema(
+            title = "Allowed flow ID",
+            description = "Identifier of a flow the tool is permitted to execute. No default: this property is required on each allowlist entry.",
+            example = "send_notification"
+        )
         @NotNull
         @PluginProperty(group = "main")
         private Property<String> flowId;
@@ -771,21 +793,34 @@ public class KestraFlow extends ToolProvider {
     @Builder
     @Getter
     public static class Auth {
-        @Schema(title = "API token for bearer auth")
+        @Schema(
+            title = "API token",
+            description = "Bearer token authenticating calls to the Kestra API. Store it as a Kestra secret rather than inline. Mutually exclusive with `username`/`password`.",
+            example = "{{ secret('KESTRA_API_TOKEN') }}"
+        )
         @PluginProperty(secret = true, group = "connection")
         private Property<String> apiToken;
 
-        @Schema(title = "Username for HTTP Basic auth")
+        @Schema(
+            title = "HTTP Basic username",
+            description = "User authenticating against the Kestra API with HTTP Basic. Must be paired with `password` and is mutually exclusive with `apiToken`.",
+            example = "admin@kestra.io"
+        )
         @PluginProperty(group = "connection")
         private Property<String> username;
 
-        @Schema(title = "Password for HTTP Basic auth")
+        @Schema(
+            title = "HTTP Basic password",
+            description = "Password paired with `username` for HTTP Basic authentication. Store it as a Kestra secret rather than inline. Mutually exclusive with `apiToken`.",
+            example = "{{ secret('KESTRA_PASSWORD') }}"
+        )
         @PluginProperty(secret = true, group = "connection")
         private Property<String> password;
 
         @Schema(
-            title = "Automatically retrieve credentials from Kestra's configuration if available",
-            description = "Set this to `false` without any credentials to call a Kestra API that requires no authentication."
+            title = "Auto-retrieve credentials",
+            description = "If `true`, missing credentials are taken from Kestra's own configuration when available. Defaults to `true`. Set it to `false`, with no credentials, to call a Kestra API that requires no authentication.",
+            example = "false"
         )
         @Builder.Default
         @PluginProperty(group = "advanced")

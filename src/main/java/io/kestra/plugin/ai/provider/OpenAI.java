@@ -55,7 +55,11 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.provider.OpenAI"
 )
 public class OpenAI extends OpenAICompliantProvider {
-    @Schema(title = "API base URL")
+    @Schema(
+        title = "API base URL",
+        description = "Base URL of the OpenAI-compatible API. Override it to target Azure OpenAI, a proxy, or a self-hosted gateway. Defaults to `https://api.openai.com/v1`.",
+        example = "https://api.openai.com/v1"
+    )
     @Builder.Default
     @PluginProperty(group = "connection")
     private Property<String> baseUrl = Property.ofValue(OpenAiUtils.DEFAULT_OPENAI_URL);

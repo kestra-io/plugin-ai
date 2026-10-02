@@ -137,7 +137,8 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
 
     @Schema(
         title = "Embedding store",
-        description = "The embedding store to retrieve relevant content from"
+        description = "Embedding store queried for content relevant to the user's question. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.embeddings.KestraKVStore\"}"
     )
     @NotNull
     @PluginProperty(group = "main")
@@ -145,13 +146,18 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
 
     @Schema(
         title = "Embedding model provider",
-        description = "Provider used to generate embeddings for the query. Must support embedding generation."
+        description = "Model provider used to embed the query before searching the store. It must support embedding generation, and should use the same model that was used at ingestion time. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-embedding-001\"}"
     )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider embeddingProvider;
 
-    @Schema(title = "Maximum number of results to return from the embedding store")
+    @Schema(
+        title = "Maximum results",
+        description = "Number of matching segments returned by the embedding store for each query. Defaults to `3`.",
+        example = "5"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
@@ -159,7 +165,8 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
 
     @Schema(
         title = "Minimum similarity score",
-        description = "Only results with a similarity score ≥ minScore are returned. Range: 0.0 to 1.0 inclusive."
+        description = "Similarity threshold a match must reach to be returned, from `0.0` (keep everything) to `1.0` (exact match only). Defaults to `0.0`.",
+        example = "0.7"
     )
     @NotNull
     @Builder.Default

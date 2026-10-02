@@ -11,11 +11,23 @@ import java.util.List;
     description = "A chat message payload. Use either `content` for plain text or `contentBlocks` for multimodal content blocks."
 )
 public record ChatMessage(
-    @Schema(title = "Message type")
+    @Schema(
+        title = "Message type",
+        description = "Role the message plays in the conversation: `SYSTEM`, `USER` or `AI`. There can be at most one `SYSTEM` message, and the last message must be a `USER` message.",
+        example = "USER"
+    )
     ChatMessageType type,
-    @Schema(title = "Text content", description = "Plain text message content. Mutually exclusive with `contentBlocks`.")
+    @Schema(
+        title = "Text content",
+        description = "Plain text body of the message. Mutually exclusive with `contentBlocks`: exactly one of the two must be set.",
+        example = "{{ inputs.prompt }}"
+    )
     String content,
-    @Schema(title = "Content blocks", description = "Multimodal message blocks (TEXT, IMAGE, PDF). Mutually exclusive with `content`.")
+    @Schema(
+        title = "Content blocks",
+        description = "Multimodal body of the message, as a list of `TEXT`, `IMAGE` or `PDF` blocks. Mutually exclusive with `content`: exactly one of the two must be set.",
+        example = "[{type: \"TEXT\", text: \"What is in this image?\"}, {type: \"IMAGE\", uri: \"{{ inputs.photo }}\"}]"
+    )
     List<ContentBlock> contentBlocks
 ) {
     public ChatMessage {
@@ -45,11 +57,23 @@ public record ChatMessage(
 
     @Builder
     public record ContentBlock(
-        @Schema(title = "Block type", description = "Block type. Defaults to `TEXT` when omitted.")
+        @Schema(
+            title = "Block type",
+            description = "Kind of payload this block carries: `TEXT`, `IMAGE` or `PDF`. Defaults to `TEXT` when omitted.",
+            example = "IMAGE"
+        )
         Type type,
-        @Schema(title = "Text", description = "Text payload, required for `TEXT` blocks.")
+        @Schema(
+            title = "Text",
+            description = "Text payload of the block. Required for `TEXT` blocks and ignored otherwise.",
+            example = "What is in this image?"
+        )
         String text,
-        @Schema(title = "URI", description = "URI payload for `IMAGE` and `PDF` blocks. Supported smart URI schemes: `kestra://`, `file://`, and `nsfile://`.")
+        @Schema(
+            title = "URI",
+            description = "Location of the file for `IMAGE` and `PDF` blocks, ignored for `TEXT` blocks. Supports the `kestra://`, `file://` and `nsfile://` smart URI schemes.",
+            example = "{{ inputs.photo }}"
+        )
         String uri
     ) {
         public Type effectiveType() {

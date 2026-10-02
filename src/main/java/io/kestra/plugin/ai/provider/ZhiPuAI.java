@@ -72,28 +72,46 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class ZhiPuAI extends ModelProvider {
     private static final String BASE_URL = "https://open.bigmodel.cn/";
 
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "ZhiPu AI API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('ZHIPU_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
-        title = "API base URL", description = "The base URL for ZhiPu API (defaults to https://open.bigmodel.cn/)"
+        title = "API base URL",
+        description = "Base URL of the ZhiPu AI API. Defaults to `https://open.bigmodel.cn/`.",
+        example = "https://open.bigmodel.cn/"
     )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
     private Property<String> baseUrl = Property.ofValue(BASE_URL);
 
-    @Schema(title = "With the stop parameter, the model will automatically stop generating text when it is about to contain the specified string or token_id")
+    @Schema(
+        title = "Stop sequences",
+        description = "Strings that stop generation as soon as the model is about to produce one of them. The stop sequence itself is not included in the output. Not set by default (no stop sequence).",
+        example = "[\"\\n\\nUser:\", \"END\"]"
+    )
     @PluginProperty(group = "advanced")
     private Property<List<String>> stops;
 
-    @Schema(title = "The maximum retry times to request")
+    @Schema(
+        title = "Maximum retries",
+        description = "Number of times a failed request is retried before the task fails. Defaults to `3`.",
+        example = "3"
+    )
     @PluginProperty(group = "execution")
     private Property<Integer> maxRetries;
 
-    @Schema(title = "The maximum number of tokens returned by this request")
+    @Schema(
+        title = "Maximum output tokens",
+        description = "Maximum number of tokens returned by a single request. Defaults to `512`.",
+        example = "512"
+    )
     @PluginProperty(group = "execution")
     private Property<Integer> maxToken;
 

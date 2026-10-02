@@ -68,12 +68,20 @@ import io.kestra.core.models.annotations.PluginProperty;
         Runs queries through Google Custom Search and returns results to the agent. Requires a Google API key and Custom Search Engine ID (`csi`/`cx`); usage is subject to your CSE quotas and filters."""
 )
 public class GoogleCustomWebSearch extends ToolProvider {
-    @Schema(title = "Custom Search Engine ID", description = "The Programmable Search Engine ID, referred to as `cx` in Google's documentation.")
+    @Schema(
+        title = "Custom Search Engine ID",
+        description = "Identifier of the Programmable Search Engine to query, referred to as `cx` in Google's documentation. No default: this property is required.",
+        example = "{{ secret('GOOGLE_SEARCH_CSI') }}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> csi;
 
-    @Schema(title = "API key")
+    @Schema(
+        title = "API key",
+        description = "Google Custom Search JSON API key. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('GOOGLE_SEARCH_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;

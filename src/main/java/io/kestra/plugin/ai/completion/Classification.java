@@ -104,39 +104,57 @@ import java.util.Map;
 )
 public class Classification extends Task implements RunnableTask<Classification.Output> {
 
-    @Schema(title = "Text prompt", description = "Text input to classify. Use either `prompt` or `contentBlocks`.")
+    @Schema(
+        title = "Text prompt",
+        description = "Text to classify. Set either this property or `contentBlocks`, not both.",
+        example = "{{ inputs.ticket_body }}"
+    )
     @Nullable
     @PluginProperty(group = "main")
     private Property<String> prompt;
 
     @Schema(
         title = "Content blocks",
-        description = "Multimodal input blocks for classification (TEXT, IMAGE, PDF). Use either `prompt` or `contentBlocks`. For IMAGE/PDF `uri`, supported smart URI schemes are `kestra://`, `file://`, and `nsfile://`."
+        description = "Multimodal input to classify, as a list of `TEXT`, `IMAGE` or `PDF` blocks. Set either this property or `prompt`, not both. For `IMAGE` and `PDF` blocks, the `uri` supports the `kestra://`, `file://` and `nsfile://` schemes.",
+        example = "[{type: \"TEXT\", text: \"Classify this invoice\"}, {type: \"PDF\", uri: \"{{ inputs.file }}\"}]"
     )
     @Nullable
     private Property<List<ChatMessage.ContentBlock>> contentBlocks;
 
     @Schema(
-        title = "Optional system message",
-        description = "Instruction message for the model. Defaults to a standard classification instruction using the provided classes."
+        title = "System message",
+        description = "Instruction steering how the model classifies the input. Defaults to `Respond by only one of the following classes by typing just the exact class name: {{ classes }}`.",
+        example = "Respond by only one of the following classes by typing just the exact class name: {{ classes }}"
     )
     @Builder.Default
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "main")
     private Property<String> systemMessage = Property.ofExpression(
         "Respond by only one of the following classes by typing just the exact class name: {{ classes }}"
     );
 
-    @Schema(title = "Classification Options", description = "The list of possible classification categories")
+    @Schema(
+        title = "Classification options",
+        description = "Categories the model must choose from, one of which is returned as the classification. No default: this property is required.",
+        example = "[\"ACCOUNT\", \"BILLING\", \"TECHNICAL\", \"GENERAL\"]"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<List<String>> classes;
 
-    @Schema(title = "Language Model Provider")
+    @Schema(
+        title = "Language model provider",
+        description = "Model provider that performs the classification. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-3.5-flash-lite\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Chat configuration")
+    @Schema(
+        title = "Chat configuration",
+        description = "Chat model settings (temperature, token limits, and so on). Defaults to an empty configuration, so the provider's own defaults apply; a low temperature gives the most consistent classifications.",
+        example = "{temperature: 0.1}"
+    )
     @NotNull
     @PluginProperty(group = "advanced")
     @Builder.Default
@@ -144,10 +162,8 @@ public class Classification extends Task implements RunnableTask<Classification.
 
     @Schema(
         title = "Guardrails",
-        description = """
-            Input guardrails are evaluated against the prompt before the LLM is called.
-            Output guardrails are evaluated against the classification result before it is returned.
-            The first failing rule stops execution and sets `guardrailViolated` to `true` in the output."""
+        description = "Rules validating the call: input guardrails run against the prompt before the LLM is called, output guardrails against the classification before it is returned. The first failing rule stops execution and sets `guardrailViolated` to `true` in the output. Not set by default.",
+        example = "{input: [{type: \"io.kestra.plugin.ai.guardrail.ExpressionInputGuardrail\", expression: \"{{ prompt | length < 5000 }}\"}]}"
     )
     @PluginProperty(group = "advanced")
     @Nullable
@@ -211,20 +227,40 @@ public class Classification extends Task implements RunnableTask<Classification.
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "Classification Result", description = "The classified category of the input text")
+        @Schema(
+            title = "Classification result",
+            description = "Category the model assigned to the input, taken from `classes`.",
+            example = "BILLING"
+        )
         private final String classification;
 
-        @Schema(title = "Token usage")
+        @Schema(
+            title = "Token usage",
+            description = "Input, output and total tokens billed for the call, when the provider reports them.",
+            example = "{inputTokenCount: 42, outputTokenCount: 3, totalTokenCount: 45}"
+        )
         private TokenUsage tokenUsage;
 
-        @Schema(title = "Finish reason")
+        @Schema(
+            title = "Finish reason",
+            description = "Why the model stopped generating, such as `STOP`, `LENGTH` or `CONTENT_FILTER`, when the provider reports it.",
+            example = "STOP"
+        )
         private FinishReason finishReason;
 
-        @Schema(title = "Guardrail violated", description = "True if a guardrail rule was violated")
+        @Schema(
+            title = "Guardrail violated",
+            description = "Whether a guardrail rule rejected the input or the output. `false` when every rule passed.",
+            example = "false"
+        )
         @Builder.Default
         private boolean guardrailViolated = false;
 
-        @Schema(title = "Guardrail violation message", description = "The message from the first violated guardrail rule")
+        @Schema(
+            title = "Guardrail violation message",
+            description = "Message from the first guardrail rule that failed. Empty when no rule was violated.",
+            example = "Prompt exceeds the allowed length."
+        )
         private String guardrailViolationMessage;
     }
 }

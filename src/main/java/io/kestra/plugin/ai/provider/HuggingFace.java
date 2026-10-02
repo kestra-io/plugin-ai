@@ -55,7 +55,11 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class HuggingFace extends OpenAICompliantProvider {
     private static final String BASE_URL = "https://router.huggingface.co/v1";
 
-    @Schema(title = "API base URL")
+    @Schema(
+        title = "API base URL",
+        description = "Base URL of the Hugging Face router's OpenAI-compatible API. Defaults to `https://router.huggingface.co/v1`.",
+        example = "https://router.huggingface.co/v1"
+    )
     @Builder.Default
     @PluginProperty(group = "connection")
     private Property<String> baseUrl = Property.ofValue(BASE_URL);

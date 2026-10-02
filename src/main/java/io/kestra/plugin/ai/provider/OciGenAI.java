@@ -75,17 +75,29 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class OciGenAI extends ModelProvider {
 
     private static final String DEFAULT = "DEFAULT";
-    @Schema(title = "OCID of OCI Compartment with the model")
+    @Schema(
+        title = "Compartment OCID",
+        description = "OCID of the OCI compartment holding the generative AI model. No default: this property is required.",
+        example = "ocid1.compartment.oc1..aaaaaaaa1b2c3d4e5f6g7h8i9j0k"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> compartmentId;
 
-    @Schema(title = "OCI Region to connect the client to")
+    @Schema(
+        title = "OCI region",
+        description = "OCI region the client connects to, which must offer the OCI Generative AI service. No default: this property is required.",
+        example = "us-chicago-1"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> region;
 
-    @Schema(title = "OCI config profile name", description = "Name of the profile in your OCI config file used to authenticate the SDK client. Defaults to `DEFAULT` when not set.")
+    @Schema(
+        title = "OCI config profile name",
+        description = "Name of the profile in your OCI config file used to authenticate the SDK client. Defaults to `DEFAULT`.",
+        example = "DEFAULT"
+    )
     @PluginProperty(group = "connection")
     private Property<String> authProvider;
 

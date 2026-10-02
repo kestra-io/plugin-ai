@@ -105,7 +105,8 @@ public class AIAgent extends ToolProvider {
 
     @Schema(
         title = "Agent name",
-        description = "It must be set to a different value than the default in case you want to have multiple agents used as tools in the same task."
+        description = "Name the LLM sees for this sub-agent tool. Defaults to `tool`, so it must be set to a distinct value when several agents are used as tools in the same task.",
+        example = "research-agent"
     )
     @NotNull
     @Builder.Default
@@ -114,38 +115,60 @@ public class AIAgent extends ToolProvider {
 
     @Schema(
         title = "Agent description",
-        description = "The description will be used to instruct the LLM what the tool is doing."
+        description = "Natural-language summary of what the sub-agent does, used by the LLM to decide when to call it. No default: this property is required.",
+        example = "Searches the web and summarizes findings on a given topic."
     )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> description;
 
-    @Schema(title = "System message", description = "The system message for the language model")
-    @PluginProperty(group = "advanced")
+    @Schema(
+        title = "System message",
+        description = "Instructions prepended to the sub-agent's conversation, defining its role and constraints. Not set by default.",
+        example = "You are a research assistant. Answer concisely and cite your sources."
+    )
+    @PluginProperty(group = "main")
     protected Property<String> systemMessage;
 
-    @Schema(title = "Language model provider")
+    @Schema(
+        title = "Language model provider",
+        description = "Model provider backing this sub-agent. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-3.5-flash-lite\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Language model configuration")
+    @Schema(
+        title = "Language model configuration",
+        description = "Chat model settings (temperature, response format, token limits, and so on) applied to this sub-agent. Defaults to an empty configuration, so the provider's own defaults apply.",
+        example = "{temperature: 0.2}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     @Builder.Default
     private ChatConfiguration configuration = ChatConfiguration.empty();
 
-    @Schema(title = "Tools that the LLM may use to augment its response")
+    @Schema(
+        title = "Tools",
+        description = "Tools this sub-agent may call to augment its answer. Not set by default (no tools).",
+        example = "[{type: \"io.kestra.plugin.ai.tool.TavilyWebSearch\", apiKey: \"{{ secret('TAVILY_API_KEY') }}\"}]"
+    )
     @PluginProperty(group = "advanced")
     private List<ToolProvider> tools;
 
-    @Schema(title = "Maximum sequential tools invocations")
+    @Schema(
+        title = "Maximum sequential tool invocations",
+        description = "Cap on how many tool calls the sub-agent may chain within one run, which guards against runaway tool loops. Defaults to no limit.",
+        example = "10"
+    )
     @PluginProperty(group = "execution")
     private Property<Integer> maxSequentialToolsInvocations;
 
     @Schema(
         title = "Content retrievers",
-        description = "Some content retrievers, like WebSearch, can also be used as tools. However, when configured as content retrievers, they will always be used, whereas tools are only invoked when the LLM decides to use them."
+        description = "Retrievers whose results are always injected into the sub-agent's context, unlike tools, which the LLM calls only when it decides to. Some sources, such as web search, can act as either. Not set by default.",
+        example = "[{type: \"io.kestra.plugin.ai.retriever.TavilyWebSearch\", apiKey: \"{{ secret('TAVILY_API_KEY') }}\"}]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<ContentRetrieverProvider>> contentRetrievers;

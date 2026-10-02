@@ -103,14 +103,16 @@ public class Redis extends MemoryProvider {
     @NotNull
     @Schema(
         title = "Redis host",
-        description = "The hostname of your Redis server (e.g., localhost or redis-server)"
+        description = "Hostname or IP address of the Redis server storing the chat memory. No default: this property is required.",
+        example = "localhost"
     )
     @PluginProperty(group = "main")
     private Property<String> host;
 
     @Schema(
         title = "Redis port",
-        description = "The port of your Redis server"
+        description = "TCP port the Redis server listens on. Defaults to `6379`.",
+        example = "6379"
     )
     @Builder.Default
     @PluginProperty(group = "connection")

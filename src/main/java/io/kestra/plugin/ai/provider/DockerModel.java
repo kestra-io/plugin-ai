@@ -132,15 +132,8 @@ public class DockerModel extends OpenAICompliantProvider {
 
     @Schema(
         title = "API base URL",
-        description = """
-            Base URL for the Docker Model Runner OpenAI-compatible API. Pick the variant matching where \
-            Kestra itself runs:
-            - Kestra in a container on Docker Desktop: `http://model-runner.docker.internal/engines/v1`
-            - Kestra in a container on Docker Engine (Linux): `http://172.17.0.1:12434/engines/v1`
-            - Kestra directly on the host (default): `http://localhost:12434/engines/v1`
-
-            The `model-runner.docker.internal` alias exists only inside containers on Docker Desktop.
-            """
+        description = "Base URL of the Docker Model Runner OpenAI-compatible API. Pick the variant matching where Kestra itself runs: `http://model-runner.docker.internal/engines/v1` for Kestra in a container on Docker Desktop, `http://172.17.0.1:12434/engines/v1` for Kestra in a container on Docker Engine (Linux), and the default `http://localhost:12434/engines/v1` for Kestra directly on the host. The `model-runner.docker.internal` alias exists only inside containers on Docker Desktop.",
+        example = "http://localhost:12434/engines/v1"
     )
     @Builder.Default
     @PluginProperty(group = "connection")
@@ -154,7 +147,8 @@ public class DockerModel extends OpenAICompliantProvider {
      */
     @Schema(
         title = "API Key",
-        description = "Docker Model Runner does not require authentication. Any non-empty value is accepted; defaults to `not-needed`."
+        description = "Placeholder credential: Docker Model Runner requires no authentication and accepts any non-empty value. Defaults to `not-needed`.",
+        example = "not-needed"
     )
     @Builder.Default
     @PluginProperty(secret = true, group = "main")

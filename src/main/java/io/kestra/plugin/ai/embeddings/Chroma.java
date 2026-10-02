@@ -57,12 +57,20 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class Chroma extends EmbeddingStoreProvider {
 
     @NotNull
-    @Schema(title = "The database base URL")
+    @Schema(
+        title = "Database base URL",
+        description = "Base URL of the Chroma server. No default: this property is required.",
+        example = "http://localhost:8000"
+    )
     @PluginProperty(group = "main")
     private Property<String> baseUrl;
 
     @NotNull
-    @Schema(title = "The collection name")
+    @Schema(
+        title = "Collection name",
+        description = "Chroma collection that holds the embeddings. No default: this property is required.",
+        example = "my-documents"
+    )
     @PluginProperty(group = "main")
     private Property<String> collectionName;
 

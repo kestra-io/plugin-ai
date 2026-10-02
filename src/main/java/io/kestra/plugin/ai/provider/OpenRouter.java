@@ -77,7 +77,11 @@ public class OpenRouter extends ModelProvider {
 
     private static final String BASE_URL = "https://openrouter.ai/api/v1";
 
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "OpenRouter API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('OPENROUTER_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;

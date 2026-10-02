@@ -66,7 +66,11 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class LocalAI extends ModelProvider {
 
-    @Schema(title = "API base URL")
+    @Schema(
+        title = "API base URL",
+        description = "Base URL of the LocalAI server's OpenAI-compatible API. No default: this property is required.",
+        example = "http://localhost:8080/v1"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> baseUrl;

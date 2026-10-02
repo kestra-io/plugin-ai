@@ -67,14 +67,19 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.provider.WorkersAI"
 )
 public class WorkersAI extends ModelProvider {
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Cloudflare API token with Workers AI access. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('CLOUDFLARE_API_TOKEN') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
         title = "Account Identifier",
-        description = "Unique identifier assigned to an account"
+        description = "Cloudflare account ID that owns the Workers AI deployment. No default: this property is required.",
+        example = "{{ secret('CLOUDFLARE_ACCOUNT_ID') }}"
     )
     @NotNull
     @PluginProperty(group = "main")
