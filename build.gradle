@@ -128,6 +128,9 @@ dependencies {
     // skills
     implementation "dev.langchain4j:langchain4j-skills:${langchain4jBetaVersion}"
 
+    // in-process ONNX embeddings (OnnxEmbeddingModel); brings onnxruntime + DJL tokenizers natives
+    implementation "dev.langchain4j:langchain4j-embeddings:${langchain4jBetaVersion}"
+
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
     implementation "io.opentelemetry:opentelemetry-api"
@@ -280,6 +283,9 @@ shadowJar {
         exclude(dependency("io.netty:.*"))
         exclude(dependency("com.fasterxml.jackson.*:.*"))
         exclude(dependency("dev.langchain4j.*:.*"))
+        // native libraries loaded via JNI/reflection
+        exclude(dependency("com.microsoft.onnxruntime:.*"))
+        exclude(dependency("ai.djl.*:.*"))
     }
 
     exclude "org/slf4j/**"
@@ -290,6 +296,9 @@ shadowJar {
     exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
     exclude "META-INF/INDEX.LIST"
     exclude "module-info.class"
+    // native debug symbols shipped by onnxruntime (~64 MB), never loaded at runtime
+    exclude "**/*.pdb"
+    exclude "**/*.dSYM/**"
 }
 
 /**********************************************************************************************************************\
