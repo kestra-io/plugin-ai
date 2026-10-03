@@ -23,6 +23,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.skills.ActivateSkillToolConfig;
 import dev.langchain4j.skills.DefaultSkill;
 import dev.langchain4j.skills.DefaultSkillResource;
 import dev.langchain4j.skills.Skills;
@@ -140,7 +141,23 @@ public class Skill extends ToolProvider {
             }
         }
 
-        var skills = Skills.from(skillList);
+        // Include valid skill names in the tool parameter description to guide the model.
+        var skillNames = skillList.stream()
+            .map(dev.langchain4j.skills.Skill::name)
+            .toList();
+
+        var parameterDescription = "The name of the skill to activate. You must use exactly one of these skill names: "
+            + String.join(", ", skillNames);
+
+        var skills = Skills.builder()
+            .skills(skillList)
+            .activateSkillToolConfig(
+                ActivateSkillToolConfig.builder()
+                    .parameterDescription(parameterDescription)
+                    .build()
+            )
+            .build();
+
         var invocationContext = InvocationContext.builder().build();
         var userMessage = UserMessage.from("placeholder");
         var result = skills.toolProvider().provideTools(ToolProviderRequest.builder()
