@@ -3,6 +3,7 @@ package io.kestra.plugin.ai.provider;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -17,6 +18,8 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -184,10 +187,23 @@ public class DockerModel extends OpenAICompliantProvider {
         }
         assertHostResolvable(resolvedBaseUrl);
         String diffuserUrl = matcher.replaceFirst(DIFFUSER_PATH);
+
+        // Docker Model Runner's diffusers backend mishandles cleartext HTTP/2 upgrade headers
+        // (Upgrade: h2c / HTTP2-Settings), causing it to lose the request body and fail with a "Field required" error.
+        // Forcing HTTP/1.1 suppresses these upgrade headers.
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder == null) {
+            httpClientBuilder = JdkHttpClient.builder()
+                .httpClientBuilder(HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1));
+        } else {
+            httpClientBuilder.httpClientBuilder().version(HttpClient.Version.HTTP_1_1);
+        }
+
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(resolveApiKey(runContext))
             .baseUrl(diffuserUrl)
+            .httpClientBuilder(httpClientBuilder)
             .build();
     }
 

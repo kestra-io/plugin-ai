@@ -217,7 +217,11 @@ class DockerModelTest {
 
         assertThat(output.getImageUrl()).isEqualTo("http://localhost/mock-image.png");
 
-        dmrMock.verify(postRequestedFor(urlPathEqualTo("/engines/diffusers/v1/images/generations")));
+        dmrMock.verify(
+            postRequestedFor(urlPathEqualTo("/engines/diffusers/v1/images/generations"))
+                .withoutHeader("Upgrade")
+                .withoutHeader("HTTP2-Settings")
+        );
     }
 
     @Test
