@@ -1,6 +1,5 @@
 package io.kestra.plugin.ai.completion;
 
-import java.util.concurrent.TimeUnit;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -51,6 +50,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @SuperBuilder
 @ToString

@@ -2105,7 +2105,6 @@ class ChatCompletionTest extends ContainerTest {
         )
         .build();
 
-  
     @Test
     void testGeminiChatCompletion_withClientAndCaPem_shouldUseMtls() throws Exception {
         // Mock Gemini API mTLS endpoint
