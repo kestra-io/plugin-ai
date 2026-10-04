@@ -375,10 +375,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             Result<AiMessage> aiResponse = builder.build().chat(((UserMessage) chatMessages.getLast()).contents());
             logger.debug("AI Response: {}", aiResponse.content());
 
-            //fallback duration captured 
             long fallbackDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - fallbackStart);
-
-
 
             // send metrics for token usage
             TokenUsage tokenUsage = TokenUsage.from(aiResponse.tokenUsage());
