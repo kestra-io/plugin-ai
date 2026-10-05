@@ -44,6 +44,21 @@ const ragTask = {
     contentRetriever: { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
 };
 
+const geminiProvider = {
+    type: "io.kestra.plugin.ai.provider.GoogleGemini",
+    modelName: "gemini-embedding-001",
+    apiKey: "{{ secret('GEMINI_API_KEY') }}",
+};
+
+const ingestDocumentTask = {
+    id: "ingest",
+    type: "io.kestra.plugin.ai.rag.IngestDocument",
+    provider: geminiProvider,
+    embeddings: {
+        type: "io.kestra.plugin.ai.embeddings.KestraKVStore",
+    },
+};
+
 // Task whose display-facing fields all carry Pebble expressions from different context
 // sources, so the same task renders differently before vs. after an execution exists.
 const expressionAgentTask = {
@@ -128,6 +143,40 @@ export const CompactFullHouse: Story = {
         expect(canvas.getByText("KestraKVStore")).toBeInTheDocument();
         expect(canvas.getByText("Retrievers")).toBeInTheDocument();
         expect(canvas.getByText("EmbeddingStoreRetriever +1")).toBeInTheDocument();
+    },
+};
+
+export const CompactRagIngestDocument: Story = {
+    name: "Compact node (RAG IngestDocument with provider + model)",
+    args: {
+        task: ingestDocumentTask,
+        namespace: "company.team",
+        flowId: "ai-rag-daily-ingestion-gemini",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Provider")).toBeInTheDocument();
+        expect(canvas.getByText("GoogleGemini")).toBeInTheDocument();
+        expect(canvas.getByText("Model")).toBeInTheDocument();
+        expect(canvas.getByText("gemini-embedding-001")).toBeInTheDocument();
+    },
+};
+
+export const CompactRagChatCompletion: Story = {
+    name: "Compact node (RAG ChatCompletion with chatProvider + model)",
+    args: {
+        task: ragTask,
+        namespace: "company.team",
+        flowId: "ai-rag-pipeline",
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Provider")).toBeInTheDocument();
+        expect(canvas.getByText("OpenAI")).toBeInTheDocument();
+        expect(canvas.getByText("Model")).toBeInTheDocument();
+        expect(canvas.getByText("gpt-4o")).toBeInTheDocument();
+        expect(canvas.getByText("Retrievers")).toBeInTheDocument();
+        expect(canvas.getByText("EmbeddingStoreRetriever")).toBeInTheDocument();
     },
 };
 

@@ -84,7 +84,13 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
     @Schema(
         title = "Request duration",
-        description = "Wall-clock time in milliseconds spent on the model calls made by this task.",
+        description = """
+            Duration in milliseconds. When the provider returns a response ID, this is the duration
+            of the final model call measured by the timing listener. When the provider does not
+            return a response ID, such as Ollama, this is the end-to-end duration of the
+            surrounding task call and may include guardrail evaluation, memory handling, retrieval,
+            tool execution, and additional model calls.
+            """,
         example = "1842"
     )
     @PluginProperty(group = "execution")
@@ -165,8 +171,11 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
     private static Long extractTiming(RunContext runContext, String id) {
         if (id == null) {
-            runContext.logger().info("The model provider doesn't include any identifier in its responses, thus timing the response is currently not possible");
-            return null;
+           runContext.logger().debug(
+                "The model provider did not return a response identifier; "
+                 + "the task-level fallback duration may be used"
+    );
+    return null;
         }
         StopWatch timer = TimingChatModelListener.getTimer(id);
         if (timer == null) {
@@ -294,7 +303,11 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
         @Schema(
             title = "Request duration",
-            description = "Wall-clock time in milliseconds spent on this individual model call.",
+            description = """
+                Duration in milliseconds for this individual model call when the provider returns
+                a response ID. It may be null for providers such as Ollama because the local
+                task-level fallback applies only to the top-level requestDuration.
+                """,
             example = "612"
         )
         @PluginProperty(group = "execution")

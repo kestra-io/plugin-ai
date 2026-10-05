@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 
@@ -883,16 +884,21 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 );
             }
 
+            long fallbackStart = System.nanoTime();
             Result<AiMessage> completion = agent.build().invoke(rPrompt);
+            long fallbackDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - fallbackStart);
             logger.debug("Generated completion: {}", completion.content());
 
             // send metrics for token usage
             var tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
 
-            return AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
-                .outputFiles(gatherOutputFiles(runContext))
-                .build();
+            var outputBuilder = AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
+                .outputFiles(gatherOutputFiles(runContext));
+            if (completion.finalResponse().id() == null) {
+                outputBuilder.requestDuration(fallbackDuration);
+            }
+            return outputBuilder.build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
             return buildGuardrailViolationOutput(e, logger);
         } finally {
