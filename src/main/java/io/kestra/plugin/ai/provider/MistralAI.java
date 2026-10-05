@@ -77,7 +77,11 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class MistralAI extends ModelProvider {
 
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Mistral AI API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('MISTRAL_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;

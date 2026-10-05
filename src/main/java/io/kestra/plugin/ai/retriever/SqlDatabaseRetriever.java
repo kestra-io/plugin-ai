@@ -14,6 +14,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ContentRetrieverProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
@@ -86,40 +87,72 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
         H2
     }
 
-    @Schema(title = "Type of database to connect to (PostgreSQL, MySQL, or H2)")
+    @Schema(
+        title = "Database type",
+        description = "Database engine to connect to: `POSTGRESQL`, `MYSQL` or `H2`. It selects the default JDBC driver when `driver` is not set. No default: this property is required.",
+        example = "POSTGRESQL"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<DatabaseType> databaseType;
 
-    @Schema(title = "JDBC connection URL to the target database")
+    @Schema(
+        title = "JDBC URL",
+        description = "JDBC connection URL of the database the model queries. It is passed straight to the connection pool, so it must be set for the retriever to connect, even though it is not enforced by validation. No default.",
+        example = "jdbc:postgresql://localhost:5432/mydb"
+    )
     @PluginProperty(group = "connection")
     private Property<String> jdbcUrl;
 
-    @Schema(title = "Database username")
+    @Schema(
+        title = "Database username",
+        description = "User connecting to the database. Grant it read-only access, since the model generates the SQL that is executed. No default: this property is required.",
+        example = "postgres"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> username;
 
-    @Schema(title = "Database password")
+    @Schema(
+        title = "Database password",
+        description = "Password of the database user. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('POSTGRES_PASSWORD') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
-    @Schema(title = "Optional JDBC driver class name – automatically resolved if not provided.")
+    @Schema(
+        title = "JDBC driver class name",
+        description = "Fully qualified JDBC driver class, which must be on the classpath. Not set by default, in which case it is derived from `databaseType`: `org.postgresql.Driver`, `com.mysql.cj.jdbc.Driver` or `org.h2.Driver`.",
+        example = "org.postgresql.Driver"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> driver;
 
-    @Schema(title = "Maximum number of database connections in the pool")
+    @Schema(
+        title = "Maximum connection pool size",
+        description = "Maximum number of concurrent database connections held by the pool. Defaults to `2`.",
+        example = "2"
+    )
     @Builder.Default
     @PluginProperty(group = "execution")
     private Property<Integer> maxPoolSize = Property.ofValue(2);
 
-    @Schema(title = "Language model provider")
+    @Schema(
+        title = "Language model provider",
+        description = "Model provider used to translate the natural-language question into SQL. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.GoogleGemini\", apiKey: \"{{ secret('GEMINI_API_KEY') }}\", modelName: \"gemini-3.5-flash-lite\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
 
-    @Schema(title = "Language model configuration")
+    @Schema(
+        title = "Language model configuration",
+        description = "Chat model settings (temperature, response format, token limits, and so on) applied to the SQL-generating model. Defaults to an empty configuration, so the provider's own defaults apply.",
+        example = "{temperature: 0.1}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     @Builder.Default
@@ -158,7 +191,11 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
         config.setPoolName("SqlDatabaseRetrieverPool");
 
         DataSource dataSource = new HikariDataSource(config);
-        ChatModel chatModel = provider.chatModel(runContext, configuration);
+        ChatModel chatModel = TokenBudgetChatModel.wrap(
+            provider.chatModel(runContext, configuration),
+            runContext,
+            configuration
+        );
         runContext.metric(Counter.of("ai.provider.calls", 1, "provider", provider.getClass().getName()));
 
         return SqlDatabaseContentRetriever.builder()

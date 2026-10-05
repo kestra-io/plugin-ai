@@ -68,18 +68,27 @@ import lombok.experimental.SuperBuilder;
     }
 )
 public class CallTool extends AbstractMcpTask implements RunnableTask<CallTool.Output> {
-    @Schema(title = "Name of the tool to call")
+    @Schema(
+        title = "Tool name",
+        description = "Name of the MCP tool to invoke, as reported by the server. No default: this property is required.",
+        example = "get_current_time"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> tool;
 
-    @Schema(title = "Arguments passed to the tool")
+    @Schema(
+        title = "Tool arguments",
+        description = "Arguments passed to the tool, matching the input schema the server advertises. Not set by default (no argument).",
+        example = "{timezone: \"Europe/Paris\"}"
+    )
     @PluginProperty(group = "main")
     private Property<Map<String, Object>> arguments;
 
     @Schema(
         title = "Fail on tool error",
-        description = "Whether the task should fail when the MCP server reports the tool call as an error. When `false`, the error is instead reported in `errorMessage` and `isError`."
+        description = "If `true`, the task fails when the MCP server reports the tool call as an error. If `false`, the task succeeds and the failure is surfaced through the `isError` and `errorMessage` outputs instead. Defaults to `true`.",
+        example = "false"
     )
     @NotNull
     @Builder.Default
@@ -137,16 +146,32 @@ public class CallTool extends AbstractMcpTask implements RunnableTask<CallTool.O
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "Tool result", description = "The tool's text result.")
+        @Schema(
+            title = "Tool result",
+            description = "Text result returned by the tool.",
+            example = "The current time in Europe/Paris is 14:32."
+        )
         private final String result;
 
-        @Schema(title = "Structured content", description = "The tool's structured content, when the server returned one.")
+        @Schema(
+            title = "Structured content",
+            description = "Structured payload returned by the tool, present only when the server provided one alongside the text result.",
+            example = "{timezone: \"Europe/Paris\", time: \"14:32\"}"
+        )
         private final Object structuredContent;
 
-        @Schema(title = "Whether the tool call returned an error")
+        @Schema(
+            title = "Error flag",
+            description = "Whether the MCP server reported the tool call as an error. Only meaningful when `failOnToolError` is `false`, since the task fails otherwise.",
+            example = "false"
+        )
         private final Boolean isError;
 
-        @Schema(title = "Error message", description = "Populated only when `failOnToolError` is `false` and the call failed.")
+        @Schema(
+            title = "Error message",
+            description = "Message describing why the tool call failed. Populated only when `failOnToolError` is `false` and the call failed.",
+            example = "Unknown timezone: Europe/Paris2"
+        )
         private final String errorMessage;
     }
 }

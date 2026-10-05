@@ -67,8 +67,6 @@ const retrieverNames = computed<string[]>(() => {
     return all.map((r: any) => lastSegment(r?.type) ?? String(r)).filter(Boolean);
 });
 
-const firstRetrieverName = computed(() => retrieverNames.value[0]);
-
 const chatConfigRows = computed(() => {
     const cfg = taskConfig.value.configuration as Record<string, any> | undefined;
     if (!cfg) return [];
@@ -112,14 +110,22 @@ const guardrailsInfo = computed(() => {
 
 // ── Summary rows for compact node ────────────────────────────────────────────
 
+function overflowSummary(names: string[]): string | undefined {
+    if (names.length === 0) return undefined;
+    if (names.length === 1) return names[0];
+    return `${names[0]} +${names.length - 1}`;
+}
+
 const summaryRows = computed(() => {
     const rows: { label: string; value: string }[] = [
         { label: "Provider", value: provider.value ?? "—" },
         { label: "Model", value: modelName.value ?? "—" },
     ];
-    if (isRag.value && firstRetrieverName.value) {
-        rows.push({ label: "Retriever", value: firstRetrieverName.value });
-    }
+    const toolsSummary = overflowSummary(toolNames.value);
+    if (toolsSummary) rows.push({ label: "Tools", value: toolsSummary });
+    if (memoryType.value) rows.push({ label: "Memory", value: memoryType.value });
+    const retrieversSummary = overflowSummary(retrieverNames.value);
+    if (retrieversSummary) rows.push({ label: "Retrievers", value: retrieversSummary });
     return rows;
 });
 

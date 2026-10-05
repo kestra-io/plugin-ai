@@ -100,70 +100,124 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class DockerMcpClient extends AbstractMcpClient {
     @Schema(
-        title = "MCP client command, as a list of command parts",
-        description = "Arguments passed to the container entrypoint, e.g. `[\"/tmp\"]`. Each element is a separate command part."
+        title = "MCP server arguments",
+        description = "Arguments passed to the container entrypoint, each element a separate command part. Not set by default, in which case the image's own entrypoint arguments are used.",
+        example = "[\"/tmp\"]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<String>> command;
 
-    @Schema(title = "Environment variables")
+    @Schema(
+        title = "Environment variables",
+        description = "Environment variables set inside the container, typically to supply credentials to the MCP server. Not set by default.",
+        example = "{GITHUB_PERSONAL_ACCESS_TOKEN: \"{{ secret('GITHUB_TOKEN') }}\"}"
+    )
     @PluginProperty(group = "execution")
     private Property<Map<String, String>> env;
 
-    @Schema(title = "Container image")
+    @Schema(
+        title = "Container image",
+        description = "Docker image running the MCP server. No default: this property is required.",
+        example = "mcp/filesystem"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> image;
 
-    @Schema(title = "Whether to log events")
+    @Schema(
+        title = "Log events",
+        description = "If `true`, MCP protocol events exchanged with the container are logged. Defaults to `false`.",
+        example = "true"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
     private Property<Boolean> logEvents = Property.ofValue(false);
 
-    @Schema(title = "Docker host")
+    @Schema(
+        title = "Docker host",
+        description = "URI of the Docker daemon that runs the container. Not set by default, in which case the host is auto-detected from the worker environment.",
+        example = "unix:///var/run/docker.sock"
+    )
     @PluginProperty(group = "connection")
     private Property<String> dockerHost;
 
-    @Schema(title = "Docker configuration")
+    @Schema(
+        title = "Docker configuration",
+        description = "Docker client configuration as JSON, typically holding registry credentials. Not set by default, in which case the worker's Docker config is used.",
+        example = "{{ secret('DOCKER_CONFIG') }}"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> dockerConfig;
 
-    @Schema(title = "Docker context")
+    @Schema(
+        title = "Docker context",
+        description = "Name of the Docker CLI context selecting which daemon to talk to. Not set by default (the current context is used).",
+        example = "default"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> dockerContext;
 
-    @Schema(title = "Docker certificate path")
+    @Schema(
+        title = "Docker certificate path",
+        description = "Directory holding the TLS client certificates used to reach the Docker daemon. Not set by default.",
+        example = "/home/kestra/.docker/certs"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> dockerCertPath;
 
-    @Schema(title = "Whether Docker should verify TLS certificates")
+    @Schema(
+        title = "Verify Docker TLS certificates",
+        description = "If `true`, verify the Docker daemon's TLS certificate when connecting over TLS. Not set by default, in which case the Docker client default applies.",
+        example = "true"
+    )
     @PluginProperty(group = "advanced")
     private Property<Boolean> dockerTlsVerify;
 
-    @Schema(title = "Container registry email")
+    @Schema(
+        title = "Container registry email",
+        description = "Email associated with the container registry account, required by some private registries. Not set by default.",
+        example = "user@example.com"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> registryEmail;
 
-    @Schema(title = "Container registry password")
+    @Schema(
+        title = "Container registry password",
+        description = "Password or token used to pull the image from a private registry. Store it as a Kestra secret rather than inline. Not set by default (anonymous pull).",
+        example = "{{ secret('REGISTRY_PASSWORD') }}"
+    )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> registryPassword;
 
-    @Schema(title = "Container registry username")
+    @Schema(
+        title = "Container registry username",
+        description = "User authenticating against a private container registry. Not set by default (anonymous pull).",
+        example = "registry_user"
+    )
     @PluginProperty(group = "connection")
     private Property<String> registryUsername;
 
-    @Schema(title = "Container registry URL")
+    @Schema(
+        title = "Container registry URL",
+        description = "Registry the image is pulled from. Not set by default, in which case Docker Hub is used.",
+        example = "https://index.docker.io/v1/"
+    )
     @PluginProperty(group = "connection")
     private Property<String> registryUrl;
 
-    @Schema(title = "API version")
+    @Schema(
+        title = "Docker API version",
+        description = "Docker Engine API version used by the client. Not set by default, in which case the version is negotiated with the daemon.",
+        example = "1.44"
+    )
     @PluginProperty(group = "advanced")
     private Property<String> apiVersion;
 
     @Schema(
         title = "Volume binds",
-        description = "Docker volume binds in `host_path:container_path` format, e.g. `[\"{{ workingDir }}:/tmp\"]` to share the task working directory with the container."
+        description = "Host-to-container volume mounts in `host_path:container_path` form, used for example to share the task working directory with the MCP server. Not set by default (no mount).",
+        example = "[\"{{ workingDir }}:/tmp\"]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<String>> binds;

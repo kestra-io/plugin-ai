@@ -1,22 +1,22 @@
 plugins {
-    id 'io.kestra.gradle.repository-conventions' version '1.2.10'
-    id "io.kestra.gradle.plugin-doc-lint" version "1.2.10"
-    id 'io.kestra.gradle.spotless-conventions' version '1.2.10'
+    id 'io.kestra.gradle.repository-conventions' version '1.2.11'
+    id "io.kestra.gradle.plugin-doc-lint" version '1.2.11'
+    id 'io.kestra.gradle.spotless-conventions' version '1.2.11'
     id 'java-library'
     id "idea"
     id 'jacoco'
     id "com.gradleup.shadow" version "9.6.1"
     id 'signing'
-    id 'net.researchgate.release' version '3.1.0'
+    id 'net.researchgate.release' version '3.2.0'
     id "com.vanniktech.maven.publish" version "0.37.0"
-    id "io.kestra.gradle.inject-bom-versions" version "1.2.10"
+    id "io.kestra.gradle.inject-bom-versions" version '1.2.11'
     id 'com.github.node-gradle.node' version '7.1.0'
 }
 
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
-def langchain4jVersion = "1.20.0"
-def langchain4jBetaVersion = "1.19.0-beta29"
+def langchain4jVersion = "1.20.2"
+def langchain4jBetaVersion = "1.20.0-beta30"
 
 repositories {
     mavenLocal()
@@ -121,7 +121,7 @@ dependencies {
     // org.a2aproject.sdk 1.1.0.Final, whose generated grpc classes require a protobuf-java
     // version newer than the one Kestra's platform BOM enforces (3.25.8), which lacks the
     // RuntimeVersion gencode-check class and breaks A2AClient at runtime with NoClassDefFoundError.
-    def langchain4jAgenticVersion = "1.20.0-beta30"
+    def langchain4jAgenticVersion = "1.20.1-beta30"
     implementation "dev.langchain4j:langchain4j-agentic:${langchain4jAgenticVersion}"
     implementation "dev.langchain4j:langchain4j-agentic-a2a:${langchain4jAgenticVersion}"
 
@@ -174,7 +174,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.4"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.5"
 
     testImplementation 'org.testcontainers:testcontainers-ollama:2.0.5'
     testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'

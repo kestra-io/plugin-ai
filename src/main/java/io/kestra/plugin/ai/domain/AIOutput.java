@@ -35,59 +35,89 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Schema(
-        title = "LLM output for `TEXT` response format",
-        description = "The result of the LLM completion for response format of type `TEXT` (default), null otherwise."
+        title = "Text output",
+        description = "Text the model generated. Populated when the response format is `TEXT` (the default), and null otherwise.",
+        example = "The capital of France is Paris."
     )
     @PluginProperty(group = "destination")
     private String textOutput;
 
     @Schema(
-        title = "LLM output for `JSON` response format",
-        description = "The result of the LLM completion for response format of type `JSON`, null otherwise."
+        title = "JSON output",
+        description = "Structured object the model generated. Populated when the response format is `JSON`, and null otherwise.",
+        example = "{\"category\": \"BILLING\", \"priority\": \"HIGH\"}"
     )
     @PluginProperty(group = "destination")
     private Map<String, Object> jsonOutput;
 
-    @Schema(title = "Token usage")
+    @Schema(
+        title = "Token usage",
+        description = "Input, output and total tokens billed for the call, summed across every model call the task made, when the provider reports them.",
+        example = "{inputTokenCount: 320, outputTokenCount: 48, totalTokenCount: 368}"
+    )
     @PluginProperty(group = "advanced")
     private TokenUsage tokenUsage;
 
-    @Schema(title = "Finish reason")
+    @Schema(
+        title = "Finish reason",
+        description = "Why the model stopped generating, such as `STOP`, `LENGTH` or `CONTENT_FILTER`, when the provider reports it.",
+        example = "STOP"
+    )
     @PluginProperty(group = "advanced")
     private FinishReason finishReason;
 
-    @Schema(title = "Tool executions")
+    @Schema(
+        title = "Tool executions",
+        description = "Tools the model called while producing the answer, each with its arguments and result, in call order. Empty when no tool was used.",
+        example = "[{requestName: \"searchWeb\", requestArguments: {query: \"Kestra docs\"}, result: \"...\"}]"
+    )
     @PluginProperty(group = "advanced")
     private List<ToolExecution> toolExecutions;
 
-    @Schema(title = "Intermediate responses")
+    @Schema(
+        title = "Intermediate responses",
+        description = "Model responses produced at each step of the tool loop before the final answer, useful for debugging agent behavior.",
+        example = "[{completion: \"I should search the web first.\", finishReason: \"TOOL_EXECUTION\"}]"
+    )
     @PluginProperty(group = "advanced")
     private List<AIResponse> intermediateResponses;
 
-    @Schema(title = "Request duration in milliseconds")
+    @Schema(
+        title = "Request duration",
+        description = "Wall-clock time in milliseconds spent on the model calls made by this task.",
+        example = "1842"
+    )
     @PluginProperty(group = "execution")
     private Long requestDuration;
 
-    @Schema(title = "URIs of the generated files in Kestra's internal storage")
+    @Schema(
+        title = "Output file URIs",
+        description = "Kestra internal storage URIs of the files the task produced, keyed by file name.",
+        example = "{report.md: \"kestra:///company/team/agent/executions/abc123/tasks/agent/report.md\"}"
+    )
     @PluginProperty(additionalProperties = URI.class, group = "destination")
     private final Map<String, URI> outputFiles;
 
     @Schema(
-        title = "Model's Thinking Output",
-        description = """
-            Contains the model's internal reasoning or 'thinking' text, if the model supports it and 'returnThinking' is enabled.
-            This may include intermediate reasoning steps, such as chain-of-thought explanations. Null if thinking is not supported, not enabled, or not returned by the model."""
+        title = "Thinking output",
+        description = "The model's internal reasoning text, including chain-of-thought style intermediate steps. Populated only when the model supports thinking and `configuration.returnThinking` is enabled; null otherwise.",
+        example = "The user is asking about refunds, so I should check the policy document first."
     )
     @PluginProperty(group = "advanced")
     private final String thinking;
 
-    @Schema(title = "Content sources used during RAG retrieval")
+    @Schema(
+        title = "Content sources",
+        description = "Text segments the content retrievers injected into the context, with their metadata, so an answer can be traced back to the documents it came from. Empty when no retriever ran.",
+        example = "[{content: \"Refunds are accepted within 30 days.\", metadata: {source: \"policy.pdf\"}}]"
+    )
     @PluginProperty(group = "advanced")
     private final List<ContentSource> sources;
 
     @Schema(
         title = "Guardrail violated",
-        description = "True when an input or output guardrail expression evaluated to false. When true, `guardrailViolationMessage` contains the rule's configured message and no LLM output is available."
+        description = "Whether an input or output guardrail expression evaluated to `false`. When `true`, `guardrailViolationMessage` holds the rule's message and no LLM output is available. Defaults to `false`.",
+        example = "false"
     )
     @Builder.Default
     @PluginProperty(group = "advanced")
@@ -95,7 +125,8 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
     @Schema(
         title = "Guardrail violation message",
-        description = "The message from the first guardrail rule that failed. Null when no guardrail was violated."
+        description = "Message from the first guardrail rule that failed. Null when no guardrail was violated.",
+        example = "Response leaked confidential content."
     )
     @PluginProperty(group = "advanced")
     private final String guardrailViolationMessage;
@@ -148,16 +179,32 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Builder
     @Getter
     public static class ToolExecution {
-        @Schema(title = "Request ID", description = "Identifier of the tool execution request.")
+        @Schema(
+            title = "Request ID",
+            description = "Identifier the model assigned to this tool execution request.",
+            example = "call_a1b2c3d4"
+        )
         private String requestId;
 
-        @Schema(title = "Request name", description = "Name of the tool that was invoked.")
+        @Schema(
+            title = "Request name",
+            description = "Name of the tool the model invoked.",
+            example = "searchWeb"
+        )
         private String requestName;
 
-        @Schema(title = "Request arguments", description = "Arguments passed to the tool, parsed from the model's request.")
+        @Schema(
+            title = "Request arguments",
+            description = "Arguments the model passed to the tool, parsed from its request.",
+            example = "{query: \"Kestra documentation\"}"
+        )
         private Map<String, Object> requestArguments;
 
-        @Schema(title = "Result", description = "Result returned by the tool execution.")
+        @Schema(
+            title = "Result",
+            description = "Value the tool returned, which is fed back to the model.",
+            example = "Kestra is an open-source orchestration platform."
+        )
         private String result;
 
         public static ToolExecution from(dev.langchain4j.service.tool.ToolExecution toolExecution) throws JsonProcessingException {
@@ -175,14 +222,16 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     public static class ContentSource {
         @Schema(
             title = "Extracted text segment",
-            description = "A snippet of text relevant to the user's query, typically a sentence, paragraph, or other discrete unit of text."
+            description = "Snippet of retrieved text relevant to the query, typically a sentence or paragraph.",
+            example = "Refunds are accepted within 30 days of purchase."
         )
         @PluginProperty(group = "advanced")
         private String content;
 
         @Schema(
             title = "Source metadata",
-            description = "Key-value pairs providing context about the origin of the content, such as URLs, document titles, or other relevant attributes."
+            description = "Context about where the retrieved content came from, such as a URL, document title or file name.",
+            example = "{source: \"policy.pdf\", page: 4}"
         )
         @PluginProperty(group = "advanced")
         private Map<String, Object> metadata;
@@ -203,27 +252,51 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @Getter
     @Builder
     public static class AIResponse {
-        @Schema(title = "Response identifier")
+        @Schema(
+            title = "Response identifier",
+            description = "Identifier the provider assigned to this intermediate response.",
+            example = "chatcmpl-a1b2c3d4"
+        )
         @PluginProperty(group = "advanced")
         private String id;
 
-        @Schema(title = "Generated text completion", description = "The result of the text completion")
+        @Schema(
+            title = "Generated text completion",
+            description = "Text the model generated at this step of the tool loop.",
+            example = "I should search the web before answering."
+        )
         @PluginProperty(group = "advanced")
         private String completion;
 
-        @Schema(title = "Token usage")
+        @Schema(
+            title = "Token usage",
+            description = "Input, output and total tokens billed for this individual model call, when the provider reports them.",
+            example = "{inputTokenCount: 120, outputTokenCount: 18, totalTokenCount: 138}"
+        )
         @PluginProperty(group = "advanced")
         private TokenUsage tokenUsage;
 
-        @Schema(title = "Finish reason")
+        @Schema(
+            title = "Finish reason",
+            description = "Why the model stopped generating at this step, such as `STOP`, `LENGTH` or `TOOL_EXECUTION`, when the provider reports it.",
+            example = "TOOL_EXECUTION"
+        )
         @PluginProperty(group = "advanced")
         private FinishReason finishReason;
 
-        @Schema(title = "Tool execution requests")
+        @Schema(
+            title = "Tool execution requests",
+            description = "Tool calls the model asked for at this step, before they were executed.",
+            example = "[{id: \"call_a1b2c3d4\", name: \"searchWeb\", arguments: {query: \"Kestra docs\"}}]"
+        )
         @PluginProperty(group = "advanced")
         private List<ToolExecutionRequest> toolExecutionRequests;
 
-        @Schema(title = "Request duration in milliseconds")
+        @Schema(
+            title = "Request duration",
+            description = "Wall-clock time in milliseconds spent on this individual model call.",
+            example = "612"
+        )
         @PluginProperty(group = "execution")
         private Long requestDuration;
 
@@ -245,15 +318,27 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
         @Getter
         @Builder
         public static class ToolExecutionRequest {
-            @Schema(title = "Tool execution request identifier")
+            @Schema(
+                title = "Tool execution request identifier",
+                description = "Identifier the model assigned to this tool call, used to match it with its result.",
+                example = "call_a1b2c3d4"
+            )
             @PluginProperty(group = "advanced")
             private String id;
 
-            @Schema(title = "Tool name")
+            @Schema(
+                title = "Tool name",
+                description = "Name of the tool the model asked to call.",
+                example = "searchWeb"
+            )
             @PluginProperty(group = "advanced")
             private String name;
 
-            @Schema(title = "Tool request arguments")
+            @Schema(
+                title = "Tool request arguments",
+                description = "Arguments the model supplied for the tool call.",
+                example = "{query: \"Kestra documentation\"}"
+            )
             @PluginProperty(group = "advanced")
             private Map<String, Object> arguments;
 
