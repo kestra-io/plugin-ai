@@ -8,8 +8,6 @@ const attrs = useAttrs();
 const isFullView = computed(() => attrs.displayMode === "full");
 
 const taskId = computed(() => props.task?.id as string | undefined);
-const taskType = computed(() => props.task?.type as string | undefined);
-const isRag = computed(() => taskType.value?.includes(".rag.") ?? false);
 
 // ── Task-level config ────────────────────────────────────────────────────────
 
@@ -22,14 +20,14 @@ function lastSegment(typeStr: string | undefined): string | undefined {
 // so props.task is already the complete task definition — no need to fetch it separately.
 const taskConfig = computed<Record<string, any>>(() => (props.task as any) ?? {});
 
+const activeProvider = computed(() => taskConfig.value.chatProvider ?? taskConfig.value.provider);
+
 const provider = computed(() => {
-    const p = taskConfig.value[isRag.value ? "chatProvider" : "provider"];
-    return lastSegment(p?.type);
+    return lastSegment(activeProvider.value?.type);
 });
 
 const rawModelName = computed(() => {
-    const key = isRag.value ? "chatProvider" : "provider";
-    return taskConfig.value[key]?.modelName as string | undefined;
+    return activeProvider.value?.modelName as string | undefined;
 });
 
 const rawSystemMessage = computed(() =>
