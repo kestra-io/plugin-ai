@@ -108,7 +108,7 @@ dependencies {
     // via an "endpoint" SSE event) with no replacement - StreamableHttpMcpTransport only speaks
     // the modern Streamable HTTP protocol (direct POST), so it 404s against legacy SSE-only
     // servers such as mcp/everything's sse.js.
-    def langchain4jMcpVersion = "1.13.0-beta23"
+    def langchain4jMcpVersion = "1.19.2-beta29"
     implementation "dev.langchain4j:langchain4j-mcp:${langchain4jMcpVersion}"
     implementation "dev.langchain4j:langchain4j-mcp-docker:${langchain4jMcpVersion}"
 
