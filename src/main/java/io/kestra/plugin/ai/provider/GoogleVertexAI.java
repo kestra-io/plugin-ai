@@ -75,17 +75,29 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.provider.GoogleVertexAI"
 )
 public class GoogleVertexAI extends ModelProvider {
-    @Schema(title = "Endpoint URL")
+    @Schema(
+        title = "Endpoint URL",
+        description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location`. Must not be set for chat models, which always use Gemini.",
+        example = "us-central1-aiplatform.googleapis.com:443"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> endpoint;
 
-    @Schema(title = "Project location")
+    @Schema(
+        title = "Project location",
+        description = "Google Cloud region hosting the Vertex AI model. No default: this property is required for chat models.",
+        example = "us-central1"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> location;
 
-    @Schema(title = "Project ID")
+    @Schema(
+        title = "Project ID",
+        description = "Google Cloud project ID that owns the Vertex AI resources. No default: this property is required.",
+        example = "my-gcp-project"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> project;

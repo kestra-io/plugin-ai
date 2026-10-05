@@ -73,7 +73,8 @@ public class A2AClient extends ToolProvider {
 
     @Schema(
         title = "Agent name",
-        description = "It must be set to a different value than the default in case you want to have multiple agents used as tools in the same task."
+        description = "Name the LLM sees for this tool. Defaults to `tool`, so it must be set to a distinct value when several agents are used as tools in the same task.",
+        example = "weather-agent"
     )
     @NotNull
     @Builder.Default
@@ -82,13 +83,18 @@ public class A2AClient extends ToolProvider {
 
     @Schema(
         title = "Agent description",
-        description = "The description will be used to instruct the LLM what the tool is doing."
+        description = "Natural-language summary of what the remote agent does, used by the LLM to decide when to call it. No default: this property is required.",
+        example = "Answers questions about the weather in a given city."
     )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> description;
 
-    @Schema(title = "Server URL", description = "The URL of the remote agent A2A server")
+    @Schema(
+        title = "Server URL",
+        description = "Base URL of the remote agent's A2A server. No default: this property is required.",
+        example = "http://localhost:10001"
+    )
     @NotNull
     @PluginProperty(group = "main")
     protected Property<String> serverUrl;

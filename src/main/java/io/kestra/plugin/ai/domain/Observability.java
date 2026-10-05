@@ -27,61 +27,83 @@ import io.kestra.core.models.annotations.PluginProperty;
     description = "Observability export settings for AI tasks. Payload capture is disabled by default for security."
 )
 public abstract class Observability extends AdditionalPlugin {
-    @Schema(title = "Service name")
+    @Schema(
+        title = "Service name",
+        description = "Value reported as the OpenTelemetry `service.name` resource attribute, used to group traces in the observability backend. Defaults to `kestra-plugin-ai`.",
+        example = "kestra-plugin-ai"
+    )
     @PluginProperty(group = "advanced")
     protected Property<String> serviceName;
 
-    @Schema(title = "Environment")
+    @Schema(
+        title = "Environment",
+        description = "Deployment environment tagged on the exported traces, so production and staging traffic can be told apart. Not set by default.",
+        example = "production"
+    )
     @PluginProperty(group = "advanced")
     protected Property<String> environment;
 
-    @Schema(title = "Release")
+    @Schema(
+        title = "Release",
+        description = "Application version or release tagged on the exported traces, which helps correlate behavior changes with deployments. Not set by default.",
+        example = "1.4.2"
+    )
     @PluginProperty(group = "advanced")
     protected Property<String> release;
 
     @Schema(
         title = "Capture prompt",
-        description = "If true, prompt content is sent to the observability provider under input attributes. Disabled by default."
+        description = "If `true`, prompt content is exported under the span's input attributes. Defaults to `false`, since prompts may carry sensitive data.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     protected Property<Boolean> capturePrompt;
 
     @Schema(
         title = "Capture system message",
-        description = "If true, system message content is sent in metadata. Disabled by default."
+        description = "If `true`, the system message is exported in the span metadata. Defaults to `false`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     protected Property<Boolean> captureSystemMessage;
 
     @Schema(
         title = "Capture output",
-        description = "If true, model output content is sent to the observability provider under output attributes. Disabled by default."
+        description = "If `true`, model output is exported under the span's output attributes. Defaults to `false`, since responses may carry sensitive data.",
+        example = "true"
     )
     @PluginProperty(group = "destination")
     protected Property<Boolean> captureOutput;
 
     @Schema(
         title = "Capture tool arguments",
-        description = "If true, tool arguments are sent in tool execution events. Disabled by default."
+        description = "If `true`, the arguments passed to each tool are exported in tool execution events. Defaults to `false`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     protected Property<Boolean> captureToolArguments;
 
     @Schema(
         title = "Capture tool results",
-        description = "If true, tool results are sent in tool execution events. Disabled by default."
+        description = "If `true`, the value each tool returned is exported in tool execution events. Defaults to `false`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     protected Property<Boolean> captureToolResults;
 
     @Schema(
         title = "Maximum payload characters",
-        description = "Maximum number of characters sent for any captured payload field. Longer values are truncated."
+        description = "Length cap applied to every captured payload field, beyond which the value is truncated. Defaults to `2000`; a value of `0` or less falls back to that default.",
+        example = "2000"
     )
     @PluginProperty(group = "execution")
     protected Property<Integer> maxPayloadChars;
 
-    @Schema(title = "Export timeout", description = "Timeout used for forceFlush and shutdown operations.")
+    @Schema(
+        title = "Export timeout",
+        description = "Time allowed for the OpenTelemetry exporter's flush and shutdown operations before giving up. Defaults to `PT5S`; a zero or negative value falls back to that default.",
+        example = "PT5S"
+    )
     @PluginProperty(group = "execution")
     protected Property<Duration> exportTimeout;
 }

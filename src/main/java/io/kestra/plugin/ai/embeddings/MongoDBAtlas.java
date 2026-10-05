@@ -75,48 +75,88 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class MongoDBAtlas extends EmbeddingStoreProvider {
 
-    @Schema(title = "The username")
+    @Schema(
+        title = "Username",
+        description = "User connecting to the MongoDB Atlas cluster. Not set by default; omit it along with `password` for an unauthenticated connection.",
+        example = "atlas_user"
+    )
     @PluginProperty(group = "connection")
     private Property<String> username;
 
-    @Schema(title = "The password")
+    @Schema(
+        title = "Password",
+        description = "Password of the database user. Store it as a Kestra secret rather than inline. Not set by default; omit it along with `username` for an unauthenticated connection.",
+        example = "{{ secret('MONGODB_PASSWORD') }}"
+    )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
     @NotNull
-    @Schema(title = "The scheme (e.g., mongodb+srv)")
+    @Schema(
+        title = "Connection scheme",
+        description = "Scheme of the MongoDB connection string: `mongodb+srv` for Atlas clusters, `mongodb` for a direct connection. No default: this property is required.",
+        example = "mongodb+srv"
+    )
     @PluginProperty(group = "main")
     private Property<String> scheme;
 
     @NotNull
-    @Schema(title = "The host")
+    @Schema(
+        title = "Host",
+        description = "Hostname of the MongoDB cluster, optionally with a port for the `mongodb` scheme. No default: this property is required.",
+        example = "cluster0.abcde.mongodb.net"
+    )
     @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
-    @Schema(title = "The database", description = "Name of the database. Required.")
+    @Schema(
+        title = "Database name",
+        description = "Name of the database holding the embeddings collection. No default: this property is required.",
+        example = "vectordb"
+    )
     @PluginProperty(group = "connection")
     private Property<String> database;
 
-    @Schema(title = "The connection string options")
+    @Schema(
+        title = "Connection string options",
+        description = "Extra options appended to the MongoDB connection string as query parameters. Not set by default.",
+        example = "{retryWrites: \"true\", w: \"majority\"}"
+    )
     @PluginProperty(group = "advanced")
     private Property<Map<String, Object>> options;
 
     @NotNull
-    @Schema(title = "The collection name")
+    @Schema(
+        title = "Collection name",
+        description = "Collection that stores the embedding documents. No default: this property is required.",
+        example = "embeddings"
+    )
     @PluginProperty(group = "main")
     private Property<String> collectionName;
 
     @NotNull
-    @Schema(title = "The index name")
+    @Schema(
+        title = "Index name",
+        description = "Name of the Atlas Vector Search index used to query the collection. No default: this property is required.",
+        example = "vector_index"
+    )
     @PluginProperty(group = "main")
     private Property<String> indexName;
 
-    @Schema(title = "The metadata field names")
+    @Schema(
+        title = "Metadata field names",
+        description = "Metadata keys to map into the vector search index so they can be filtered on. Not set by default, in which case no metadata index mapping is created.",
+        example = "[\"source\", \"author\"]"
+    )
     @PluginProperty(group = "advanced")
     private Property<List<String>> metadataFieldNames;
 
-    @Schema(title = "Create the index")
+    @Schema(
+        title = "Create the index",
+        description = "If `true`, create the Atlas Vector Search index when it does not already exist. Defaults to `false`, which assumes the index is provisioned beforehand.",
+        example = "true"
+    )
     @PluginProperty(group = "advanced")
     private Property<Boolean> createIndex;
 

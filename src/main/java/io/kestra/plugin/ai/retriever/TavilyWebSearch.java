@@ -57,12 +57,20 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.retriever.TavilyWebSearch"
 )
 public class TavilyWebSearch extends ContentRetrieverProvider {
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Tavily API key used to authenticate search requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('TAVILY_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
-    @Schema(title = "Maximum number of results to return")
+    @Schema(
+        title = "Maximum results",
+        description = "Number of search results retrieved for each query. Defaults to `3`.",
+        example = "5"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")

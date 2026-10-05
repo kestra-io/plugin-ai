@@ -55,28 +55,35 @@ import io.kestra.core.models.annotations.PluginProperty;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class ModelProvider extends AdditionalPlugin {
-    @Schema(title = "Model name")
+    @Schema(
+        title = "Model name",
+        description = "Identifier of the model to call, as named by the provider. Valid values depend on the provider and on whether the model is used for chat, embeddings, or image generation; see the provider's model catalog. No default: this property is required.",
+        example = "gpt-5-mini"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> modelName;
 
     @Schema(
         title = "Base URL",
-        description = "Custom base URL to override the default endpoint (useful for local tests, WireMock, or enterprise gateways)."
+        description = "Custom base URL overriding the provider's default endpoint. Useful for enterprise gateways, proxies, self-hosted deployments, or test doubles such as WireMock. Defaults to the provider's public endpoint.",
+        example = "https://my-gateway.internal/v1"
     )
     @PluginProperty(group = "connection")
     protected Property<String> baseUrl;
 
     @Schema(
         title = "Client PEM certificate content",
-        description = "PEM client certificate as text, used to authenticate the connection to enterprise AI endpoints."
+        description = "PEM-encoded client certificate and private key, as text, used for mutual-TLS authentication against enterprise AI endpoints. Not set by default, in which case the default HTTP client is used.",
+        example = "{{ secret('AI_CLIENT_PEM') }}"
     )
     @PluginProperty(group = "advanced")
     private Property<String> clientPem;
 
     @Schema(
         title = "CA PEM certificate content",
-        description = "CA certificate as text, used to verify SSL/TLS connections when using custom endpoints."
+        description = "PEM-encoded certificate authority chain, as text, used to verify the TLS certificate presented by a custom endpoint. Not set by default, in which case the JVM's default trust store is used.",
+        example = "{{ secret('AI_CA_PEM') }}"
     )
     @PluginProperty(group = "advanced")
     private Property<String> caPem;

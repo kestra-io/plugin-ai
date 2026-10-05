@@ -28,27 +28,37 @@ import io.kestra.core.models.annotations.PluginProperty;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class MemoryProvider extends AdditionalPlugin {
-    @Schema(title = "Maximum number of messages to keep in memory. If memory is full, the oldest messages will be removed in a FIFO manner. The last system message is always kept.")
+    @Schema(
+        title = "Maximum messages in memory",
+        description = "Number of chat messages retained in memory. When the limit is reached, the oldest messages are evicted first (FIFO); the last system message is always kept. Defaults to `10`.",
+        example = "20"
+    )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<Integer> messages = Property.ofValue(10);
 
-    @Schema(title = "Memory duration - defaults to 1h")
+    @Schema(
+        title = "Memory duration",
+        description = "How long the memory is retained before it expires. Defaults to `PT1H` (one hour).",
+        example = "PT1H"
+    )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<Duration> ttl = Property.ofValue(Duration.ofHours(1));
 
-    @Schema(title = "Memory ID - defaults to the value of the `system.correlationId` label. This means that a memory is valid for the entire flow execution including its subflows.")
+    @Schema(
+        title = "Memory ID",
+        description = "Identifier under which the conversation is stored, so that different runs or users can keep separate histories. Defaults to the `system.correlationId` label, which makes one memory span an entire flow execution including its subflows.",
+        example = "{{ labels.system.correlationId }}"
+    )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<String> memoryId = Property.ofExpression("{{ labels.system.correlationId }}");
 
     @Schema(
-        title = "Drop memory: never, before, or after the agent's task run",
-        description = """
-            By default, the memory ID is the value of the `system.correlationId` label, meaning that the same memory will be used by all tasks of the flow and its subflows.
-            If you want to remove the memory eagerly (before expiration), you can set `drop: AFTER_TASKRUN` to erase the memory after the taskrun.
-            You can also set `drop: BEFORE_TASKRUN` to drop the memory before the taskrun."""
+        title = "When to drop the memory",
+        description = "Controls when the stored conversation is erased, rather than waiting for `ttl` to expire. `NEVER` (default) keeps it until expiry, `BEFORE_TASKRUN` clears it before the task runs, and `AFTER_TASKRUN` clears it once the task run completes.",
+        example = "AFTER_TASKRUN"
     )
     @Builder.Default
     @PluginProperty(group = "advanced")

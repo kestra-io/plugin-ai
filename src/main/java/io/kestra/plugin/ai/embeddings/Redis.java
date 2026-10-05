@@ -63,16 +63,28 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class Redis extends EmbeddingStoreProvider {
 
     @NotNull
-    @Schema(title = "The database server host")
+    @Schema(
+        title = "Database server host",
+        description = "Hostname or IP address of the Redis server (Redis Stack, with the search module enabled). No default: this property is required.",
+        example = "localhost"
+    )
     @PluginProperty(group = "main")
     private Property<String> host;
 
     @NotNull
-    @Schema(title = "The database server port")
+    @Schema(
+        title = "Database server port",
+        description = "TCP port the Redis server listens on. No default: this property is required.",
+        example = "6379"
+    )
     @PluginProperty(group = "main")
     private Property<Integer> port;
 
-    @Schema(title = "The index name")
+    @Schema(
+        title = "Index name",
+        description = "Name of the Redis search index that stores the embeddings. Defaults to `embedding-index`.",
+        example = "embedding-index"
+    )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<String> indexName = Property.ofValue("embedding-index");

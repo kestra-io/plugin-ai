@@ -76,18 +76,19 @@ public class DashScope extends ModelProvider {
     private static final String DASHSCOPE_BASE_URL = ZoneId.systemDefault().equals(ZoneId.of("Asia/Shanghai"))
         ? DASHSCOPE_CN_URL
         : DASHSCOPE_INTL_URL;
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Alibaba Cloud DashScope API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('DASHSCOPE_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
     @Schema(
         title = "API base URL",
-        description = """
-                If you use a model in the China (Beijing) region, you need to replace the URL with `https://dashscope.aliyuncs.com/api/v1`,
-                otherwise use the Singapore region of `https://dashscope-intl.aliyuncs.com/api/v1`.
-                The default value is computed based on the system timezone.
-            """
+        description = "Base URL of the DashScope API. Use `https://dashscope.aliyuncs.com/api/v1` for the China (Beijing) region and `https://dashscope-intl.aliyuncs.com/api/v1` for the Singapore region. Defaults to the region inferred from the worker's system timezone.",
+        example = "https://dashscope-intl.aliyuncs.com/api/v1"
     )
     @NotNull
     @Builder.Default
@@ -95,22 +96,26 @@ public class DashScope extends ModelProvider {
     private Property<String> baseUrl = Property.ofValue(DASHSCOPE_BASE_URL);
 
     @Schema(
-        title = "Repetition in a continuous sequence during model generation",
-        description = """
-                Increasing repetition_penalty reduces the repetition in model generation,
-                1.0 means no penalty. Value range: (0, +inf)
-            """
+        title = "Repetition penalty",
+        description = "Penalty applied to repeated sequences during generation. Higher values reduce repetition; `1.0` means no penalty. Valid range is (0, +inf). Not set by default, in which case the DashScope default applies.",
+        example = "1.1"
     )
     @PluginProperty(group = "advanced")
     private Property<Float> repetitionPenalty;
 
     @Schema(
-        title = "Whether the model uses Internet search results for reference when generating text or not"
+        title = "Enable Internet search",
+        description = "If `true`, the model may use Internet search results as reference when generating text. Defaults to `false`.",
+        example = "true"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> enableSearch;
 
-    @Schema(title = "The maximum number of tokens returned by this request")
+    @Schema(
+        title = "Maximum output tokens",
+        description = "Maximum number of tokens returned by a single request. Not set by default, in which case the DashScope default applies.",
+        example = "1024"
+    )
     @PluginProperty(group = "execution")
     private Property<Integer> maxTokens;
 

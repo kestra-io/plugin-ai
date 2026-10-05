@@ -56,7 +56,11 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class DeepSeek extends OpenAICompliantProvider {
     private static final String BASE_URL = "https://api.deepseek.com/v1";
 
-    @Schema(title = "API base URL")
+    @Schema(
+        title = "API base URL",
+        description = "Base URL of the DeepSeek OpenAI-compatible API. Defaults to `https://api.deepseek.com/v1`.",
+        example = "https://api.deepseek.com/v1"
+    )
     @Builder.Default
     @PluginProperty(group = "connection")
     private Property<String> baseUrl = Property.ofValue(BASE_URL);

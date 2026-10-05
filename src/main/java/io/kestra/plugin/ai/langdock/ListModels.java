@@ -85,7 +85,11 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
     private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
     private static final int TRUNCATED_BODY_LENGTH = 500;
 
-    @Schema(title = "API Key")
+    @Schema(
+        title = "API Key",
+        description = "Langdock API key used to authenticate the request. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('LANGDOCK_API_KEY') }}"
+    )
     @NotNull
     @PluginProperty(secret = true, group = "main")
     @ToString.Exclude
@@ -93,7 +97,8 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
 
     @Schema(
         title = "Model family",
-        description = "Which Langdock Completion API route to list models from: `OPENAI` (default) or `ANTHROPIC`."
+        description = "Langdock Completion API route whose models are listed: `OPENAI` or `ANTHROPIC`. Defaults to `OPENAI`.",
+        example = "ANTHROPIC"
     )
     @Builder.Default
     @PluginProperty(group = "main")
@@ -101,7 +106,8 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
 
     @Schema(
         title = "Region",
-        description = "The Langdock region to list models from. Ignored when a dedicated-deployment `baseUrl` is set."
+        description = "Langdock region the models are listed from: `EU` or `US`. Defaults to `EU`. Ignored when `baseUrl` points at a dedicated deployment.",
+        example = "EU"
     )
     @Builder.Default
     @PluginProperty(group = "connection")
@@ -109,7 +115,8 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
 
     @Schema(
         title = "Base URL",
-        description = "Custom base URL to override the default endpoint (useful for local tests, WireMock, or dedicated deployments)."
+        description = "Custom base URL overriding the default Langdock endpoint, for dedicated deployments, proxies, or test doubles such as WireMock. Not set by default, in which case the URL is derived from `region`.",
+        example = "https://api.langdock.com/anthropic/eu/v1"
     )
     @PluginProperty(group = "connection")
     private Property<String> baseUrl;
@@ -253,26 +260,50 @@ public class ListModels extends Task implements RunnableTask<ListModels.Output> 
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "Models", description = "The models available on the selected Langdock route.")
+        @Schema(
+            title = "Models",
+            description = "Models available on the selected Langdock route.",
+            example = "[{id: \"gpt-5-mini\", ownedBy: \"openai\"}]"
+        )
         private List<Model> models;
 
-        @Schema(title = "Count", description = "The number of models returned.")
+        @Schema(
+            title = "Count",
+            description = "Number of models returned.",
+            example = "12"
+        )
         private Integer count;
     }
 
     @Builder
     @Getter
     public static class Model {
-        @Schema(title = "Model ID", description = "The model identifier to use as `modelName` on the Langdock provider.")
+        @Schema(
+            title = "Model ID",
+            description = "Model identifier, to pass as `modelName` on the Langdock provider.",
+            example = "gpt-5-mini"
+        )
         private String id;
 
-        @Schema(title = "Display name", description = "Human-readable model name, when provided by the Anthropic route.")
+        @Schema(
+            title = "Display name",
+            description = "Human-readable model name. Returned only by the Anthropic route.",
+            example = "Claude Sonnet 4.5"
+        )
         private String displayName;
 
-        @Schema(title = "Created at", description = "Model creation timestamp, when provided by the API.")
+        @Schema(
+            title = "Created at",
+            description = "Timestamp at which the model was published, when the API reports it.",
+            example = "2026-02-19T00:00:00Z"
+        )
         private Instant createdAt;
 
-        @Schema(title = "Owned by", description = "The organization that owns the model, when provided by the OpenAI route.")
+        @Schema(
+            title = "Owned by",
+            description = "Organization that owns the model. Returned only by the OpenAI route.",
+            example = "openai"
+        )
         private String ownedBy;
     }
 }

@@ -69,61 +69,77 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class MariaDB extends EmbeddingStoreProvider {
 
     @NotNull
-    @Schema(title = "The username")
+    @Schema(
+        title = "Username",
+        description = "User connecting to the MariaDB database. No default: this property is required.",
+        example = "mariadb_user"
+    )
     @PluginProperty(group = "main")
     private Property<String> username;
     @NotNull
-    @Schema(title = "The password")
+    @Schema(
+        title = "Password",
+        description = "Password of the database user. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('MARIADB_PASSWORD') }}"
+    )
     @PluginProperty(secret = true, group = "main")
     private Property<String> password;
 
     @NotNull
-    @Schema(title = "Database URL of the MariaDB database (e.g., jdbc:mariadb://host:port/dbname)")
+    @Schema(
+        title = "Database URL",
+        description = "JDBC URL of the MariaDB database holding the embeddings. No default: this property is required.",
+        example = "jdbc:mariadb://localhost:3306/vectordb"
+    )
     @PluginProperty(group = "main")
     private Property<String> databaseUrl;
     @NotNull
-    @Schema(title = "Whether to create the table if it doesn't exist")
+    @Schema(
+        title = "Create table if missing",
+        description = "If `true`, the embeddings table is created when it does not already exist. Defaults to `false`.",
+        example = "true"
+    )
     @PluginProperty(group = "main")
     private Property<Boolean> createTable;
 
     @NotNull
-    @Schema(title = "Name of the table where embeddings will be stored")
+    @Schema(
+        title = "Table name",
+        description = "Name of the table where embeddings are stored. No default: this property is required.",
+        example = "embeddings"
+    )
     @PluginProperty(group = "main")
     private Property<String> tableName;
 
     @NotNull
-    @Schema(title = "Name of the column used as the unique ID in the database")
+    @Schema(
+        title = "ID column name",
+        description = "Name of the column used as the unique identifier of each embedding. Defaults to an empty value, which lets the MariaDB store use its own column name.",
+        example = "embedding_id"
+    )
     @PluginProperty(group = "main")
     private Property<String> fieldName;
 
     @Schema(
-        title = "Metadata Column Definitions",
-        description = """
-              List of SQL column definitions for metadata fields (e.g., 'text TEXT', 'source TEXT').
-              Required only when using COLUMN_PER_KEY storage mode.
-            """
+        title = "Metadata column definitions",
+        description = "SQL column definitions for metadata fields, one per metadata key. Required only when `metadataStorageMode` is `COLUMN_PER_KEY`. Not set by default.",
+        example = "[\"text TEXT NULL\", \"source TEXT NULL\"]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<String>> columnDefinitions;
 
     @Schema(
-        title = "Metadata Index Definitions",
-        description = """
-             List of SQL index definitions for metadata columns (e.g., 'INDEX idx_text (text)').
-             Used only with COLUMN_PER_KEY storage mode.
-            """
+        title = "Metadata index definitions",
+        description = "SQL index definitions for the metadata columns. Used only when `metadataStorageMode` is `COLUMN_PER_KEY`. Not set by default (no extra index).",
+        example = "[\"source\"]"
     )
     @PluginProperty(group = "advanced")
     private Property<List<String>> indexes;
 
     @Schema(
-        title = "Metadata Storage Mode",
-        description = """
-              Determines how metadata is stored:
-                - COLUMN_PER_KEY (default): Use individual columns for each metadata field (requires columnDefinitions and indexes).
-                - COMBINED_JSON: Store metadata as a JSON object in a single column.
-              If columnDefinitions and indexes are provided, COLUMN_PER_KEY must be used.
-            """
+        title = "Metadata storage mode",
+        description = "How document metadata is persisted. `COLUMN_PER_KEY` stores each metadata key in its own column and requires `columnDefinitions` and `indexes`; `COMBINED_JSON` stores all metadata as a single JSON column. Defaults to `COLUMN_PER_KEY`.",
+        example = "COMBINED_JSON"
     )
     @Builder.Default
     @PluginProperty(group = "advanced")

@@ -67,7 +67,8 @@ public class Milvus extends EmbeddingStoreProvider {
 
     @Schema(
         title = "Token",
-        description = "Milvus auth token. Required."
+        description = "Milvus authentication token. Store it as a Kestra secret rather than inline. No default: this property is required.",
+        example = "{{ secret('MILVUS_TOKEN') }}"
     )
     @NotNull
     @PluginProperty(secret = true, group = "main")
@@ -75,124 +76,136 @@ public class Milvus extends EmbeddingStoreProvider {
 
     @Schema(
         title = "URI",
-        description = """
-            Connection URI. Use either `uri` OR `host`/`port` (not both).
-            Examples:
-            - gRPC (typical): "milvus://host:19530"
-            - HTTP: "http://host:9091"
-            """
+        description = "Full connection URI of the Milvus server, such as `milvus://host:19530` for gRPC or `http://host:9091` for HTTP. Set either this property or `host`/`port`, not both. Not set by default.",
+        example = "milvus://localhost:19530"
     )
     @PluginProperty(group = "advanced")
     private Property<String> uri;
 
     @Schema(
         title = "Host",
-        description = "Milvus host name (used when `uri` is not set). Default: \"localhost\"."
+        description = "Hostname of the Milvus server, used when `uri` is not set. Not set by default, in which case the Milvus client's own default applies.",
+        example = "localhost"
     )
     @PluginProperty(group = "connection")
     private Property<String> host;
 
     @Schema(
         title = "Port",
-        description = "Milvus port (used when `uri` is not set). Typical: 19530 (gRPC) or 9091 (HTTP). Default: 19530."
+        description = "Port of the Milvus server, used when `uri` is not set. Typically `19530` for gRPC or `9091` for HTTP. Not set by default, in which case the Milvus client's own default applies.",
+        example = "19530"
     )
     @PluginProperty(group = "connection")
     private Property<Integer> port;
 
     @Schema(
         title = "Username",
-        description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
+        description = "User authenticating against Milvus. Required only when authentication or TLS is enabled; see https://milvus.io/docs/authenticate.md. Not set by default.",
+        example = "root"
     )
     @PluginProperty(group = "connection")
     private Property<String> username;
 
     @Schema(
         title = "Password",
-        description = "Required when authentication/TLS is enabled. See https://milvus.io/docs/authenticate.md"
+        description = "Password of the Milvus user. Required only when authentication or TLS is enabled. Store it as a Kestra secret rather than inline. Not set by default.",
+        example = "{{ secret('MILVUS_PASSWORD') }}"
     )
     @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
     @Schema(
         title = "Collection name",
-        description = "Target collection. Created automatically if it does not exist. Default: \"default\"."
+        description = "Collection that stores the embeddings. Not set by default, in which case the Milvus client's own default collection name applies.",
+        example = "my-documents"
     )
     @PluginProperty(group = "advanced")
     private Property<String> collectionName;
 
     @Schema(
         title = "Consistency level",
-        description = "Read/write consistency level. Common values include STRONG, BOUNDED, or EVENTUALLY (depends on client/version)."
+        description = "Read/write consistency level applied to the collection: `STRONG`, `BOUNDED`, `SESSION` or `EVENTUALLY`. Defaults to `EVENTUALLY`.",
+        example = "EVENTUALLY"
     )
     @PluginProperty(group = "advanced")
     private Property<String> consistencyLevel;
 
     @Schema(
         title = "Index type",
-        description = "Vector index type (e.g., IVF_FLAT, IVF_SQ8, HNSW). Depends on Milvus deployment and dataset."
+        description = "Vector index built on the collection, such as `FLAT`, `IVF_FLAT`, `IVF_SQ8`, `HNSW`, `DISKANN` or `AUTOINDEX`. The best choice depends on the deployment and dataset size. Defaults to `FLAT`.",
+        example = "FLAT"
     )
     @PluginProperty(group = "advanced")
     private Property<String> indexType;
 
     @Schema(
         title = "Metric type",
-        description = "Similarity metric (e.g., L2, IP, COSINE). Should match the embedding provider’s expected metric."
+        description = "Similarity metric used to compare vectors: `L2`, `IP`, `COSINE`, `HAMMING` or `JACCARD`. It should match the metric the embedding model was trained for. Defaults to `COSINE`.",
+        example = "COSINE"
     )
     @PluginProperty(group = "advanced")
     private Property<String> metricType;
 
     @Schema(
         title = "Retrieve embeddings on search",
-        description = "If true, return stored embeddings along with matches. Default: false."
+        description = "If `true`, search results also carry the stored embedding vectors. Defaults to `false`.",
+        example = "false"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> retrieveEmbeddingsOnSearch;
 
     @Schema(
         title = "Database name",
-        description = "Logical database to use. If not provided, the default database is used."
+        description = "Logical Milvus database holding the collection. Not set by default, in which case the server's default database is used.",
+        example = "default"
     )
     @PluginProperty(group = "advanced")
     private Property<String> databaseName;
 
     @Schema(
         title = "Auto flush on insert",
-        description = "If true, flush after insert operations. Setting it to false can improve throughput."
+        description = "If `true`, flush the collection after every insert so new vectors are immediately searchable. Setting it to `false` improves ingestion throughput. Defaults to `false`.",
+        example = "false"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> autoFlushOnInsert;
 
     @Schema(
         title = "Auto flush on delete",
-        description = "If true, flush after delete operations."
+        description = "Intended to flush the collection after every delete. Note: this property currently has no effect, as it is not passed to the Milvus client when the store is built.",
+        example = "false"
     )
     @PluginProperty(group = "advanced")
     private Property<Boolean> autoFlushOnDelete;
 
     @Schema(
         title = "ID field name",
-        description = "Field name for document IDs. Default depends on collection schema."
+        description = "Collection field holding the document ID. Not set by default, in which case the collection schema's own field name is used.",
+        example = "id"
     )
     @PluginProperty(group = "advanced")
     private Property<String> idFieldName;
 
     @Schema(
         title = "Text field name",
-        description = "Field name for original text. Default depends on collection schema."
+        description = "Collection field holding the original text segment. Not set by default, in which case the collection schema's own field name is used.",
+        example = "text"
     )
     @PluginProperty(group = "advanced")
     private Property<String> textFieldName;
 
     @Schema(
         title = "Metadata field name",
-        description = "Field name for metadata. Default depends on collection schema."
+        description = "Collection field holding the document metadata. Not set by default, in which case the collection schema's own field name is used.",
+        example = "metadata"
     )
     @PluginProperty(group = "advanced")
     private Property<String> metadataFieldName;
 
     @Schema(
         title = "Vector field name",
-        description = "Field name for the embedding vector. Must match the index definition and embedding dimensionality."
+        description = "Collection field holding the embedding vector. It must match the index definition and the embedding dimensionality. Not set by default, in which case the collection schema's own field name is used.",
+        example = "vector"
     )
     @PluginProperty(group = "advanced")
     private Property<String> vectorFieldName;

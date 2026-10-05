@@ -98,11 +98,19 @@ public class Elasticsearch extends EmbeddingStoreProvider {
     private transient RestClient restClient;
 
     @NotNull
-    @Schema(title = "Connection", description = "Elasticsearch connection configuration (hosts, authentication, and TLS settings).")
+    @Schema(
+        title = "Connection",
+        description = "Elasticsearch connection settings: hosts, authentication, and TLS options. No default: this property is required.",
+        example = "{hosts: [\"http://localhost:9200\"]}"
+    )
     private ElasticsearchConnection connection;
 
     @NotNull
-    @Schema(title = "The name of the index to store embeddings")
+    @Schema(
+        title = "Index name",
+        description = "Elasticsearch index that stores the embeddings. No default: this property is required.",
+        example = "embeddings"
+    )
     @PluginProperty(group = "main")
     private Property<String> indexName;
 
@@ -137,44 +145,51 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         private static final Logger log = LoggerFactory.getLogger(ElasticsearchConnection.class);
 
         @Schema(
-            title = "List of HTTP Elasticsearch servers",
-            description = "Must be a URI like `https://example.com:9200` with scheme and port"
+            title = "Elasticsearch HTTP servers",
+            description = "URLs of the Elasticsearch nodes to connect to, each including scheme, host and port. No default: this property is required and must not be empty.",
+            example = "[\"https://elasticsearch.internal:9200\"]"
         )
         @PluginProperty(dynamic = true, group = "main")
         @NotNull
         @NotEmpty
         private List<String> hosts;
 
-        @Schema(title = "Basic authorization configuration")
+        @Schema(
+            title = "Basic authorization",
+            description = "Username and password used for HTTP basic authentication. Not set by default (anonymous access).",
+            example = "{username: \"elastic\", password: \"{{ secret('ES_PASSWORD') }}\"}"
+        )
         @PluginProperty(group = "advanced")
         private BasicAuth basicAuth;
 
         @Schema(
-            title = "List of HTTP headers to be sent with every request",
-            description = "Each item is a `key: value` string, e.g., `Authorization: Token XYZ`"
+            title = "HTTP headers sent with every request",
+            description = "Extra HTTP headers added to each request, each written as a `key: value` string. Not set by default.",
+            example = "[\"Authorization: Token XYZ\"]"
         )
         @PluginProperty(group = "advanced")
         private Property<List<String>> headers;
 
         @Schema(
             title = "Path prefix for all HTTP requests",
-            description = "If set to `/my/path`, each client request becomes `/my/path/` + endpoint. Useful when Elasticsearch is behind a proxy providing a base path; do not use otherwise."
+            description = "Prefix prepended to every request path, so `/my/path` turns each call into `/my/path/` + endpoint. Use it only when Elasticsearch sits behind a proxy that serves it under a base path. Not set by default.",
+            example = "/my/path"
         )
         @PluginProperty(group = "advanced")
         private Property<String> pathPrefix;
 
         @Schema(
-            title = "Treat responses with deprecation warnings as failures"
+            title = "Strict deprecation mode",
+            description = "If `true`, responses carrying deprecation warnings are treated as failures. Defaults to `false`.",
+            example = "false"
         )
         @PluginProperty(group = "advanced")
         private Property<Boolean> strictDeprecationMode;
 
         @Schema(
             title = "Trust all SSL CA certificates",
-            description = "Use this if the server uses a self-signed SSL certificate. "
-                + "WARNING: enabling this disables both certificate chain validation and hostname verification, "
-                + "exposing connections to man-in-the-middle attacks. "
-                + "Prefer supplying a custom CA certificate instead. Use only in trusted, controlled environments.",
+            description = "If `true`, accept any TLS certificate presented by the server, which is sometimes needed for self-signed certificates. Defaults to `false`. WARNING: enabling this disables both certificate chain validation and hostname verification, exposing connections to man-in-the-middle attacks. Prefer supplying a custom CA certificate instead, and use this only in trusted, controlled environments.",
+            example = "false",
             deprecated = true
         )
         @PluginProperty(group = "advanced")
@@ -183,9 +198,8 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
         @Schema(
             title = "Target Elasticsearch server major version",
-            description = "Major version used for `compatible-with` media-type headers (`Accept` and `Content-Type`). "
-                + "The bundled `elasticsearch-java` 9.x client defaults to `compatible-with=9`, which Elasticsearch 8 rejects. "
-                + "Set to `8` when targeting an Elasticsearch 8 cluster (the default), or `9` for Elasticsearch 9."
+            description = "Major version advertised in the `compatible-with` media-type headers (`Accept` and `Content-Type`). The bundled `elasticsearch-java` 9.x client would otherwise negotiate `compatible-with=9`, which Elasticsearch 8 rejects. Use `8` for an Elasticsearch 8 cluster or `9` for Elasticsearch 9. Defaults to `8`.",
+            example = "8"
         )
         @PluginProperty(group = "advanced")
         @Builder.Default
@@ -195,11 +209,19 @@ public class Elasticsearch extends EmbeddingStoreProvider {
         @NoArgsConstructor
         @Getter
         public static class BasicAuth {
-            @Schema(title = "Basic authorization username")
+            @Schema(
+                title = "Basic authorization username",
+                description = "User authenticating against Elasticsearch. No default: this property is required inside `basicAuth`.",
+                example = "elastic"
+            )
             @PluginProperty(group = "connection")
             private Property<String> username;
 
-            @Schema(title = "Basic authorization password")
+            @Schema(
+                title = "Basic authorization password",
+                description = "Password of the Elasticsearch user. Store it as a Kestra secret rather than inline. No default: this property is required inside `basicAuth`.",
+                example = "{{ secret('ELASTICSEARCH_PASSWORD') }}"
+            )
             @PluginProperty(secret = true, group = "connection")
             private Property<String> password;
         }

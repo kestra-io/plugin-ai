@@ -89,12 +89,20 @@ import lombok.experimental.SuperBuilder;
 
 public class ImageGeneration extends Task implements RunnableTask<ImageGeneration.Output> {
 
-    @Schema(title = "Image prompt", description = "The input prompt for the image generation model")
+    @Schema(
+        title = "Image prompt",
+        description = "Text description of the image the model should generate. No default: this property is required.",
+        example = "A watercolor painting of a lighthouse at sunset"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<String> prompt;
 
-    @Schema(title = "Image model provider")
+    @Schema(
+        title = "Image model provider",
+        description = "Model provider that serves the image generation. It must support image models. No default: this property is required.",
+        example = "{type: \"io.kestra.plugin.ai.provider.OpenAI\", apiKey: \"{{ secret('OPENAI_API_KEY') }}\", modelName: \"dall-e-3\"}"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private ModelProvider provider;
@@ -126,13 +134,25 @@ public class ImageGeneration extends Task implements RunnableTask<ImageGeneratio
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "Generated image URL", description = "The URL of the generated image")
+        @Schema(
+            title = "Generated image URL",
+            description = "URL of the image produced by the model. Most providers expire these URLs after a short period, so download the image in a downstream task if you need to keep it.",
+            example = "https://oaidalleapiprodscus.blob.core.windows.net/private/generated-image.png"
+        )
         private String imageUrl;
 
-        @Schema(title = "Token usage")
+        @Schema(
+            title = "Token usage",
+            description = "Input, output and total tokens billed for the generation, when the provider reports them.",
+            example = "{inputTokenCount: 15, outputTokenCount: 0, totalTokenCount: 15}"
+        )
         private TokenUsage tokenUsage;
 
-        @Schema(title = "Finish reason")
+        @Schema(
+            title = "Finish reason",
+            description = "Why the model stopped generating, such as `STOP`, `LENGTH` or `CONTENT_FILTER`, when the provider reports it.",
+            example = "STOP"
+        )
         private FinishReason finishReason;
     }
 }

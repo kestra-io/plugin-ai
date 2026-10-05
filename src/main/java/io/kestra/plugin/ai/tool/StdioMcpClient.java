@@ -65,16 +65,28 @@ import io.kestra.core.models.annotations.PluginProperty;
         Starts an MCP server via a local command and exposes its advertised tools to the agent over stdio. `command` is required; `logEvents` defaults to false. Use `env` to pass credentials or config needed by the server process."""
 )
 public class StdioMcpClient extends AbstractMcpClient {
-    @Schema(title = "MCP client command, as a list of command parts")
+    @Schema(
+        title = "MCP server command",
+        description = "Command that starts the MCP server process, split into its parts, which the client talks to over standard input/output. No default: this property is required.",
+        example = "[\"docker\", \"run\", \"-i\", \"--rm\", \"mcp/github\"]"
+    )
     @NotNull
     @PluginProperty(group = "main")
     private Property<List<String>> command;
 
-    @Schema(title = "Environment variables")
+    @Schema(
+        title = "Environment variables",
+        description = "Environment variables passed to the MCP server process, typically to supply credentials. Not set by default.",
+        example = "{GITHUB_PERSONAL_ACCESS_TOKEN: \"{{ secret('GITHUB_TOKEN') }}\"}"
+    )
     @PluginProperty(group = "execution")
     private Property<Map<String, String>> env;
 
-    @Schema(title = "Log events")
+    @Schema(
+        title = "Log events",
+        description = "If `true`, MCP protocol events exchanged with the server process are logged. Defaults to `false`.",
+        example = "true"
+    )
     @NotNull
     @Builder.Default
     @PluginProperty(group = "main")
