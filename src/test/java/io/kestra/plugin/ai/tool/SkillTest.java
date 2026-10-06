@@ -150,4 +150,42 @@ class SkillTest {
             wireMock.stop();
         }
     }
+
+    @Test
+    void skillToolDescriptionListsValidSkillNames() throws Exception {
+        var runContext = runContextFactory.of(Map.of());
+
+        var skill = Skill.builder()
+            .skills(
+                List.of(
+                    Skill.SkillDefinition.builder()
+                        .name(Property.ofValue("translation_expert"))
+                        .description(Property.ofValue("Expert translator for multiple languages"))
+                        .content(Property.ofValue("Translate text while preserving its meaning."))
+                        .build(),
+                    Skill.SkillDefinition.builder()
+                        .name(Property.ofValue("code_review_expert"))
+                        .description(Property.ofValue("Expert code reviewer"))
+                        .content(Property.ofValue("Review code for correctness and security issues."))
+                        .build()
+                )
+            )
+            .build();
+
+        var tools = skill.tool(runContext, Map.of());
+
+        var activateSkillTool = tools.keySet().stream()
+            .filter(tool -> "activate_skill".equals(tool.name()))
+            .findFirst()
+            .orElseThrow();
+
+        var skillNameParameter = activateSkillTool.parameters()
+            .properties()
+            .get("skill_name");
+
+        assertThat(skillNameParameter).isNotNull();
+        assertThat(skillNameParameter.description())
+            .contains("translation_expert")
+            .contains("code_review_expert");
+    }
 }

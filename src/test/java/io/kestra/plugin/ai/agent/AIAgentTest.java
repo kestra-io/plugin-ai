@@ -1290,6 +1290,14 @@ class AIAgentTest {
             assertThat(output.getTextOutput()).isNotNull();
             assertThat(output.getToolExecutions()).isNotEmpty();
             assertThat(output.getToolExecutions()).extracting("requestName").contains("activate_skill");
+
+            var skillExecution = output.getToolExecutions().stream()
+                .filter(execution -> "activate_skill".equals(execution.getRequestName()))
+                .findFirst()
+                .orElseThrow();
+
+            assertThat(skillExecution.getRequestArguments())
+                .containsEntry("skill_name", "translation_expert");
         } catch (RateLimitException e) {
             abort("Skipped: rate limited or quota exceeded");
         }

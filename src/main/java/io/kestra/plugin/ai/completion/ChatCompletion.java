@@ -50,6 +50,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @SuperBuilder
 @ToString
@@ -368,8 +369,13 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
             GuardrailsEvaluator.applyGuardrails(guardrails, builder, runContext);
 
+            // a fallback timer in case the llm provider doesn't return a response id (like ollama)
+            long fallbackStart = System.nanoTime();
+
             Result<AiMessage> aiResponse = builder.build().chat(((UserMessage) chatMessages.getLast()).contents());
             logger.debug("AI Response: {}", aiResponse.content());
+
+            long fallbackDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - fallbackStart);
 
             // send metrics for token usage
             TokenUsage tokenUsage = TokenUsage.from(aiResponse.tokenUsage());
@@ -378,6 +384,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             // unfortunately, as we have a deprecated aiResponse field, we have no choice but to first build an AIOutput,
             // then, create the final Output based on it.
             AIOutput output = AIOutput.from(runContext, aiResponse, configuration.computeResponseFormat(runContext).type());
+
+            // if no duration was captured(null) then use fallback duration
+            Long requestDuration = output.getRequestDuration() == null ? fallbackDuration : output.getRequestDuration();
+
             return Output.builder()
                 .aiResponse(output.getTextOutput())
                 .tokenUsage(output.getTokenUsage())
@@ -386,7 +396,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .finishReason(output.getFinishReason())
                 .toolExecutions(output.getToolExecutions())
                 .intermediateResponses(output.getIntermediateResponses())
-                .requestDuration(output.getRequestDuration())
+                .requestDuration(requestDuration)
                 .thinking(output.getThinking())
                 .sources(output.getSources())
                 .build();

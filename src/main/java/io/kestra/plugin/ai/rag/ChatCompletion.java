@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import io.kestra.core.models.annotations.Example;
@@ -417,7 +418,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
             GuardrailsEvaluator.applyGuardrails(guardrails, assistant, runContext);
             String renderedPrompt = runContext.render(prompt).as(String.class).orElseThrow();
+            //fallback timer in case no response is returned
+            long fallbackStart = System.nanoTime();
             Result<AiMessage> completion = assistant.build().chat(renderedPrompt);
+            long fallbackDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - fallbackStart);
             runContext.logger().debug("Generated completion: {}", completion.content());
 
             // send metrics for token usage
@@ -425,6 +429,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             AIUtils.sendMetrics(runContext, tokenUsage);
 
             AIOutput output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type());
+            Long requestDuration = output.getRequestDuration() == null ? fallbackDuration : output.getRequestDuration();
             return Output.builder()
                 .completion(output.getTextOutput())
                 .tokenUsage(output.getTokenUsage())
@@ -433,7 +438,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .finishReason(output.getFinishReason())
                 .toolExecutions(output.getToolExecutions())
                 .intermediateResponses(output.getIntermediateResponses())
-                .requestDuration(output.getRequestDuration())
+                .requestDuration(requestDuration)
                 .sources(output.getSources())
                 .build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
