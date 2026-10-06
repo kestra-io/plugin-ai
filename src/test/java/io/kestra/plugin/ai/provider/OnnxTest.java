@@ -1,8 +1,10 @@
 package io.kestra.plugin.ai.provider;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +22,8 @@ import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.rag.IngestDocument;
 import io.kestra.plugin.ai.rag.Search;
 
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.PoolingMode;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import jakarta.inject.Inject;
 
@@ -57,8 +61,35 @@ class OnnxTest {
         putInNamespace(runContext, TOKENIZER_RESOURCE, "models/minilm/tokenizer.json");
         var fromNamespace = provider("nsfile:///models/minilm/model.onnx", "nsfile:///models/minilm/tokenizer.json");
 
-        // same file content behind different URIs must not load a second native session
-        assertThat(fromNamespace.embeddingModel(runContext)).isSameAs(embeddingModel);
+        // same file content behind different URIs must share one native session
+        assertThat(cacheKey(fromNamespace.embeddingModel(runContext))).isEqualTo(cacheKey(embeddingModel));
+    }
+
+    @Test
+    void reloadsModelEvictedByLoadingMoreThanTheLimit() throws Exception {
+        var runContext = runContextFactory.of("company.ai", Map.of());
+        var modelUri = putInStorage(runContext, MODEL_RESOURCE).toString();
+        var tokenizerUri = putInStorage(runContext, TOKENIZER_RESOURCE).toString();
+        byte[] tokenizer;
+        try (InputStream in = resource(TOKENIZER_RESOURCE)) {
+            tokenizer = in.readAllBytes();
+        }
+        // a trailing newline keeps the tokenizer valid but makes it a distinct model for the cache
+        var tokenizerWithNewline = Arrays.copyOf(tokenizer, tokenizer.length + 1);
+        tokenizerWithNewline[tokenizer.length] = '\n';
+        var otherTokenizerUri = runContext.storage().putFile(new ByteArrayInputStream(tokenizerWithNewline), "tokenizer-copy.json").toString();
+
+        var first = provider(modelUri, tokenizerUri, PoolingMode.MEAN).embeddingModel(runContext);
+        var expected = first.embed("Kestra orchestrates data pipelines").content();
+
+        // three distinct models with the default limit of 2: the first one is the least recently used, so it is unloaded
+        provider(modelUri, tokenizerUri, PoolingMode.CLS).embeddingModel(runContext).embed("a");
+        provider(modelUri, otherTokenizerUri, PoolingMode.MEAN).embeddingModel(runContext).embed("b");
+        assertThat(Onnx.MODELS.isLoaded(cacheKey(first))).isFalse();
+
+        // a task still holding the unloaded model keeps working: the model is loaded again from the task's files
+        assertThat(first.embed("Kestra orchestrates data pipelines").content().vector()).isEqualTo(expected.vector());
+        assertThat(Onnx.MODELS.isLoaded(cacheKey(first))).isTrue();
     }
 
     @Test
@@ -99,12 +130,21 @@ class OnnxTest {
     }
 
     private static Onnx provider(String modelUri, String tokenizerUri) {
+        return provider(modelUri, tokenizerUri, PoolingMode.MEAN);
+    }
+
+    private static Onnx provider(String modelUri, String tokenizerUri, PoolingMode poolingMode) {
         return Onnx.builder()
             .type(Onnx.class.getName())
             .modelName(Property.ofValue("all-MiniLM-L6-v2"))
             .modelUri(Property.ofValue(modelUri))
             .tokenizerUri(Property.ofValue(tokenizerUri))
+            .poolingMode(Property.ofValue(poolingMode))
             .build();
+    }
+
+    private static String cacheKey(EmbeddingModel embeddingModel) {
+        return ((Onnx.CachedEmbeddingModel) embeddingModel).cacheKey();
     }
 
     private static URI putInStorage(RunContext runContext, String resource) throws Exception {

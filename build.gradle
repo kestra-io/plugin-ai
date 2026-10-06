@@ -128,7 +128,7 @@ dependencies {
     // skills
     implementation "dev.langchain4j:langchain4j-skills:${langchain4jBetaVersion}"
 
-    // in-process ONNX embeddings (OnnxEmbeddingModel); brings onnxruntime + DJL tokenizers natives
+    // in-process ONNX embeddings (OnnxBertBiEncoder); brings onnxruntime + DJL tokenizers natives
     implementation "dev.langchain4j:langchain4j-embeddings:${langchain4jBetaVersion}"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
