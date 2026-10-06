@@ -34,7 +34,7 @@ All tasks that generate text accept a `configuration` object (`ChatConfiguration
 
 `rag.Search` retrieves matching chunks from an embedding store — set `query` (required), `maxResults` (required), `minScore` (required), `provider` (required), and `embeddings` (required). Set `fetchType` to control output (default `NONE`; use `FETCH`, `FETCH_ONE`, or `STORE` to surface results). The output includes `results`, `uri`, and `size`.
 
-`rag.ChatCompletion` runs a retrieval-augmented chat — set `prompt` (required) and `chatProvider` (required, the LLM). Configure retrieval via `embeddings` and `embeddingProvider`, or provide `contentRetrievers` (a list of `EmbeddingStoreRetriever` or `TavilyWebSearch` retriever objects). Control retrieval with `contentRetrieverConfiguration` (defaults: `maxResults` 3, `minScore` 0.0). Optionally set `systemMessage`, `tools`, `memory`, and `chatConfiguration`.
+`rag.ChatCompletion` runs a retrieval-augmented chat — set `prompt` (required) and `chatProvider` (required, the LLM). Configure retrieval via `embeddings` and `embeddingProvider`, or provide `contentRetrievers` (a list of `EmbeddingStoreRetriever`, `FirecrawlWebSearch`, or `TavilyWebSearch` retriever objects). Control retrieval with `contentRetrieverConfiguration` (defaults: `maxResults` 3, `minScore` 0.0). Optionally set `systemMessage`, `tools`, `memory`, and `chatConfiguration`.
 
 ### Agent
 
@@ -87,6 +87,7 @@ Configure `tools` on chat and agent tasks with one of these subtypes:
 
 - **TavilyWebSearch** — set `apiKey` (required)
 - **CodeExecution** — set `apiKey` (required, RapidAPI key for Judge0)
+- **FirecrawlWebSearch** — set `apiKey` (required); optionally set `scrapeContent: true` to return each result page as Markdown
 - **GoogleCustomWebSearch** — set `apiKey` and `csi` (Custom Search Engine ID, both required)
 - **KestraFlow** / **KestraTask** — invoke other Kestra flows or tasks as tools. For `KestraFlow`, optional `allowedFlows` restricts execution to exact `namespace` and `flowId` pairs; all other selections, including cross-pair combinations, are rejected. This also applies to predefined flows. Omitting `allowedFlows` keeps execution unrestricted.
 - **AIAgent** — call a nested AI agent as a tool (sub-agent delegation); set `name`, `description`, and `provider`

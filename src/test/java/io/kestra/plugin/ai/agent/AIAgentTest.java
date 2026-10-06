@@ -29,6 +29,7 @@ import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.rag.IngestDocument;
 import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
+import io.kestra.plugin.ai.retriever.FirecrawlWebSearch;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.DockerMcpClient;
@@ -44,6 +45,7 @@ import jakarta.validation.Validator;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.abort;
 
 @ResourceLock("kestra-h2-flyway")
@@ -56,6 +58,7 @@ class AIAgentTest {
     private final String GOOGLE_API_KEY = System.getenv("GOOGLE_API_KEY");
     private final String GOOGLE_CSI = System.getenv("GOOGLE_CSI_KEY");
     private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
+    private final String FIRECRAWL_API_KEY = System.getenv("FIRECRAWL_API_KEY");
     @Inject
     private TestRunContextFactory runContextFactory;
 
@@ -530,6 +533,243 @@ class AIAgentTest {
             assertThat(output.getTextOutput()).contains("Paris");
         } catch (RateLimitException e) {
             abort("Skipped: rate limited or quota exceeded");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "FIRECRAWL_API_KEY", matches = ".*")
+    void withFirecrawlWebSearchContentRetriever() throws Exception {
+        llm.reply(messages -> messages.toString().contains("Paris") ? "The capital of France is Paris." : "No web context received.");
+
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", "demo",
+                "modelName", "gpt-4o-mini",
+                "baseUrl", llm.baseUrl(),
+                "firecrawlApiKey", FIRECRAWL_API_KEY
+            )
+        );
+        var agent = AIAgent.builder()
+            .provider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .contentRetrievers(
+                Property.ofValue(
+                    List.of(
+                        FirecrawlWebSearch.builder()
+                            .apiKey(Property.ofExpression("{{ firecrawlApiKey }}"))
+                            .build()
+                    )
+                )
+            )
+            .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .build();
+
+        try {
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isNotNull();
+            assertThat(output.getTextOutput()).contains("Paris");
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
+    }
+
+    @Test
+    void withFirecrawlWebSearchContentRetrieverAgainstMockedApi() throws Exception {
+        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        try {
+            wireMock.start();
+            wireMock.stubFor(
+                post(urlEqualTo("/v2/search")).willReturn(
+                    okJson(
+                        """
+                            {"success":true,"data":{"web":[{"url":"https://kestra.io/blogs/release-2-0","title":"Kestra 2.0 release","description":"Kestra 2.0 ships new AI tasks.","position":1}]},"creditsUsed":2,"id":"search-1"}"""
+                    )
+                )
+            );
+            llm.reply(messages -> messages.toString().contains("Kestra 2.0 ships new AI tasks") ? "Kestra 2.0 is the latest release." : "No web context received.");
+
+            RunContext runContext = runContextFactory.of(
+                Map.of(
+                    "apiKey", "demo",
+                    "modelName", "gpt-4o-mini",
+                    "baseUrl", llm.baseUrl()
+                )
+            );
+            var agent = AIAgent.builder()
+                .provider(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build()
+                )
+                .contentRetrievers(
+                    Property.ofValue(
+                        List.of(
+                            FirecrawlWebSearch.builder()
+                                .apiKey(Property.ofValue("fc-test"))
+                                .location(Property.ofValue("Germany"))
+                                .timeBasedFilter(Property.ofValue("qdr:w"))
+                                .baseUrl(Property.ofValue(wireMock.baseUrl() + "/v2/"))
+                                .build()
+                        )
+                    )
+                )
+                .prompt(Property.ofValue("What is the latest Kestra release?"))
+                .build();
+
+            var output = agent.run(runContext);
+            assertThat(output.getTextOutput()).isEqualTo("Kestra 2.0 is the latest release.");
+
+            wireMock.verify(
+                postRequestedFor(urlEqualTo("/v2/search"))
+                    .withHeader("Authorization", equalTo("Bearer fc-test"))
+                    .withRequestBody(matchingJsonPath("$.limit", equalTo("3")))
+                    .withRequestBody(matchingJsonPath("$.sources[0]", equalTo("web")))
+                    .withRequestBody(matchingJsonPath("$.location", equalTo("Germany")))
+                    .withRequestBody(matchingJsonPath("$.tbs", equalTo("qdr:w")))
+                    .withRequestBody(notContaining("scrapeOptions"))
+            );
+        } finally {
+            wireMock.stop();
+        }
+    }
+
+    @Test
+    void withFirecrawlWebSearchToolAgainstMockedApi() throws Exception {
+        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        try {
+            wireMock.start();
+            wireMock.stubFor(
+                post(urlEqualTo("/v2/search")).willReturn(
+                    okJson(
+                        """
+                            {"success":true,"data":{"web":[{"url":"https://kestra.io/blogs/release-2-0","title":"Kestra 2.0 release","description":"Release highlights.","position":1,"markdown":"# Kestra 2.0\\nFull release notes."}]}}"""
+                    )
+                )
+            );
+            llm.callTool("searchWeb", "{\"arg0\":\"latest Kestra release\"}");
+
+            RunContext runContext = runContextFactory.of(
+                Map.of(
+                    "apiKey", "demo",
+                    "modelName", "gpt-4o-mini",
+                    "baseUrl", llm.baseUrl()
+                )
+            );
+            var agent = AIAgent.builder()
+                .provider(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build()
+                )
+                .tools(
+                    List.of(
+                        io.kestra.plugin.ai.tool.FirecrawlWebSearch.builder()
+                            .apiKey(Property.ofValue("fc-test"))
+                            .maxResults(Property.ofValue(3))
+                            .scrapeContent(Property.ofValue(true))
+                            .baseUrl(Property.ofValue(wireMock.baseUrl() + "/v2/"))
+                            .build()
+                    )
+                )
+                .prompt(Property.ofValue("What is the latest Kestra release? Use the web search tool."))
+                .build();
+
+            var output = agent.run(runContext);
+            assertThat(output.getToolExecutions()).extracting("requestName").contains("searchWeb");
+            assertThat(output.getTextOutput()).contains("Full release notes.");
+
+            wireMock.verify(
+                postRequestedFor(urlEqualTo("/v2/search"))
+                    .withHeader("Authorization", equalTo("Bearer fc-test"))
+                    .withRequestBody(matchingJsonPath("$.query", equalTo("latest Kestra release")))
+                    .withRequestBody(matchingJsonPath("$.scrapeOptions.formats[0].type", equalTo("markdown")))
+            );
+        } finally {
+            wireMock.stop();
+        }
+    }
+
+    @Test
+    void withFirecrawlWebSearchRejectingOutOfRangeMaxResults() {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(
+            () -> io.kestra.plugin.ai.tool.FirecrawlWebSearch.builder()
+                .apiKey(Property.ofValue("fc-test"))
+                .maxResults(Property.ofValue(0))
+                .build()
+                .tool(runContext, Map.of())
+        ).hasMessageContaining("`maxResults` must be between 1 and 100, got 0");
+        assertThatThrownBy(
+            () -> FirecrawlWebSearch.builder()
+                .apiKey(Property.ofValue("fc-test"))
+                .maxResults(Property.ofValue(101))
+                .build()
+                .contentRetriever(runContext)
+        ).hasMessageContaining("`maxResults` must be between 1 and 100, got 101");
+    }
+
+    @Test
+    void withFirecrawlWebSearchToolFailingOnInvalidApiKey() throws Exception {
+        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        try {
+            wireMock.start();
+            wireMock.stubFor(
+                post(urlEqualTo("/v2/search")).willReturn(
+                    aResponse().withStatus(401).withHeader("Content-Type", "application/json").withBody("{\"success\":false,\"error\":\"Unauthorized: Invalid token\"}")
+                )
+            );
+            llm.callTool("searchWeb", "{\"arg0\":\"latest Kestra release\"}");
+
+            RunContext runContext = runContextFactory.of(
+                Map.of(
+                    "apiKey", "demo",
+                    "modelName", "gpt-4o-mini",
+                    "baseUrl", llm.baseUrl()
+                )
+            );
+            var agent = AIAgent.builder()
+                .provider(
+                    OpenAI.builder()
+                        .type(OpenAI.class.getName())
+                        .apiKey(Property.ofExpression("{{ apiKey }}"))
+                        .modelName(Property.ofExpression("{{ modelName }}"))
+                        .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                        .build()
+                )
+                .tools(
+                    List.of(
+                        io.kestra.plugin.ai.tool.FirecrawlWebSearch.builder()
+                            .apiKey(Property.ofValue("fc-invalid"))
+                            .baseUrl(Property.ofValue(wireMock.baseUrl() + "/v2/"))
+                            .build()
+                    )
+                )
+                .prompt(Property.ofValue("What is the latest Kestra release? Use the web search tool."))
+                .build();
+
+            assertThatThrownBy(() -> agent.run(runContext)).hasStackTraceContaining("Unauthorized: Invalid token");
+
+            wireMock.verify(
+                postRequestedFor(urlEqualTo("/v2/search"))
+                    .withRequestBody(matchingJsonPath("$.limit", equalTo("5")))
+                    .withRequestBody(notContaining("scrapeOptions"))
+            );
+        } finally {
+            wireMock.stop();
         }
     }
 
