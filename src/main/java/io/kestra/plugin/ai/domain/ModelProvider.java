@@ -22,6 +22,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -38,7 +39,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -55,14 +56,28 @@ import io.kestra.core.models.annotations.PluginProperty;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class ModelProvider extends AdditionalPlugin {
+<<<<<<< ours
     @Schema(
         title = "Model name",
         description = "Identifier of the model to call, as named by the provider. Valid values depend on the provider and on whether the model is used for chat, embeddings, or image generation; see the provider's model catalog. No default: this property is required.",
         example = "gpt-5-mini"
     )
     @NotNull
+=======
+    @Schema(title = "Model name", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+>>>>>>> theirs
     @PluginProperty(group = "main")
     private Property<String> modelName;
+
+    @AssertTrue(message = "`modelName` is required for this provider.")
+    @JsonIgnore
+    public boolean isModelNameValid() {
+        return !isModelNameRequired() || modelName != null;
+    }
+
+    protected boolean isModelNameRequired() {
+        return true;
+    }
 
     @Schema(
         title = "Base URL",

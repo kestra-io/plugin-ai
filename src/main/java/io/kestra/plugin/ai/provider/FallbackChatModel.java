@@ -6,6 +6,7 @@ import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -29,9 +30,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
-/**
- * A synchronous ChatModel that tries its child models in declaration order.
- */
 public final class FallbackChatModel implements ChatModel {
     private final List<ChatModel> models;
     private final Logger logger;
@@ -49,18 +47,11 @@ public final class FallbackChatModel implements ChatModel {
         this.supportedCapabilities = collectSupportedCapabilities(this.models);
     }
 
-    /**
-     * Calls each child through its public {@code chat} method so that the child itself
-     * owns listener dispatch and reports its actual provider in listener contexts.
-     */
     @Override
     public ChatResponse chat(ChatRequest request, ChatRequestOptions options) {
         return invoke(model -> model.chat(request, options));
     }
 
-    /**
-     * Supports callers that invoke the lower-level synchronous hook directly.
-     */
     @Override
     public ChatResponse doChat(ChatRequest request) {
         return invoke(model -> model.doChat(request));
@@ -98,8 +89,8 @@ public final class FallbackChatModel implements ChatModel {
 
         for (int index = 0; index < models.size(); index++) {
             ChatModel model = models.get(index);
-            String providerName = providerName(model);
-            logger.info("Attempting chat request with provider {} ({}/{})", providerName, index + 1, models.size());
+            String providerLabel = providerLabel(model);
+            logger.info("Attempting chat request with provider {} ({}/{})", providerLabel, index + 1, models.size());
 
             try {
                 return invocation.invoke(model);
@@ -107,7 +98,7 @@ public final class FallbackChatModel implements ChatModel {
                 if (!isProviderFailure(failure)) {
                     logger.warn(
                         "Chat request stopped at provider {} after a non-failover error of type {}",
-                        providerName,
+                        providerLabel,
                         failure.getClass().getSimpleName()
                     );
                     throw failure;
@@ -116,7 +107,7 @@ public final class FallbackChatModel implements ChatModel {
                 providerFailures.add(failure);
                 logger.warn(
                     "Skipping provider {} after provider-side failure of type {}",
-                    providerName,
+                    providerLabel,
                     failureType(failure)
                 );
             }
@@ -128,7 +119,17 @@ public final class FallbackChatModel implements ChatModel {
                 finalFailure.addSuppressed(previousFailure);
             }
         }
-        throw finalFailure;
+
+        List<String> providerFailureSummaries = new ArrayList<>();
+        for (int index = 0; index < providerFailures.size(); index++) {
+            providerFailureSummaries.add(
+                providerLabel(models.get(index)) + " (" + failureType(providerFailures.get(index)) + ")"
+            );
+        }
+        throw new RuntimeException(
+            "All " + providerFailures.size() + " providers failed: " + String.join(", ", providerFailureSummaries),
+            finalFailure
+        );
     }
 
     private static boolean isProviderFailure(Throwable failure) {
@@ -147,13 +148,15 @@ public final class FallbackChatModel implements ChatModel {
             return false;
         }
 
-        return causes.stream().anyMatch(cause ->
-            cause instanceof RetriableException
-                || cause instanceof ConnectException
-                || cause instanceof SocketTimeoutException
-                || cause instanceof HttpConnectTimeoutException
-                || cause instanceof HttpTimeoutException
-        );
+        return causes.stream().anyMatch(FallbackChatModel::isEligibleProviderFailureType);
+    }
+
+    private static boolean isEligibleProviderFailureType(Throwable failure) {
+        return failure instanceof RetriableException
+            || failure instanceof ConnectException
+            || failure instanceof SocketTimeoutException
+            || failure instanceof HttpConnectTimeoutException
+            || failure instanceof HttpTimeoutException;
     }
 
     private static List<Throwable> causes(Throwable failure) {
@@ -169,13 +172,7 @@ public final class FallbackChatModel implements ChatModel {
 
     private static String failureType(Throwable failure) {
         return causes(failure).stream()
-            .filter(cause ->
-                cause instanceof RetriableException
-                    || cause instanceof ConnectException
-                    || cause instanceof SocketTimeoutException
-                    || cause instanceof HttpConnectTimeoutException
-                    || cause instanceof HttpTimeoutException
-            )
+            .filter(FallbackChatModel::isEligibleProviderFailureType)
             .findFirst()
             .map(cause -> cause.getClass().getSimpleName())
             .orElse(failure.getClass().getSimpleName());
@@ -187,6 +184,15 @@ public final class FallbackChatModel implements ChatModel {
             return provider.name();
         }
         return model.getClass().getSimpleName();
+    }
+
+    private static String providerLabel(ChatModel model) {
+        String providerName = providerName(model);
+        ChatRequestParameters requestParameters = model.defaultRequestParameters();
+        String modelName = requestParameters == null ? null : requestParameters.modelName();
+        return modelName == null || modelName.isBlank()
+            ? providerName
+            : providerName + " [model=" + modelName + "]";
     }
 
     private static List<ChatModelListener> collectListeners(List<ChatModel> models) {
@@ -202,7 +208,7 @@ public final class FallbackChatModel implements ChatModel {
     }
 
     private static Set<Capability> collectSupportedCapabilities(List<ChatModel> models) {
-        Set<Capability> commonCapabilities = new java.util.HashSet<>(models.getFirst().supportedCapabilities());
+        Set<Capability> commonCapabilities = new HashSet<>(models.getFirst().supportedCapabilities());
         for (int index = 1; index < models.size(); index++) {
             commonCapabilities.retainAll(models.get(index).supportedCapabilities());
         }

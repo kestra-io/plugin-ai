@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
-
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -39,6 +39,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class FallbackChatModelTest {
     private static final ChatRequest REQUEST = ChatRequest.builder()
@@ -47,10 +49,10 @@ class FallbackChatModelTest {
 
     @Test
     void orderedSuccessDoesNotCallLaterModels() {
-        var firstResponse = response("first response");
-        var first = model("first", request -> firstResponse);
-        var second = model("second", request -> response("second response"));
-        var fallback = fallback(first, second);
+        ChatResponse firstResponse = response("first response");
+        TestChatModel first = model("first", request -> firstResponse);
+        TestChatModel second = model("second", request -> response("second response"));
+        FallbackChatModel fallback = fallback(first, second);
 
         assertThat(fallback.chat(REQUEST)).isSameAs(firstResponse);
         assertThat(first.invocationCount).isEqualTo(1);
@@ -59,11 +61,11 @@ class FallbackChatModelTest {
 
     @Test
     void fallsBackAfterRetriableException() {
-        var first = model("first", request -> {
+        TestChatModel first = model("first", request -> {
             throw new InternalServerException("provider unavailable");
         });
-        var secondResponse = response("second response");
-        var second = model("second", request -> secondResponse);
+        ChatResponse secondResponse = response("second response");
+        TestChatModel second = model("second", request -> secondResponse);
 
         assertThat(fallback(first, second).chat(REQUEST)).isSameAs(secondResponse);
         assertThat(first.invocationCount).isEqualTo(1);
@@ -72,13 +74,13 @@ class FallbackChatModelTest {
 
     @Test
     void fallsBackAfterWrappedConnectionFailure() {
-        var first = model("first", request -> {
+        TestChatModel first = model("first", request -> {
             // ChatModel does not declare checked exceptions, and the JDK HTTP client
             // wraps connection IO failures in a RuntimeException.
             throw new RuntimeException(new ConnectException("Connection refused"));
         });
-        var secondResponse = response("second response");
-        var second = model("second", request -> secondResponse);
+        ChatResponse secondResponse = response("second response");
+        TestChatModel second = model("second", request -> secondResponse);
 
         assertThat(fallback(first, second).chat(REQUEST)).isSameAs(secondResponse);
         assertThat(second.invocationCount).isEqualTo(1);
@@ -86,11 +88,11 @@ class FallbackChatModelTest {
 
     @Test
     void nonRetriableExceptionStopsImmediatelyAndIsPropagated() {
-        var failure = new NonRetriableException("do not retry this request");
-        var first = model("first", request -> {
+        NonRetriableException failure = new NonRetriableException("do not retry this request");
+        TestChatModel first = model("first", request -> {
             throw failure;
         });
-        var second = model("second", request -> response("should not be called"));
+        TestChatModel second = model("second", request -> response("should not be called"));
 
         assertThatThrownBy(() -> fallback(first, second).chat(REQUEST))
             .isSameAs(failure);
@@ -113,10 +115,10 @@ class FallbackChatModelTest {
         );
 
         for (RuntimeException failure : failures) {
-            var first = model("first", request -> {
+            TestChatModel first = model("first", request -> {
                 throw failure;
             });
-            var second = model("second", request -> response("should not be called"));
+            TestChatModel second = model("second", request -> response("should not be called"));
 
             assertThatThrownBy(() -> fallback(first, second).chat(REQUEST))
                 .as("failure type %s", failure.getClass().getSimpleName())
@@ -129,16 +131,16 @@ class FallbackChatModelTest {
 
     @Test
     void passesTheSameRequestAndOptionsInstancesToEachAttempt() {
-        var request = ChatRequest.builder()
+        ChatRequest request = ChatRequest.builder()
             .messages(UserMessage.from("same request"))
             .build();
-        var options = ChatRequestOptions.builder()
+        ChatRequestOptions options = ChatRequestOptions.builder()
             .addListenerAttribute("trace", "same options")
             .build();
-        var first = model("first", current -> {
+        TestChatModel first = model("first", current -> {
             throw new RateLimitException("rate limited");
         });
-        var second = model("second", current -> response("success"));
+        TestChatModel second = model("second", current -> response("success"));
 
         fallback(first, second).chat(request, options);
 
@@ -150,29 +152,52 @@ class FallbackChatModelTest {
 
     @Test
     void finalProviderFailureContainsEarlierEligibleFailuresAsSuppressed() {
-        var firstFailure = new InternalServerException("first unavailable");
-        var finalFailure = new RateLimitException("second rate limited");
-        var first = model("first", request -> {
+        InternalServerException firstFailure = new InternalServerException("first unavailable");
+        RateLimitException finalFailure = new RateLimitException("second rate limited");
+        TestChatModel first = model("first", request -> {
             throw firstFailure;
-        });
-        var second = model("second", request -> {
+        }, List.of(), Set.of(), DefaultChatRequestParameters.EMPTY, ModelProvider.OPEN_AI);
+        TestChatModel second = model("second", request -> {
             throw finalFailure;
-        });
+        }, List.of(), Set.of(), DefaultChatRequestParameters.EMPTY, ModelProvider.GOOGLE_AI_GEMINI);
 
         assertThatThrownBy(() -> fallback(first, second).chat(REQUEST))
-            .isSameAs(finalFailure)
-            .satisfies(thrown -> assertThat(thrown.getSuppressed()).containsExactly(firstFailure));
+            .isInstanceOf(RuntimeException.class)
+            .hasMessage("All 2 providers failed: OPEN_AI (InternalServerException), GOOGLE_AI_GEMINI (RateLimitException)")
+            .hasCause(finalFailure)
+            .satisfies(thrown -> assertThat(thrown.getCause().getSuppressed()).containsExactly(firstFailure));
+    }
+
+    @Test
+    void logsModelNamesWhenProviderTypesAreTheSame() {
+        ChatRequestParameters firstDefaults = DefaultChatRequestParameters.builder().modelName("gpt-5-mini").build();
+        ChatRequestParameters secondDefaults = DefaultChatRequestParameters.builder().modelName("gpt-4o-mini").build();
+        TestChatModel first = model("first", request -> {
+            throw new InternalServerException("provider unavailable");
+        }, List.of(), Set.of(), firstDefaults, ModelProvider.OPEN_AI);
+        TestChatModel second = model("second", request -> response("success"), List.of(), Set.of(),
+            secondDefaults, ModelProvider.OPEN_AI);
+        Logger logger = mock(Logger.class);
+        new FallbackChatModel(List.of(first, second), logger).chat(REQUEST);
+
+        verify(logger).info("Attempting chat request with provider {} ({}/{})", "OPEN_AI [model=gpt-5-mini]", 1, 2);
+        verify(logger).warn(
+            "Skipping provider {} after provider-side failure of type {}",
+            "OPEN_AI [model=gpt-5-mini]",
+            "InternalServerException"
+        );
+        verify(logger).info("Attempting chat request with provider {} ({}/{})", "OPEN_AI [model=gpt-4o-mini]", 2, 2);
     }
 
     @Test
     void childListenersFireOncePerUnderlyingAttempt() {
-        var listener = new CountingListener();
-        var first = model("first", request -> {
+        CountingListener listener = new CountingListener();
+        TestChatModel first = model("first", request -> {
             throw new InternalServerException("first unavailable");
         }, List.of(), Set.of(), DefaultChatRequestParameters.EMPTY, ModelProvider.OPEN_AI, listener);
-        var second = model("second", request -> response("success"), List.of(), Set.of(),
+        TestChatModel second = model("second", request -> response("success"), List.of(), Set.of(),
             DefaultChatRequestParameters.EMPTY, ModelProvider.GOOGLE_AI_GEMINI, listener);
-        var fallback = fallback(first, second);
+        FallbackChatModel fallback = fallback(first, second);
 
         assertThat(fallback.listeners()).containsExactly(listener);
         fallback.chat(REQUEST);
@@ -185,15 +210,15 @@ class FallbackChatModelTest {
 
     @Test
     void advertisesOnlyCapabilitiesCommonToAllModels() {
-        var supportsJsonSchema = model("first", request -> response("unused"), List.of(),
+        TestChatModel supportsJsonSchema = model("first", request -> response("unused"), List.of(),
             Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA), DefaultChatRequestParameters.EMPTY,
             ModelProvider.OPEN_AI);
-        var noCapabilities = model("second", request -> response("unused"), List.of(), Set.of(),
+        TestChatModel noCapabilities = model("second", request -> response("unused"), List.of(), Set.of(),
             DefaultChatRequestParameters.EMPTY, ModelProvider.GOOGLE_AI_GEMINI);
 
         assertThat(fallback(supportsJsonSchema, noCapabilities).supportedCapabilities()).isEmpty();
 
-        var alsoSupportsJsonSchema = model("third", request -> response("unused"), List.of(),
+        TestChatModel alsoSupportsJsonSchema = model("third", request -> response("unused"), List.of(),
             Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA), DefaultChatRequestParameters.EMPTY,
             ModelProvider.GOOGLE_AI_GEMINI);
         assertThat(fallback(supportsJsonSchema, alsoSupportsJsonSchema).supportedCapabilities())
@@ -206,27 +231,27 @@ class FallbackChatModelTest {
             .modelName("first-model")
             .temperature(0.2)
             .build();
-        var first = model("first", request -> response("unused"), List.of(), Set.of(),
+        TestChatModel first = model("first", request -> response("unused"), List.of(), Set.of(),
             firstDefaults, ModelProvider.OPEN_AI);
-        var sameProvider = model("second", request -> response("unused"), List.of(), Set.of(),
+        TestChatModel sameProvider = model("second", request -> response("unused"), List.of(), Set.of(),
             DefaultChatRequestParameters.EMPTY, ModelProvider.OPEN_AI);
-        var sameProviderFallback = fallback(first, sameProvider);
+        FallbackChatModel sameProviderFallback = fallback(first, sameProvider);
 
         assertThat(sameProviderFallback.defaultRequestParameters()).isSameAs(firstDefaults);
         assertThat(sameProviderFallback.provider()).isEqualTo(ModelProvider.OPEN_AI);
 
-        var differentProvider = model("third", request -> response("unused"), List.of(), Set.of(),
+        TestChatModel differentProvider = model("third", request -> response("unused"), List.of(), Set.of(),
             DefaultChatRequestParameters.EMPTY, ModelProvider.GOOGLE_AI_GEMINI);
         assertThat(fallback(first, differentProvider).provider()).isEqualTo(ModelProvider.OTHER);
     }
 
     @Test
     void genericRuntimeExceptionDoesNotTriggerFallback() {
-        var failure = new RuntimeException("application failure");
-        var first = model("first", request -> {
+        RuntimeException failure = new RuntimeException("application failure");
+        TestChatModel first = model("first", request -> {
             throw failure;
         });
-        var second = model("second", request -> response("should not be called"));
+        TestChatModel second = model("second", request -> response("should not be called"));
 
         assertThatThrownBy(() -> fallback(first, second).chat(REQUEST))
             .isSameAs(failure);

@@ -4,13 +4,17 @@ Run AI completions, structured extraction, image generation, RAG pipelines, and 
 
 ## Authentication
 
-All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each provider. Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, `Langdock`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
+All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each concrete provider (or each nested provider when using `Fallback`). Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `Fallback`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, `Langdock`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
 
 `Langdock` reaches OpenAI/Azure OpenAI-backed models via `modelFamily: OPENAI` (default) or Claude models via `modelFamily: ANTHROPIC` — set `apiKey`, `modelFamily`, and `region` (`EU` default or `US`). Embeddings always use the OpenAI route (use a workspace key with the Embedding API scope if your key is refused); image generation is unsupported. Use `langdock.ListModels` to discover valid `modelName` values for a given family.
 
 Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses service account credentials.
 
 Store secrets in [secrets](https://kestra.io/docs/concepts/secret) and set connection properties on each task.
+
+### Ordered provider fallback
+
+Use `Fallback` to try chat providers in declaration order. It can advance to the next provider after connection failures, timeouts, or retriable provider errors such as HTTP 5xx and 429. Each nested provider receives the full configured timeout independently, so cumulative duration can approach N times that timeout, plus overhead, if multiple providers time out. This is not guaranteed because providers differ in how they apply timeouts. It does not fall back after authentication or invalid-request errors, guardrail violations, tool execution errors, or JSON/response-processing failures. The outer `Fallback` has no `modelName`; configure one on each nested provider. Fallback supports chat only; image and embedding operations are unsupported.
 
 ## Common properties
 
