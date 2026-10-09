@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -30,7 +31,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -80,7 +80,6 @@ public class GoogleVertexAI extends ModelProvider {
         description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location`. Must not be set for chat models, which always use Gemini.",
         example = "us-central1-aiplatform.googleapis.com:443"
     )
-    @NotNull
     @PluginProperty(group = "main")
     private Property<String> endpoint;
 
@@ -108,7 +107,8 @@ public class GoogleVertexAI extends ModelProvider {
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+        throws IllegalVariableEvaluationException {
         if (this.endpoint != null) {
             throw new IllegalArgumentException("The `endpoint` property cannot be used for the Chat Model which uses Gemini only.");
         }
