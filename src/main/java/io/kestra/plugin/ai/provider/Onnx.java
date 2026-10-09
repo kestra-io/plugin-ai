@@ -250,10 +250,7 @@ public class Onnx extends ModelProvider {
     private record LocalFile(Path path, String sha256) {
     }
 
-    /**
-     * What tasks receive. It holds no native resource: every call leases the model from {@link #MODELS},
-     * loading it again from the task's working-dir copies if it was evicted since the previous call.
-     */
+    // holds no native resource: each call leases the model, reloading it from the task's working-dir copies if evicted
     static final class CachedEmbeddingModel extends DimensionAwareEmbeddingModel {
         private final String cacheKey;
         private final int maxLoadedModels;
@@ -281,9 +278,7 @@ public class Onnx extends ModelProvider {
         }
     }
 
-    /**
-     * One ONNX Runtime session, its tokenizer and the threads embedding segments in parallel. Unlike langchain4j's {@code OnnxEmbeddingModel}, it can be closed.
-     */
+    // unlike langchain4j's OnnxEmbeddingModel, it can be closed
     static final class LoadedModel extends AbstractInProcessEmbeddingModel implements AutoCloseable {
         private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(30);
 
@@ -370,11 +365,7 @@ public class Onnx extends ModelProvider {
         }
     }
 
-    /**
-     * Keeps at most {@code maxLoadedModels} models loaded in the worker, unloading the least recently used idle one.
-     * A model is never unloaded while an embedding call uses it, so each model has a single loaded copy;
-     * when more distinct models are in use at once than the limit, the extra ones are unloaded as their calls return.
-     */
+    // a model is never unloaded while a call uses it, so the limit is exceeded until those calls return
     static final class ModelCache {
         private static final Logger log = LoggerFactory.getLogger(ModelCache.class);
 
