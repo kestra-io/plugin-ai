@@ -63,6 +63,9 @@ dependencies {
     }
     compileOnly 'com.github.docker-java:docker-java-transport-httpclient5'
 
+    // Shared GCP authentication (same behavior as plugin-gcp)
+    implementation 'io.kestra.plugin:plugin-gcp-lib:1.0.1'
+
     // Langchain4j model providers (stable)
     implementation "dev.langchain4j:langchain4j:${langchain4jVersion}"
     implementation "dev.langchain4j:langchain4j-anthropic:${langchain4jVersion}"

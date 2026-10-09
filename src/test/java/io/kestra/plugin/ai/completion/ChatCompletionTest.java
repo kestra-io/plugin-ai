@@ -312,7 +312,7 @@ class ChatCompletionTest extends ContainerTest {
                     .type(GoogleVertexAI.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
                     .location(Property.ofExpression("{{ location }}"))
-                    .project(Property.ofExpression("{{ project }}"))
+                    .projectId(Property.ofExpression("{{ project }}"))
                     .build()
             )
             .build();
@@ -357,7 +357,7 @@ class ChatCompletionTest extends ContainerTest {
                     .type(GoogleVertexAI.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
                     .location(Property.ofExpression("{{ location }}"))
-                    .project(Property.ofExpression("{{ project }}"))
+                    .projectId(Property.ofExpression("{{ project }}"))
                     .build()
             )
             .build();
@@ -396,7 +396,7 @@ class ChatCompletionTest extends ContainerTest {
                     .type(GoogleVertexAI.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
                     .location(Property.ofExpression("{{ location }}"))
-                    .project(Property.ofExpression("{{ project }}"))
+                    .projectId(Property.ofExpression("{{ project }}"))
                     .endpoint(Property.ofExpression("{{ endpoint }}"))
                     .build()
             )
