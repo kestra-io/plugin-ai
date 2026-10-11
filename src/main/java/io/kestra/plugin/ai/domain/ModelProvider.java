@@ -44,7 +44,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.util.Collections;
 import java.util.List;
 import io.kestra.core.models.annotations.PluginProperty;
 
@@ -56,16 +55,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 // AND concrete subclasses must be annotated by @JsonDeserialize() to avoid StackOverflow.
 @JsonDeserialize(using = PluginDeserializer.class)
 public abstract class ModelProvider extends AdditionalPlugin {
-<<<<<<< ours
-    @Schema(
-        title = "Model name",
-        description = "Identifier of the model to call, as named by the provider. Valid values depend on the provider and on whether the model is used for chat, embeddings, or image generation; see the provider's model catalog. No default: this property is required.",
-        example = "gpt-5-mini"
-    )
-    @NotNull
-=======
     @Schema(title = "Model name", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
->>>>>>> theirs
     @PluginProperty(group = "main")
     private Property<String> modelName;
 

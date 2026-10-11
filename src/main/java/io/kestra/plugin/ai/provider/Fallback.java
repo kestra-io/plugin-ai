@@ -101,7 +101,7 @@ public class Fallback extends ModelProvider {
     private ChatModel chatModel(RunContext runContext, ChatModelFactory chatModelFactory)
         throws IllegalVariableEvaluationException {
         validateNoOuterConnectionProperties();
-        List<ChatModel> childModels = new ArrayList<>();
+        var childModels = new ArrayList<ChatModel>();
         for (ModelProvider provider : renderProviders(runContext)) {
             childModels.add(chatModelFactory.create(provider));
         }

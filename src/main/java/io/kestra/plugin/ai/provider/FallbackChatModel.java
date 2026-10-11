@@ -59,15 +59,13 @@ public final class FallbackChatModel implements ChatModel {
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        // Each child's own chat() call applies that child's defaults. Returning the first
-        // model's parameters here preserves useful metadata for consumers that inspect it.
+        // Each child's chat() applies its defaults; expose the first child's parameters as metadata.
         return models.getFirst().defaultRequestParameters();
     }
 
     @Override
     public List<ChatModelListener> listeners() {
-        // The wrapper dispatches calls to child.chat(), which fires these listeners itself.
-        // This list is exposed as metadata but is not fired by the wrapper, avoiding duplicate callbacks.
+        // Child chat() calls fire these listeners; expose them as metadata without firing duplicate callbacks here.
         return listeners;
     }
 
@@ -85,7 +83,7 @@ public final class FallbackChatModel implements ChatModel {
     }
 
     private ChatResponse invoke(ChatInvocation invocation) {
-        List<Throwable> providerFailures = new ArrayList<>();
+        var providerFailures = new ArrayList<Throwable>();
 
         for (int index = 0; index < models.size(); index++) {
             ChatModel model = models.get(index);
@@ -113,7 +111,7 @@ public final class FallbackChatModel implements ChatModel {
             }
         }
 
-        RuntimeException finalFailure = (RuntimeException) providerFailures.getLast();
+        var finalFailure = (RuntimeException) providerFailures.getLast();
         for (Throwable previousFailure : providerFailures.subList(0, providerFailures.size() - 1)) {
             if (previousFailure != finalFailure) {
                 finalFailure.addSuppressed(previousFailure);
@@ -126,29 +124,34 @@ public final class FallbackChatModel implements ChatModel {
                 providerLabel(models.get(index)) + " (" + failureType(providerFailures.get(index)) + ")"
             );
         }
-        throw new RuntimeException(
+        throw new IllegalStateException(
             "All " + providerFailures.size() + " providers failed: " + String.join(", ", providerFailureSummaries),
             finalFailure
         );
     }
 
     private static boolean isProviderFailure(Throwable failure) {
-        List<Throwable> causes = causes(failure);
+        return providerFailureCause(failure) != null;
+    }
 
-        // Explicitly reject known application/request failures, even if they have an
-        // unexpected retryable exception nested underneath them.
-        if (causes.stream().anyMatch(cause ->
-            cause instanceof NonRetriableException
+    private static Throwable providerFailureCause(Throwable failure) {
+        Throwable eligibleFailure = null;
+        for (Throwable cause : causes(failure)) {
+            if (cause instanceof NonRetriableException
                 || cause instanceof GuardrailException
                 || cause instanceof ToolArgumentsException
                 || cause instanceof ToolExecutionException
                 || cause instanceof JsonException
                 || cause instanceof UnsupportedFeatureException
-        )) {
-            return false;
+            ) {
+                // Never fail over for a known request/application failure, even if it wraps a retryable error.
+                return null;
+            }
+            if (eligibleFailure == null && isEligibleProviderFailureType(cause)) {
+                eligibleFailure = cause;
+            }
         }
-
-        return causes.stream().anyMatch(FallbackChatModel::isEligibleProviderFailureType);
+        return eligibleFailure;
     }
 
     private static boolean isEligibleProviderFailureType(Throwable failure) {
@@ -171,11 +174,8 @@ public final class FallbackChatModel implements ChatModel {
     }
 
     private static String failureType(Throwable failure) {
-        return causes(failure).stream()
-            .filter(FallbackChatModel::isEligibleProviderFailureType)
-            .findFirst()
-            .map(cause -> cause.getClass().getSimpleName())
-            .orElse(failure.getClass().getSimpleName());
+        Throwable providerFailure = providerFailureCause(failure);
+        return providerFailure == null ? failure.getClass().getSimpleName() : providerFailure.getClass().getSimpleName();
     }
 
     private static String providerName(ChatModel model) {
