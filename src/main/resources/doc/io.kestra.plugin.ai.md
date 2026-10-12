@@ -10,7 +10,7 @@ All tasks require a `provider` object that selects the LLM backend and carries i
 
 `Onnx` computes embeddings in-process on CPU, with no API key or model server — set `modelUri` and `tokenizerUri` to the `.onnx` model and its Hugging Face `tokenizer.json` (`nsfile://`, `kestra://`, or allowed `file://` URIs), and `poolingMode` (`MEAN` default, `CLS` for BGE models). It supports BERT-style sentence-embedding models only; chat and image generation are unsupported. Each worker keeps at most 2 models loaded between embedding calls and unloads the least recently used one when another is needed; administrators can change the limit with the `max-loaded-models` plugin configuration of `io.kestra.plugin.ai.provider.Onnx`, and should set it to at least the number of distinct models used at the same time.
 
-Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses service account credentials.
+Most providers set `apiKey` (required for their respective service). `AzureOpenAI` uses `endpoint` plus `apiKey` or OAuth credentials. `Ollama` uses `endpoint` (e.g. `http://localhost:11434`). `GoogleVertexAI` uses `projectId` and `location`, and authenticates like the GCP plugin: `serviceAccount` (JSON key) or Application Default Credentials, with optional `impersonatedServiceAccount` and `scopes`.
 
 Store secrets in [secrets](https://kestra.io/docs/concepts/secret) and set connection properties on each task.
 

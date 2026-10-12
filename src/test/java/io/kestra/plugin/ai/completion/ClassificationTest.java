@@ -8,8 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import dev.langchain4j.exception.RateLimitException;
-
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -23,6 +21,7 @@ import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.provider.OpenRouter;
 
+import dev.langchain4j.exception.RateLimitException;
 import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -105,7 +104,7 @@ class ClassificationTest extends ContainerTest {
                     .type(GoogleVertexAI.class.getName())
                     .modelName(Property.ofExpression("{{ modelName }}"))
                     .location(Property.ofExpression("{{ location }}"))
-                    .project(Property.ofExpression("{{ project }}"))
+                    .projectId(Property.ofExpression("{{ project }}"))
                     .build()
             )
             .build();
@@ -132,13 +131,15 @@ class ClassificationTest extends ContainerTest {
         );
 
         Classification task = Classification.builder()
-            .contentBlocks(Property.ofValue(
-                List.of(
-                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
-                        .text("Is 'This is a joke' a good joke?")
-                        .build()
+            .contentBlocks(
+                Property.ofValue(
+                    List.of(
+                        io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                            .text("Is 'This is a joke' a good joke?")
+                            .build()
+                    )
                 )
-            ))
+            )
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(
                 Ollama.builder()
@@ -394,13 +395,15 @@ class ClassificationTest extends ContainerTest {
 
         Classification task = Classification.builder()
             .prompt(Property.ofValue("hello"))
-            .contentBlocks(Property.ofValue(
-                List.of(
-                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
-                        .text("hello")
-                        .build()
+            .contentBlocks(
+                Property.ofValue(
+                    List.of(
+                        io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                            .text("hello")
+                            .build()
+                    )
                 )
-            ))
+            )
             .classes(Property.ofValue(List.of("true", "false")))
             .build();
 
