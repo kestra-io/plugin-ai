@@ -231,6 +231,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
 
         return VertexAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
+            .publisher("google")
             .endpoint(endpoint(runContext, renderedLocation))
             .location(renderedLocation)
             .project(projectId(runContext, connection))
@@ -246,10 +247,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         }
     }
 
-    /**
-     * The Vertex AI SDKs derive the host as {@code <location>-aiplatform.googleapis.com}, which does not exist for
-     * the {@code global} location: its endpoint is {@code aiplatform.googleapis.com}.
-     */
+    // The SDKs derive `<location>-aiplatform.googleapis.com`, which doesn't exist for the `global` location.
     static boolean isGlobal(String location) {
         return GLOBAL_LOCATION.equalsIgnoreCase(location);
     }

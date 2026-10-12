@@ -272,11 +272,7 @@ configurations.runtimeClasspath {
 
 shadowJar {
     archiveClassifier.set(null)
-    // Shadow 9.0.1+ changed the default duplicatesStrategy to EXCLUDE, which drops every
-    // duplicate META-INF/services entry before mergeServiceFiles() ever sees it — e.g. only
-    // grpc-netty-shaded's io.grpc.NameResolverProvider survived, losing grpc-core's dns resolver
-    // and breaking every grpc-based client (Vertex AI Gemini, etc.) with a 'unix' NameResolver error.
-    // Only service files are fed as duplicates to the merge transformer; other duplicates keep the first copy.
+    // Shadow 9 defaults to EXCLUDE, which drops duplicate service files before mergeServiceFiles() (lost grpc's dns resolver).
     filesMatching("META-INF/services/**") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
@@ -303,9 +299,7 @@ shadowJar {
     exclude "module-info.class"
 }
 
-// Regression guard for the service-file merge above: loads the shaded jar in an isolated classloader,
-// same as Kestra's per-plugin isolation, and asks grpc's real registries for the dns resolver and the
-// pick_first load balancer -- the exact lookups that fail at runtime if the merge regresses.
+// Guards the service-file merge: loads the shaded jar in isolation and checks grpc's dns resolver and pick_first.
 tasks.register("verifyShadedGrpc") {
     dependsOn shadowJar
     doLast {

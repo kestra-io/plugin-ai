@@ -155,6 +155,35 @@ class GoogleVertexAITest {
     }
 
     @Test
+    void embeddingModel_shouldUseGlobalEndpointForGlobalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-embedding-001"))
+            .location(Property.ofValue("global"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("aiplatform.googleapis.com:443");
+    }
+
+    @Test
+    void embeddingModel_shouldPreferExplicitEndpointOverGlobalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-embedding-001"))
+            .location(Property.ofValue("global"))
+            .endpoint(Property.ofValue("europe-west1-aiplatform.googleapis.com:443"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("europe-west1-aiplatform.googleapis.com:443");
+    }
+
+    @Test
     void isGlobal_shouldIgnoreCase() {
         assertThat(GoogleVertexAI.isGlobal("global")).isTrue();
         assertThat(GoogleVertexAI.isGlobal("GLOBAL")).isTrue();
