@@ -272,6 +272,10 @@ configurations.runtimeClasspath {
 
 shadowJar {
     archiveClassifier.set(null)
+    // Shadow 9 defaults to EXCLUDE, which drops duplicate service files before mergeServiceFiles() (lost grpc's dns resolver).
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
     mergeServiceFiles()
     zip64 true
 
@@ -294,6 +298,38 @@ shadowJar {
     exclude "META-INF/INDEX.LIST"
     exclude "module-info.class"
 }
+
+// Guards the service-file merge: loads the shaded jar in isolation and checks grpc's dns resolver and pick_first.
+tasks.register("verifyShadedGrpc") {
+    dependsOn shadowJar
+    doLast {
+        def jarFile = shadowJar.archiveFile.get().asFile
+        def loader = new URLClassLoader([jarFile.toURI().toURL()] as URL[], ClassLoader.getPlatformClassLoader())
+        try {
+            def nameResolverRegistryClass = loader.loadClass("io.grpc.NameResolverRegistry")
+            def nameResolverRegistry = nameResolverRegistryClass.getMethod("getDefaultRegistry").invoke(null)
+            def defaultScheme = nameResolverRegistryClass.getMethod("getDefaultScheme").invoke(nameResolverRegistry)
+            if (defaultScheme != "dns") {
+                throw new GradleException(
+                    "grpc default NameResolver scheme is '${defaultScheme}' instead of 'dns' in ${jarFile.name} " +
+                    "-- shadowJar's merge of META-INF/services/io.grpc.NameResolverProvider regressed."
+                )
+            }
+
+            def loadBalancerRegistryClass = loader.loadClass("io.grpc.LoadBalancerRegistry")
+            def loadBalancerRegistry = loadBalancerRegistryClass.getMethod("getDefaultRegistry").invoke(null)
+            if (loadBalancerRegistryClass.getMethod("getProvider", String).invoke(loadBalancerRegistry, "pick_first") == null) {
+                throw new GradleException(
+                    "pick_first LoadBalancerProvider missing from ${jarFile.name} " +
+                    "-- shadowJar's merge of META-INF/services/io.grpc.LoadBalancerProvider regressed."
+                )
+            }
+        } finally {
+            loader.close()
+        }
+    }
+}
+check.dependsOn verifyShadedGrpc
 
 /**********************************************************************************************************************\
  * Version

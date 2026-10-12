@@ -16,6 +16,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.validations.ModelValidator;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.domain.ChatConfiguration;
 
 import jakarta.inject.Inject;
 
@@ -123,6 +124,90 @@ class GoogleVertexAITest {
         assertThatThrownBy(() -> provider.imageModel(runContextFactory.of(Map.of())))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("serviceAccount");
+    }
+
+    @Test
+    void chatModel_shouldUseGlobalEndpointForGlobalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-2.5-pro"))
+            .location(Property.ofValue("global"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var chatModel = provider.chatModel(runContextFactory.of(Map.of()), ChatConfiguration.empty());
+
+        assertThat(chatModel).extracting("vertexAI.apiEndpoint").isEqualTo("aiplatform.googleapis.com");
+    }
+
+    @Test
+    void chatModel_shouldUseRegionalEndpointForRegionalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-2.5-pro"))
+            .location(Property.ofValue("us-central1"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var chatModel = provider.chatModel(runContextFactory.of(Map.of()), ChatConfiguration.empty());
+
+        assertThat(chatModel).extracting("vertexAI.apiEndpoint").isEqualTo("us-central1-aiplatform.googleapis.com");
+    }
+
+    @Test
+    void embeddingModel_shouldUseGlobalEndpointForGlobalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-embedding-001"))
+            .location(Property.ofValue("global"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("aiplatform.googleapis.com:443");
+        assertThat(embeddingModel).extracting("endpointName.publisher").isEqualTo("google");
+    }
+
+    @Test
+    void embeddingModel_shouldPreferExplicitEndpointOverGlobalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-embedding-001"))
+            .location(Property.ofValue("global"))
+            .endpoint(Property.ofValue("europe-west1-aiplatform.googleapis.com:443"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("europe-west1-aiplatform.googleapis.com:443");
+    }
+
+    @Test
+    void endpoint_shouldResolveForImageAndEmbeddingModels() throws Exception {
+        var runContext = runContextFactory.of(Map.of());
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("imagen-3.0-generate-002"))
+            .build();
+        var providerWithEndpoint = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("imagen-3.0-generate-002"))
+            .endpoint(Property.ofValue("europe-west1-aiplatform.googleapis.com:443"))
+            .build();
+
+        assertThat(provider.endpoint(runContext, "global")).isEqualTo("aiplatform.googleapis.com:443");
+        assertThat(provider.endpoint(runContext, "us-central1")).isNull();
+        assertThat(providerWithEndpoint.endpoint(runContext, "global")).isEqualTo("europe-west1-aiplatform.googleapis.com:443");
+    }
+
+    @Test
+    void isGlobal_shouldIgnoreCase() {
+        assertThat(GoogleVertexAI.isGlobal("global")).isTrue();
+        assertThat(GoogleVertexAI.isGlobal("GLOBAL")).isTrue();
+        assertThat(GoogleVertexAI.isGlobal("us-central1")).isFalse();
+        assertThat(GoogleVertexAI.isGlobal(null)).isFalse();
     }
 
     private static String serviceAccountJson() throws Exception {
