@@ -101,6 +101,9 @@ import lombok.experimental.SuperBuilder;
     aliases = "io.kestra.plugin.langchain4j.provider.GoogleVertexAI"
 )
 public class GoogleVertexAI extends ModelProvider implements GcpInterface {
+    private static final String GLOBAL_LOCATION = "global";
+    private static final String GLOBAL_HOST = "aiplatform.googleapis.com";
+
     @Schema(
         title = "Endpoint URL",
         description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location`. Must not be set for chat models, which always use Gemini.",
@@ -111,7 +114,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
 
     @Schema(
         title = "Project location",
-        description = "Google Cloud region hosting the Vertex AI model. No default: this property is required for chat models.",
+        description = "Google Cloud region hosting the Vertex AI model, or `global` to use the global endpoint `aiplatform.googleapis.com`. No default: this property is required for chat models.",
         example = "us-central1"
     )
     @NotNull
@@ -182,10 +185,12 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         var responseFormat = configuration.computeResponseFormat(runContext);
 
         var connection = connection(runContext);
+        var renderedLocation = runContext.render(this.location).as(String.class).orElseThrow();
 
         return VertexAiGeminiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .location(runContext.render(this.location).as(String.class).orElseThrow())
+            .location(renderedLocation)
+            .apiEndpoint(isGlobal(renderedLocation) ? GLOBAL_HOST : null)
             .project(projectId(runContext, connection))
             .credentials(connection.credentials())
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).map(d -> d.floatValue()).orElse(null))
@@ -209,10 +214,12 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
             );
         }
 
+        var renderedLocation = runContext.render(this.location).as(String.class).orElse(null);
+
         return VertexAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .endpoint(runContext.render(this.endpoint).as(String.class).orElse(null))
-            .location(runContext.render(this.location).as(String.class).orElse(null))
+            .endpoint(endpoint(runContext, renderedLocation))
+            .location(renderedLocation)
             .project(projectId(runContext, connection(runContext)))
             .build();
     }
@@ -220,11 +227,12 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var connection = connection(runContext);
+        var renderedLocation = runContext.render(this.location).as(String.class).orElse(null);
 
         return VertexAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .endpoint(runContext.render(this.endpoint).as(String.class).orElse(null))
-            .location(runContext.render(this.location).as(String.class).orElse(null))
+            .endpoint(endpoint(runContext, renderedLocation))
+            .location(renderedLocation)
             .project(projectId(runContext, connection))
             .credentials(connection.credentials())
             .build();
@@ -236,6 +244,19 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to load the Google Cloud credentials", e);
         }
+    }
+
+    /**
+     * The Vertex AI SDKs derive the host as {@code <location>-aiplatform.googleapis.com}, which does not exist for
+     * the {@code global} location: its endpoint is {@code aiplatform.googleapis.com}.
+     */
+    static boolean isGlobal(String location) {
+        return GLOBAL_LOCATION.equalsIgnoreCase(location);
+    }
+
+    private String endpoint(RunContext runContext, String renderedLocation) throws IllegalVariableEvaluationException {
+        return runContext.render(this.endpoint).as(String.class)
+            .orElse(isGlobal(renderedLocation) ? GLOBAL_HOST + ":443" : null);
     }
 
     private static String projectId(RunContext runContext, CredentialService.GcpConnection connection) throws IllegalVariableEvaluationException {
