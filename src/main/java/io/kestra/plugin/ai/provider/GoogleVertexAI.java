@@ -102,11 +102,12 @@ import lombok.experimental.SuperBuilder;
 )
 public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     private static final String GLOBAL_LOCATION = "global";
+    // Chat's VertexAI SDK appends ":443" itself; the embedding and image SDKs expect host:port.
     private static final String GLOBAL_HOST = "aiplatform.googleapis.com";
 
     @Schema(
         title = "Endpoint URL",
-        description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location`. Must not be set for chat models, which always use Gemini.",
+        description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location` (`aiplatform.googleapis.com:443` for `global`). Must not be set for chat models, which always use Gemini.",
         example = "us-central1-aiplatform.googleapis.com:443"
     )
     @PluginProperty(group = "main")
@@ -252,7 +253,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         return GLOBAL_LOCATION.equalsIgnoreCase(location);
     }
 
-    private String endpoint(RunContext runContext, String renderedLocation) throws IllegalVariableEvaluationException {
+    String endpoint(RunContext runContext, String renderedLocation) throws IllegalVariableEvaluationException {
         return runContext.render(this.endpoint).as(String.class)
             .orElse(isGlobal(renderedLocation) ? GLOBAL_HOST + ":443" : null);
     }

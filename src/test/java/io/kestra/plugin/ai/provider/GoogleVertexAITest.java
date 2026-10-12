@@ -166,6 +166,7 @@ class GoogleVertexAITest {
         var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
 
         assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("aiplatform.googleapis.com:443");
+        assertThat(embeddingModel).extracting("endpointName.publisher").isEqualTo("google");
     }
 
     @Test
@@ -181,6 +182,24 @@ class GoogleVertexAITest {
         var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
 
         assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("europe-west1-aiplatform.googleapis.com:443");
+    }
+
+    @Test
+    void endpoint_shouldResolveForImageAndEmbeddingModels() throws Exception {
+        var runContext = runContextFactory.of(Map.of());
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("imagen-3.0-generate-002"))
+            .build();
+        var providerWithEndpoint = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("imagen-3.0-generate-002"))
+            .endpoint(Property.ofValue("europe-west1-aiplatform.googleapis.com:443"))
+            .build();
+
+        assertThat(provider.endpoint(runContext, "global")).isEqualTo("aiplatform.googleapis.com:443");
+        assertThat(provider.endpoint(runContext, "us-central1")).isNull();
+        assertThat(providerWithEndpoint.endpoint(runContext, "global")).isEqualTo("europe-west1-aiplatform.googleapis.com:443");
     }
 
     @Test
