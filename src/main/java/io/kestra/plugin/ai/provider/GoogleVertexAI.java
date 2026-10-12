@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -124,9 +123,18 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         description = "Google Cloud project ID that owns the Vertex AI resources. When not set, it is taken from the service account credentials.",
         example = "my-gcp-project"
     )
-    @JsonAlias("project")
     @PluginProperty(group = "main")
     private Property<String> projectId;
+
+    @Schema(
+        title = "Project ID (deprecated)",
+        description = "Deprecated, use `projectId` instead. Only used when `projectId` is not set.",
+        example = "my-gcp-project",
+        deprecated = true
+    )
+    @PluginProperty(group = "main")
+    @Deprecated
+    private Property<String> project;
 
     @Schema(
         title = "Service account JSON key",
@@ -142,10 +150,18 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     @PluginProperty(secret = true, group = "connection")
     private Property<String> impersonatedServiceAccount;
 
-    @Schema(title = "OAuth scopes")
+    @Schema(
+        title = "OAuth scopes",
+        description = "OAuth scopes requested for the credentials. Defaults to `https://www.googleapis.com/auth/cloud-platform`. Not supported for image models, which always use Application Default Credentials with their default scopes."
+    )
     @PluginProperty(group = "connection")
     @Builder.Default
     private Property<List<String>> scopes = Property.ofValue(Collections.singletonList("https://www.googleapis.com/auth/cloud-platform"));
+
+    @Override
+    public Property<String> getProjectId() {
+        return this.projectId != null ? this.projectId : this.project;
+    }
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {

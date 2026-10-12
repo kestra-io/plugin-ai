@@ -61,6 +61,23 @@ class GoogleVertexAITest {
     }
 
     @Test
+    void shouldPreferProjectIdOverLegacyProjectProperty() throws Exception {
+        var runContext = runContextFactory.of(Map.of());
+        var provider = JacksonMapper.ofJson().convertValue(
+            Map.of(
+                "type", GoogleVertexAI.class.getName(),
+                "modelName", "gemini-3.5-flash-lite",
+                "location", "us-central1",
+                "project", "legacy-project",
+                "projectId", "my-project"
+            ),
+            GoogleVertexAI.class
+        );
+
+        assertThat(runContext.render(provider.getProjectId()).as(String.class)).contains("my-project");
+    }
+
+    @Test
     void connection_shouldUseServiceAccountAndInferProjectId() throws Exception {
         var runContext = runContextFactory.of(Map.of("serviceAccount", serviceAccountJson()));
         var provider = GoogleVertexAI.builder()
