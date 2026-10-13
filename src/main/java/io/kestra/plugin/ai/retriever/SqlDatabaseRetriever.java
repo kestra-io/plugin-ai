@@ -3,7 +3,6 @@ package io.kestra.plugin.ai.retriever;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.Driver;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
@@ -191,6 +190,10 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
             throw new IllegalArgumentException("Cannot instantiate the JDBC driver '%s'.".formatted(rDriver), e);
         }
 
+        if (rJdbcUrl == null) {
+            throw new IllegalArgumentException("`jdbcUrl` is required.");
+        }
+
         Properties connectionProperties = new Properties();
         connectionProperties.setProperty("user", rUsername);
         connectionProperties.setProperty("password", rPassword);
@@ -246,13 +249,13 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
         }
 
         @Override
-        public void setLoginTimeout(int seconds) {
-            DriverManager.setLoginTimeout(seconds);
+        public void setLoginTimeout(int seconds) throws SQLException {
+            throw new SQLFeatureNotSupportedException();
         }
 
         @Override
         public int getLoginTimeout() {
-            return DriverManager.getLoginTimeout();
+            return 0;
         }
 
         @Override
