@@ -1,10 +1,16 @@
 package io.kestra.plugin.ai.retriever;
 
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.Properties;
+import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
@@ -38,7 +44,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(
     title = "Retrieve context from SQL (experimental)",
     description = """
-        Uses LangChain4j’s experimental SqlDatabaseContentRetriever to translate questions into SQL and return rows as context. Requires a read-only JDBC user; supports PostgreSQL/MySQL/H2 with auto driver selection. Connection pooling defaults to size 2."""
+        Uses LangChain4j’s experimental SqlDatabaseContentRetriever to translate questions into SQL and return rows as context. Requires a read-only JDBC user; supports PostgreSQL/MySQL/H2 with auto driver selection. A new connection is opened for each query and closed right after it."""
 )
 @Plugin(
     examples = {
@@ -98,7 +104,7 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
 
     @Schema(
         title = "JDBC URL",
-        description = "JDBC connection URL of the database the model queries. It is passed straight to the connection pool, so it must be set for the retriever to connect, even though it is not enforced by validation. No default.",
+        description = "JDBC connection URL of the database the model queries. It must be set for the retriever to connect, even though it is not enforced by validation. No default.",
         example = "jdbc:postgresql://localhost:5432/mydb"
     )
     @PluginProperty(group = "connection")
@@ -131,13 +137,14 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
     private Property<String> driver;
 
     @Schema(
-        title = "Maximum connection pool size",
-        description = "Maximum number of concurrent database connections held by the pool. Defaults to `2`.",
-        example = "2"
+        title = "Maximum connection pool size (deprecated)",
+        description = "Deprecated and ignored: no pool is used, a connection is opened for each query and closed right after it.",
+        example = "2",
+        deprecated = true
     )
-    @Builder.Default
     @PluginProperty(group = "execution")
-    private Property<Integer> maxPoolSize = Property.ofValue(2);
+    @Deprecated
+    private Property<Integer> maxPoolSize;
 
     @Schema(
         title = "Language model provider",
@@ -165,7 +172,6 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
         String rUsername = runContext.render(this.username).as(String.class).orElseThrow();
         String rPassword = runContext.render(this.password).as(String.class).orElseThrow();
         String rDriver = runContext.render(this.driver).as(String.class).orElse(null);
-        int rMaxPoolSize = runContext.render(this.maxPoolSize).as(Integer.class).orElse(2);
 
         // Determine default driver if not provided
         if (rDriver == null) {
@@ -176,21 +182,20 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
             };
         }
 
+        Driver jdbcDriver;
         try {
-            Class.forName(rDriver);
+            jdbcDriver = (Driver) Class.forName(rDriver).getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("JDBC driver not found on classpath: " + rDriver, e);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot instantiate the JDBC driver '%s'.".formatted(rDriver), e);
         }
 
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(rJdbcUrl);
-        config.setUsername(rUsername);
-        config.setPassword(rPassword);
-        config.setDriverClassName(rDriver);
-        config.setMaximumPoolSize(rMaxPoolSize);
-        config.setPoolName("SqlDatabaseRetrieverPool");
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("user", rUsername);
+        connectionProperties.setProperty("password", rPassword);
 
-        DataSource dataSource = new HikariDataSource(config);
+        DataSource dataSource = new DriverDataSource(jdbcDriver, rJdbcUrl, connectionProperties);
         ChatModel chatModel = TokenBudgetChatModel.wrap(
             provider.chatModel(runContext, configuration),
             runContext,
@@ -202,5 +207,67 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
             .dataSource(dataSource)
             .chatModel(chatModel)
             .build();
+    }
+
+    // Not pooled on purpose: LangChain4j closes every connection it gets, and a pool would outlive the run.
+    private static final class DriverDataSource implements DataSource {
+        private final Driver driver;
+        private final String url;
+        private final Properties properties;
+
+        private DriverDataSource(Driver driver, String url, Properties properties) {
+            this.driver = driver;
+            this.url = url;
+            this.properties = properties;
+        }
+
+        @Override
+        public Connection getConnection() throws SQLException {
+            Connection connection = driver.connect(url, properties);
+            if (connection == null) {
+                throw new SQLException("The JDBC driver '%s' does not accept the configured JDBC URL.".formatted(driver.getClass().getName()));
+            }
+            return connection;
+        }
+
+        @Override
+        public Connection getConnection(String username, String password) throws SQLException {
+            throw new SQLFeatureNotSupportedException();
+        }
+
+        @Override
+        public PrintWriter getLogWriter() throws SQLException {
+            throw new SQLFeatureNotSupportedException();
+        }
+
+        @Override
+        public void setLogWriter(PrintWriter out) throws SQLException {
+            throw new SQLFeatureNotSupportedException();
+        }
+
+        @Override
+        public void setLoginTimeout(int seconds) {
+            DriverManager.setLoginTimeout(seconds);
+        }
+
+        @Override
+        public int getLoginTimeout() {
+            return DriverManager.getLoginTimeout();
+        }
+
+        @Override
+        public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+            return driver.getParentLogger();
+        }
+
+        @Override
+        public <T> T unwrap(Class<T> iface) throws SQLException {
+            throw new SQLFeatureNotSupportedException();
+        }
+
+        @Override
+        public boolean isWrapperFor(Class<?> iface) {
+            return false;
+        }
     }
 }
