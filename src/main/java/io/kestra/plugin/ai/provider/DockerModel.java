@@ -158,16 +158,16 @@ public class DockerModel extends OpenAICompliantProvider {
     private Property<String> apiKey = Property.ofValue(PLACEHOLDER_API_KEY);
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
         throws IllegalVariableEvaluationException {
         assertHostResolvable(runContext);
-        return super.chatModel(runContext, configuration, timeout, additionalListeners);
+        return super.buildChatModel(runContext, configuration, timeout, additionalListeners);
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         assertHostResolvable(runContext);
-        return super.embeddingModel(runContext);
+        return super.buildEmbeddingModel(runContext);
     }
 
     /**
@@ -175,7 +175,7 @@ public class DockerModel extends OpenAICompliantProvider {
      * Requires a diffuser-capable model (e.g. ai/stable-diffusion).
      */
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         String resolvedBaseUrl = runContext.render(getBaseUrl()).as(String.class).orElse(DEFAULT_BASE_URL);
         var matcher = BASE_PATH_SEGMENT.matcher(resolvedBaseUrl);
         if (!matcher.find()) {

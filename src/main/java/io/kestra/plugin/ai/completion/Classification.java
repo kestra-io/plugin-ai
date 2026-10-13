@@ -46,7 +46,7 @@ import java.util.Map;
 @Schema(
     title = "Classify text into provided classes",
     description = """
-        Uses an LLM to assign the input (`prompt` or `contentBlocks`) to exactly one category from `classes`. A default system prompt forces a single-label reply; override it if you need different behavior. Output includes token usage and finish reason."""
+        Uses an LLM to assign the input (`prompt` or `contentBlocks`) to exactly one category from `classes`. A default system prompt forces a single-label reply; override it if you need different behavior. Output includes token usage and finish reason. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), the model call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. Prompt and response text are included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 @Plugin(
     examples = {

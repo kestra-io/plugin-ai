@@ -53,7 +53,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Schema(
     title = "Run RAG chat with retrievers/tools",
     description = """
-        Combines chat, an embedding-store retriever, optional content retrievers, and optional tools. Requires chat and embedding providers. Retrievers always supply context; tools run only when invoked by the model. Retriever limits (`maxResults`, `minScore`) filter retrieved chunks."""
+        Combines chat, an embedding-store retriever, optional content retrievers, and optional tools. Requires chat and embedding providers. Retrievers always supply context; tools run only when invoked by the model. Retriever limits (`maxResults`, `minScore`) filter retrieved chunks. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), each chat and embedding call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. Prompt and response text are included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 @Plugin(
     examples = {
