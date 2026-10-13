@@ -13,3 +13,12 @@ kestra:
       static:
         endpoints:
           - host: localhost
+
+# Disable Micronaut embedded gRPC server and health check: in the test environment it binds
+# SocketUtils.findAvailableTcpPort(), which races across the concurrent test-class contexts
+# (junit-platform.properties) and fails with "Address already in use".
+grpc:
+  server:
+    enabled: false
+    health:
+      enabled: false
