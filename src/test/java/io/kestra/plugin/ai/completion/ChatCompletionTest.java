@@ -33,6 +33,7 @@ import io.kestra.plugin.ai.provider.*;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.workersai.WorkersAiChatModelName;
 import jakarta.inject.Inject;
 
@@ -436,6 +437,42 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         assertThat(output.getTextOutput(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionOllama_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "modelName", "tinydolphin",
+                "ollamaEndpoint", ollamaEndpoint,
+                "messages", List.of(
+                    // Ask for a long answer, so the only reason to stop at 10 tokens is maxToken
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Count from 1 to 100, separated by commas.").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                    .maxToken(Property.ofValue(10)).build()
+            )
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        assertThat(output.getFinishReason(), equalTo(FinishReason.LENGTH));
     }
 
     @Test
