@@ -85,7 +85,8 @@ import lombok.experimental.SuperBuilder;
         A loaded model stays in the worker's memory and is reused by every task that provides the same model and tokenizer files; it is unloaded after about 10 minutes without use. \
         Each worker keeps at most 2 models loaded between embedding calls (each distinct model, tokenizer and `poolingMode` combination counts as one): loading another one unloads the least recently used model as soon as no running call uses it, and that model is loaded again on its next use. \
         Administrators can change the limit with the `max-loaded-models` plugin configuration of `io.kestra.plugin.ai.provider.Onnx`; set it to at least the number of distinct models used at the same time, otherwise they keep unloading and reloading each other. \
-        Models are loaded and unloaded on a single worker thread so that reloading them reuses the same native memory; on glibc-based workers that also run other plugins allocating native memory from many threads, setting the `MALLOC_ARENA_MAX=2` environment variable on the worker further limits native memory growth."""
+        Models are loaded and unloaded on a single worker thread so that reloading them reuses the same native memory: a worker loads one model at a time, so loading a large model delays the first use of another model, while calls using already loaded models are not affected. \
+        On glibc-based workers that also run other plugins allocating native memory from many threads, setting the `MALLOC_ARENA_MAX=2` environment variable on the worker further limits native memory growth."""
 )
 @Plugin(
     examples = {
@@ -535,6 +536,7 @@ public class Onnx extends ModelProvider {
     // a model is never unloaded while a call uses it, so the limit is exceeded until those calls return
     static final class ModelCache {
         private static final Logger log = LoggerFactory.getLogger(ModelCache.class);
+        private static final Duration LONG_QUEUE_WAIT = Duration.ofSeconds(5);
 
         // accessOrder = true: iteration starts at the least recently used model
         private final LinkedHashMap<String, CachedModel> modelsByKey = new LinkedHashMap<>(16, 0.75f, true);
@@ -609,7 +611,7 @@ public class Onnx extends ModelProvider {
         private LoadedModel loaded(CachedModel cachedModel, Supplier<LoadedModel> loader, boolean retryOwnLoadOnSharedFailure) {
             var startedHere = cachedModel.loadStarted.compareAndSet(false, true);
             if (startedHere) {
-                lifecycle.execute(withPluginClassLoader(() -> load(cachedModel, loader)));
+                lifecycle.execute(onLifecycleThread("load ONNX embedding model " + cachedModel.cacheKey, () -> load(cachedModel, loader)));
             }
             try {
                 return cachedModel.loading.get();
@@ -656,8 +658,21 @@ public class Onnx extends ModelProvider {
         // the caller does not wait: the lifecycle thread runs closes and loads in order, so a later load still comes after these closes
         private void close(List<CachedModel> idleModels, String reason) {
             if (!idleModels.isEmpty()) {
-                lifecycle.execute(withPluginClassLoader(() -> idleModels.forEach(cachedModel -> close(cachedModel, reason))));
+                lifecycle.execute(onLifecycleThread("unload " + idleModels.size() + " ONNX embedding model(s)", () -> idleModels.forEach(cachedModel -> close(cachedModel, reason))));
             }
+        }
+
+        // the queue makes slow loads and closes of one model visible as delays for every other one, so long waits are logged
+        private static Runnable onLifecycleThread(String work, Runnable task) {
+            var queuedAt = System.nanoTime();
+            return withPluginClassLoader(() ->
+            {
+                var waited = Duration.ofNanos(System.nanoTime() - queuedAt);
+                if (waited.compareTo(LONG_QUEUE_WAIT) > 0) {
+                    log.info("Waited {}s to {}: the worker loads and unloads one ONNX embedding model at a time.", waited.toSeconds(), work);
+                }
+                task.run();
+            });
         }
 
         // DJL finds its native tokenizer library through the context class loader

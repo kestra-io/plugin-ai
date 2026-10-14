@@ -310,6 +310,16 @@ class OnnxModelCacheTest {
         }
     }
 
+    // closing the tokenizer reads a private langchain4j field: a langchain4j upgrade renaming it must fail here, not leak tokenizers
+    @Test
+    void closesALoadedModelAndItsTokenizer() {
+        var model = load();
+
+        model.close();
+
+        assertThatThrownBy(() -> model.embedAll(List.of(TextSegment.from("hello")))).isInstanceOf(IllegalStateException.class);
+    }
+
     @Test
     void publishedTokenizerLoadsWithoutVocabularyWarning() {
         var model = load();
