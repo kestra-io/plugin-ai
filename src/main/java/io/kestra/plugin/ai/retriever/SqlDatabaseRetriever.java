@@ -103,7 +103,7 @@ public class SqlDatabaseRetriever extends ContentRetrieverProvider {
 
     @Schema(
         title = "JDBC URL",
-        description = "JDBC connection URL of the database the model queries. It must be set for the retriever to connect, even though it is not enforced by validation. No default.",
+        description = "JDBC connection URL of the database the model queries. It must be set for the retriever to connect, even though it is not enforced by validation. Each query opens its own connection, so the connect timeout is the driver's: PostgreSQL gives up after 10 seconds by default, while other drivers may wait for the OS TCP timeout unless the URL sets one (for example `connectTimeout=30000` for MySQL, in milliseconds). No default.",
         example = "jdbc:postgresql://localhost:5432/mydb"
     )
     @PluginProperty(group = "connection")
