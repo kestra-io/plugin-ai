@@ -24,8 +24,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
-import dev.langchain4j.model.vertexai.VertexAiEmbeddingModel;
 import dev.langchain4j.model.vertexai.VertexAiImageModel;
 import dev.langchain4j.model.vertexai.gemini.SchemaHelper;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
@@ -102,12 +102,14 @@ import lombok.experimental.SuperBuilder;
 )
 public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     private static final String GLOBAL_LOCATION = "global";
-    // Chat's VertexAI SDK appends ":443" itself; the embedding and image SDKs expect host:port.
+    // Chat's VertexAI SDK appends ":443" itself; the image SDK expects host:port.
     private static final String GLOBAL_HOST = "aiplatform.googleapis.com";
+    // Non-Gemini embedding models cap a request at 20,000 tokens with texts truncated to 2,048: 9 always fit.
+    static final int TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH = 9;
 
     @Schema(
         title = "Endpoint URL",
-        description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location` (`aiplatform.googleapis.com:443` for `global`). Must not be set for chat models, which always use Gemini.",
+        description = "Vertex AI API endpoint for image and embedding models, as `host:port` or a full `https://` URL. Not set by default, in which case the endpoint is derived from `location` (`aiplatform.googleapis.com` for `global`). Must not be set for chat models, which always use Gemini.",
         example = "us-central1-aiplatform.googleapis.com:443"
     )
     @PluginProperty(group = "main")
@@ -228,15 +230,16 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var connection = connection(runContext);
-        var renderedLocation = runContext.render(this.location).as(String.class).orElse(null);
+        var modelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
 
-        return VertexAiEmbeddingModel.builder()
-            .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .publisher("google")
-            .endpoint(endpoint(runContext, renderedLocation))
-            .location(renderedLocation)
-            .project(projectId(runContext, connection))
-            .credentials(connection.credentials())
+        // Not langchain4j-vertex-ai: it calls `countTokens` before embedding, which isn't served on `global`.
+        return GoogleGenAiEmbeddingModel.builder()
+            .modelName(modelName)
+            .location(runContext.render(this.location).as(String.class).orElse(null))
+            .projectId(projectId(runContext, connection))
+            .googleCredentials(connection.credentials())
+            .apiEndpoint(apiEndpoint(runContext.render(this.endpoint).as(String.class).orElse(null)))
+            .maxSegmentsPerBatch(isGeminiEmbedding(modelName) ? null : TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH)
             .build();
     }
 
@@ -256,6 +259,25 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     String endpoint(RunContext runContext, String renderedLocation) throws IllegalVariableEvaluationException {
         return runContext.render(this.endpoint).as(String.class)
             .orElse(isGlobal(renderedLocation) ? GLOBAL_HOST + ":443" : null);
+    }
+
+    // Matches fully-qualified names such as `publishers/google/models/gemini-embedding-001` too.
+    static boolean isGeminiEmbedding(String modelName) {
+        return modelName.substring(modelName.lastIndexOf('/') + 1).startsWith("gemini-embedding");
+    }
+
+    // The `endpoint` property is documented as host:port, while google-genai expects a base URL.
+    static String apiEndpoint(String endpoint) {
+        if (endpoint == null || endpoint.isBlank()) {
+            return null;
+        }
+        if (endpoint.contains("://")) {
+            if (!endpoint.startsWith("https://")) {
+                throw new IllegalArgumentException("The `endpoint` property must use `https`, the credentials' access token is sent to it.");
+            }
+            return endpoint;
+        }
+        return "https://" + (endpoint.endsWith(":443") ? endpoint.substring(0, endpoint.length() - ":443".length()) : endpoint);
     }
 
     private static String projectId(RunContext runContext, CredentialService.GcpConnection connection) throws IllegalVariableEvaluationException {

@@ -5,7 +5,10 @@ import java.nio.file.Path;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.IntStream;
 
+import org.assertj.core.util.introspection.PropertyOrFieldSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.ImpersonatedCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
+import com.google.genai.types.HttpOptions;
 
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -22,7 +26,9 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -172,8 +178,25 @@ class GoogleVertexAITest {
 
         var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
 
-        assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("aiplatform.googleapis.com:443");
-        assertThat(embeddingModel).extracting("endpointName.publisher").isEqualTo("google");
+        assertThat(embeddingModel).isInstanceOf(GoogleGenAiEmbeddingModel.class);
+        assertThat(sdkField(embeddingModel, "client.apiClient.vertexAI")).isEqualTo(true);
+        assertThat(sdkField(embeddingModel, "client.apiClient.project")).isEqualTo(Optional.of("my-project"));
+        assertThat(sdkField(embeddingModel, "client.apiClient.location")).isEqualTo(Optional.of("global"));
+        assertThat(baseUrl(embeddingModel)).contains("https://aiplatform.googleapis.com");
+    }
+
+    @Test
+    void embeddingModel_shouldUseRegionalEndpointForRegionalLocation() throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-embedding-001"))
+            .location(Property.ofValue("europe-west1"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        assertThat(baseUrl(embeddingModel)).contains("https://europe-west1-aiplatform.googleapis.com");
     }
 
     @Test
@@ -188,11 +211,80 @@ class GoogleVertexAITest {
 
         var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
 
-        assertThat(embeddingModel).extracting("settings.endpoint").isEqualTo("europe-west1-aiplatform.googleapis.com:443");
+        assertThat(baseUrl(embeddingModel)).contains("https://europe-west1-aiplatform.googleapis.com");
     }
 
     @Test
-    void endpoint_shouldResolveForImageAndEmbeddingModels() throws Exception {
+    void embeddingModel_shouldLimitBatchSizeForTextEmbeddingModels() throws Exception {
+        var textEmbedding = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("text-embedding-005"))
+            .location(Property.ofValue("global"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+        var geminiEmbedding = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("publishers/google/models/gemini-embedding-001"))
+            .location(Property.ofValue("global"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+        var sdkDefault = GoogleGenAiEmbeddingModel.builder().modelName("gemini-embedding-001").apiKey("unused").build();
+
+        assertThat(sdkField(textEmbedding.embeddingModel(runContextFactory.of(Map.of())), "maxSegmentsPerBatch"))
+            .isEqualTo(GoogleVertexAI.TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH);
+        assertThat(sdkField(geminiEmbedding.embeddingModel(runContextFactory.of(Map.of())), "maxSegmentsPerBatch"))
+            .isEqualTo(sdkField(sdkDefault, "maxSegmentsPerBatch"));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void embeddingModel_shouldEmbedWithGeminiEmbeddingOnGlobalLocation() throws Exception {
+        assertEmbedsOnGlobalLocation("gemini-embedding-001");
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void embeddingModel_shouldEmbedWithTextEmbeddingOnGlobalLocation() throws Exception {
+        assertEmbedsOnGlobalLocation("text-embedding-005");
+    }
+
+    // `countTokens` isn't served on `global` for embedding models: a batch of several texts must still embed there
+    private void assertEmbedsOnGlobalLocation(String modelName) throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue(modelName))
+            .location(Property.ofValue("global"))
+            .projectId(Property.ofValue(VertexAITestEnv.PROJECT))
+            .build();
+        var segments = IntStream.range(0, 12).mapToObj(i -> TextSegment.from("Kestra orchestrates workflow number " + i)).toList();
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        try {
+            assertThat(embeddingModel.dimension()).isPositive();
+            assertThat(embeddingModel.embedAll(segments).content())
+                .hasSize(segments.size())
+                .allSatisfy(embedding -> assertThat(embedding.vector()).hasSize(embeddingModel.dimension()));
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
+    void apiEndpoint_shouldConvertHostAndPortToBaseUrl() {
+        assertThat(GoogleVertexAI.apiEndpoint(null)).isNull();
+        assertThat(GoogleVertexAI.apiEndpoint(" ")).isNull();
+        assertThat(GoogleVertexAI.apiEndpoint("europe-west1-aiplatform.googleapis.com:443")).isEqualTo("https://europe-west1-aiplatform.googleapis.com");
+        assertThat(GoogleVertexAI.apiEndpoint("europe-west1-aiplatform.googleapis.com")).isEqualTo("https://europe-west1-aiplatform.googleapis.com");
+        assertThat(GoogleVertexAI.apiEndpoint("localhost:8080")).isEqualTo("https://localhost:8080");
+        assertThat(GoogleVertexAI.apiEndpoint("https://europe-west1-aiplatform.googleapis.com")).isEqualTo("https://europe-west1-aiplatform.googleapis.com");
+        assertThatThrownBy(() -> GoogleVertexAI.apiEndpoint("http://localhost:8080"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("https");
+    }
+
+    @Test
+    void endpoint_shouldResolveForImageModels() throws Exception {
         var runContext = runContextFactory.of(Map.of());
         var provider = GoogleVertexAI.builder()
             .type(GoogleVertexAI.class.getName())
@@ -234,7 +326,7 @@ class GoogleVertexAITest {
     @Test
     @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     void embeddingModel_shouldCallVertexAIWithServiceAccount() throws Exception {
-        var provider = serviceAccountProvider(VertexAITestEnv.EMBEDDING_MODEL, VertexAITestEnv.EMBEDDING_LOCATION);
+        var provider = serviceAccountProvider(VertexAITestEnv.EMBEDDING_MODEL, VertexAITestEnv.LOCATION);
 
         var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
 
@@ -261,6 +353,15 @@ class GoogleVertexAITest {
             .location(Property.ofValue(location))
             .serviceAccount(Property.ofValue(credentials))
             .build();
+    }
+
+    private static Optional<String> baseUrl(Object embeddingModel) {
+        return ((HttpOptions) sdkField(embeddingModel, "client.apiClient.httpOptions")).baseUrl().map(url -> url.replaceAll("/+$", ""));
+    }
+
+    // The only place reading google-genai internals: an SDK bump that renames them only needs fixing here.
+    private static Object sdkField(Object embeddingModel, String path) {
+        return PropertyOrFieldSupport.EXTRACTION.getValueOf(path, embeddingModel);
     }
 
     private static String serviceAccountJson() throws Exception {
