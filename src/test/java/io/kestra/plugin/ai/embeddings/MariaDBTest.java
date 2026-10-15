@@ -20,12 +20,11 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
-import io.kestra.plugin.ai.provider.GoogleGemini;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.rag.IngestDocument;
 
-import jakarta.inject.Inject;
-
 import dev.langchain4j.exception.RateLimitException;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.abort;
@@ -36,7 +35,6 @@ class MariaDBTest extends ContainerTest {
 
     @Inject
     private RunContextFactory runContextFactory;
-    private static final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
     private static final DockerImageName DEFAULT_IMAGE = DockerImageName.parse("mariadb:11.7-rc");
 
     private static MariaDBContainer mariaDBContainer;
@@ -53,13 +51,11 @@ class MariaDBTest extends ContainerTest {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     void testMariaDbEmbeddingStore_shouldReturnEmbeddingStore() throws Exception {
         String tableName = "embeddings_" + System.nanoTime();
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-embedding-001",
                 "tableName", tableName,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )
@@ -67,11 +63,7 @@ class MariaDBTest extends ContainerTest {
 
         var task = IngestDocument.builder()
             .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
+                VertexAITestEnv.embeddingProvider()
             )
             .embeddings(
                 MariaDB.builder()
@@ -90,18 +82,16 @@ class MariaDBTest extends ContainerTest {
             IngestDocument.Output output = task.run(runContext);
             assertThat(output.getIngestedDocuments()).isEqualTo(1);
         } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
+            abort("Skipped: Vertex AI rate limited (429)");
         }
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     void testMariaDbEmbeddingStore_givenMetaStoreConfig_shouldReturnEmbeddingStore() throws Exception {
         String tableName = "embeddings_meta_" + System.nanoTime();
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-embedding-001",
                 "tableName", tableName,
                 "flow", Map.of("id", "flow", "namespace", "namespace")
             )
@@ -109,11 +99,7 @@ class MariaDBTest extends ContainerTest {
 
         var task = IngestDocument.builder()
             .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
+                VertexAITestEnv.embeddingProvider()
             )
             .embeddings(
                 MariaDB.builder()
@@ -143,7 +129,7 @@ class MariaDBTest extends ContainerTest {
             assertThat(output.getIngestedDocuments()).isEqualTo(1);
             assertThat(getPrimaryKeyColumn(tableName)).isEqualTo("id");
         } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
+            abort("Skipped: Vertex AI rate limited (429)");
         }
     }
 

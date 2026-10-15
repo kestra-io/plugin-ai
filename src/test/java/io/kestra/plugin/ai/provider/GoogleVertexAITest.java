@@ -1,10 +1,13 @@
 package io.kestra.plugin.ai.provider;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,12 +19,16 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.validations.ModelValidator;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 
+import dev.langchain4j.exception.RateLimitException;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.abort;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
@@ -208,6 +215,52 @@ class GoogleVertexAITest {
         assertThat(GoogleVertexAI.isGlobal("GLOBAL")).isTrue();
         assertThat(GoogleVertexAI.isGlobal("us-central1")).isFalse();
         assertThat(GoogleVertexAI.isGlobal(null)).isFalse();
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void chatModel_shouldCallVertexAIWithServiceAccount() throws Exception {
+        var provider = serviceAccountProvider(VertexAITestEnv.CHAT_MODEL, VertexAITestEnv.LOCATION);
+
+        var chatModel = provider.chatModel(runContextFactory.of(Map.of()), ChatConfiguration.empty());
+
+        try {
+            assertThat(chatModel.chat("Reply with the single word: pong")).containsIgnoringCase("pong");
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void embeddingModel_shouldCallVertexAIWithServiceAccount() throws Exception {
+        var provider = serviceAccountProvider(VertexAITestEnv.EMBEDDING_MODEL, VertexAITestEnv.EMBEDDING_LOCATION);
+
+        var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
+
+        try {
+            assertThat(embeddingModel.embed("pong").content().vector()).isNotEmpty();
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    // Live calls through the `serviceAccount` property rather than ADC, reusing the ADC key file when it is a service account key
+    // (on CI, the GCP_SERVICE_ACCOUNT secret). Locally, ADC is usually user credentials, which the property doesn't accept.
+    private static GoogleVertexAI serviceAccountProvider(String modelName, String location) throws Exception {
+        var credentials = Files.readString(Path.of(System.getenv(VertexAITestEnv.CREDENTIALS_ENV)));
+        assumeTrue(
+            "service_account".equals(JacksonMapper.ofJson().readTree(credentials).path("type").asText()),
+            "Application Default Credentials are not a service account key"
+        );
+
+        return GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue(modelName))
+            .projectId(Property.ofValue(VertexAITestEnv.PROJECT))
+            .location(Property.ofValue(location))
+            .serviceAccount(Property.ofValue(credentials))
+            .build();
     }
 
     private static String serviceAccountJson() throws Exception {
