@@ -15,8 +15,6 @@ public final class VertexAITestEnv {
     public static final String CREDENTIALS_ENV = "GOOGLE_APPLICATION_CREDENTIALS";
     public static final String PROJECT = Optional.ofNullable(System.getenv("VERTEX_AI_PROJECT")).orElse("kestra-prd");
     public static final String LOCATION = Optional.ofNullable(System.getenv("VERTEX_AI_LOCATION")).orElse("global");
-    // Embedding models need a regional location: langchain4j counts tokens before embedding, and `countTokens` isn't served on `global`
-    public static final String EMBEDDING_LOCATION = Optional.ofNullable(System.getenv("VERTEX_AI_EMBEDDING_LOCATION")).orElse("europe-west1");
     public static final String CHAT_MODEL = "gemini-3.5-flash-lite";
     // Gemini 3 models require thought signatures on function calls, which langchain4j-vertex-ai-gemini doesn't send back
     public static final String TOOL_CHAT_MODEL = "gemini-2.5-flash";
@@ -26,19 +24,15 @@ public final class VertexAITestEnv {
     }
 
     public static GoogleVertexAI provider(String modelName) {
-        return provider(modelName, LOCATION);
-    }
-
-    public static GoogleVertexAI embeddingProvider() {
-        return provider(EMBEDDING_MODEL, EMBEDDING_LOCATION);
-    }
-
-    private static GoogleVertexAI provider(String modelName, String location) {
         return GoogleVertexAI.builder()
             .type(GoogleVertexAI.class.getName())
             .modelName(Property.ofValue(modelName))
             .projectId(Property.ofValue(PROJECT))
-            .location(Property.ofValue(location))
+            .location(Property.ofValue(LOCATION))
             .build();
+    }
+
+    public static GoogleVertexAI embeddingProvider() {
+        return provider(EMBEDDING_MODEL);
     }
 }
