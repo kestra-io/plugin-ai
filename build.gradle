@@ -118,7 +118,6 @@ dependencies {
 
     // retrievers
     implementation "dev.langchain4j:langchain4j-experimental-sql:${langchain4jBetaVersion}"
-    compileOnly "com.zaxxer:HikariCP"
 
     // agents
     // Pinned below langchain4jBetaVersion: langchain4j-agentic-a2a >= 1.19.0-beta29 pulls
