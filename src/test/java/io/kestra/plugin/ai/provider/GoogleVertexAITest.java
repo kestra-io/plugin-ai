@@ -179,9 +179,9 @@ class GoogleVertexAITest {
         var embeddingModel = provider.embeddingModel(runContextFactory.of(Map.of()));
 
         assertThat(embeddingModel).isInstanceOf(GoogleGenAiEmbeddingModel.class);
-        assertThat(embeddingModel).extracting("client.apiClient.vertexAI").isEqualTo(true);
-        assertThat(embeddingModel).extracting("client.apiClient.project").isEqualTo(Optional.of("my-project"));
-        assertThat(embeddingModel).extracting("client.apiClient.location").isEqualTo(Optional.of("global"));
+        assertThat(sdkField(embeddingModel, "client.apiClient.vertexAI")).isEqualTo(true);
+        assertThat(sdkField(embeddingModel, "client.apiClient.project")).isEqualTo(Optional.of("my-project"));
+        assertThat(sdkField(embeddingModel, "client.apiClient.location")).isEqualTo(Optional.of("global"));
         assertThat(baseUrl(embeddingModel)).contains("https://aiplatform.googleapis.com");
     }
 
@@ -224,15 +224,16 @@ class GoogleVertexAITest {
             .build();
         var geminiEmbedding = GoogleVertexAI.builder()
             .type(GoogleVertexAI.class.getName())
-            .modelName(Property.ofValue("gemini-embedding-001"))
+            .modelName(Property.ofValue("publishers/google/models/gemini-embedding-001"))
             .location(Property.ofValue("global"))
             .serviceAccount(Property.ofValue(serviceAccountJson()))
             .build();
+        var sdkDefault = GoogleGenAiEmbeddingModel.builder().modelName("gemini-embedding-001").apiKey("unused").build();
 
-        assertThat(textEmbedding.embeddingModel(runContextFactory.of(Map.of())))
-            .extracting("maxSegmentsPerBatch").isEqualTo(GoogleVertexAI.TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH);
-        assertThat(geminiEmbedding.embeddingModel(runContextFactory.of(Map.of())))
-            .extracting("maxSegmentsPerBatch").isEqualTo(100);
+        assertThat(sdkField(textEmbedding.embeddingModel(runContextFactory.of(Map.of())), "maxSegmentsPerBatch"))
+            .isEqualTo(GoogleVertexAI.TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH);
+        assertThat(sdkField(geminiEmbedding.embeddingModel(runContextFactory.of(Map.of())), "maxSegmentsPerBatch"))
+            .isEqualTo(sdkField(sdkDefault, "maxSegmentsPerBatch"));
     }
 
     @Test
@@ -272,10 +273,14 @@ class GoogleVertexAITest {
     @Test
     void apiEndpoint_shouldConvertHostAndPortToBaseUrl() {
         assertThat(GoogleVertexAI.apiEndpoint(null)).isNull();
+        assertThat(GoogleVertexAI.apiEndpoint(" ")).isNull();
         assertThat(GoogleVertexAI.apiEndpoint("europe-west1-aiplatform.googleapis.com:443")).isEqualTo("https://europe-west1-aiplatform.googleapis.com");
         assertThat(GoogleVertexAI.apiEndpoint("europe-west1-aiplatform.googleapis.com")).isEqualTo("https://europe-west1-aiplatform.googleapis.com");
         assertThat(GoogleVertexAI.apiEndpoint("localhost:8080")).isEqualTo("https://localhost:8080");
-        assertThat(GoogleVertexAI.apiEndpoint("http://localhost:8080")).isEqualTo("http://localhost:8080");
+        assertThat(GoogleVertexAI.apiEndpoint("https://europe-west1-aiplatform.googleapis.com")).isEqualTo("https://europe-west1-aiplatform.googleapis.com");
+        assertThatThrownBy(() -> GoogleVertexAI.apiEndpoint("http://localhost:8080"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("https");
     }
 
     @Test
@@ -351,8 +356,12 @@ class GoogleVertexAITest {
     }
 
     private static Optional<String> baseUrl(Object embeddingModel) {
-        var httpOptions = (HttpOptions) PropertyOrFieldSupport.EXTRACTION.getValueOf("client.apiClient.httpOptions", embeddingModel);
-        return httpOptions.baseUrl().map(url -> url.replaceAll("/+$", ""));
+        return ((HttpOptions) sdkField(embeddingModel, "client.apiClient.httpOptions")).baseUrl().map(url -> url.replaceAll("/+$", ""));
+    }
+
+    // The only place reading google-genai internals: an SDK bump that renames them only needs fixing here.
+    private static Object sdkField(Object embeddingModel, String path) {
+        return PropertyOrFieldSupport.EXTRACTION.getValueOf(path, embeddingModel);
     }
 
     private static String serviceAccountJson() throws Exception {

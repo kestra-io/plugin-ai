@@ -104,8 +104,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     private static final String GLOBAL_LOCATION = "global";
     // Chat's VertexAI SDK appends ":443" itself; the image SDK expects host:port.
     private static final String GLOBAL_HOST = "aiplatform.googleapis.com";
-    // `text-embedding-*` models reject requests over 20,000 tokens, and each text is truncated to 2,048 tokens: 9 texts always fit.
-    // `gemini-embedding-*` models have no such limit and keep the SDK default of 100 texts per request.
+    // Non-Gemini embedding models cap a request at 20,000 tokens with texts truncated to 2,048: 9 always fit.
     static final int TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH = 9;
 
     @Schema(
@@ -233,15 +232,14 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         var connection = connection(runContext);
         var modelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
 
-        // google-genai embeds through `predict` only: langchain4j-vertex-ai calls `countTokens` first, which isn't served on `global`.
-        // It also resolves the `global` location to `aiplatform.googleapis.com` itself.
+        // Not langchain4j-vertex-ai: it calls `countTokens` before embedding, which isn't served on `global`.
         return GoogleGenAiEmbeddingModel.builder()
             .modelName(modelName)
             .location(runContext.render(this.location).as(String.class).orElse(null))
             .projectId(projectId(runContext, connection))
             .googleCredentials(connection.credentials())
             .apiEndpoint(apiEndpoint(runContext.render(this.endpoint).as(String.class).orElse(null)))
-            .maxSegmentsPerBatch(modelName.startsWith("gemini-embedding") ? null : TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH)
+            .maxSegmentsPerBatch(isGeminiEmbedding(modelName) ? null : TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH)
             .build();
     }
 
@@ -263,9 +261,20 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
             .orElse(isGlobal(renderedLocation) ? GLOBAL_HOST + ":443" : null);
     }
 
+    // Matches fully-qualified names such as `publishers/google/models/gemini-embedding-001` too.
+    static boolean isGeminiEmbedding(String modelName) {
+        return modelName.substring(modelName.lastIndexOf('/') + 1).startsWith("gemini-embedding");
+    }
+
     // The `endpoint` property is documented as host:port, while google-genai expects a base URL.
     static String apiEndpoint(String endpoint) {
-        if (endpoint == null || endpoint.contains("://")) {
+        if (endpoint == null || endpoint.isBlank()) {
+            return null;
+        }
+        if (endpoint.contains("://")) {
+            if (!endpoint.startsWith("https://")) {
+                throw new IllegalArgumentException("The `endpoint` property must use `https`, the credentials' access token is sent to it.");
+            }
             return endpoint;
         }
         return "https://" + (endpoint.endsWith(":443") ? endpoint.substring(0, endpoint.length() - ":443".length()) : endpoint);
