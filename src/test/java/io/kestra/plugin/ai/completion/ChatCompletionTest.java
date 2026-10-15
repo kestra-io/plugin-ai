@@ -359,6 +359,47 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void testChatCompletionVertexAI_givenJsonResponseFormat_shouldReturnStructuredOutput() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofValue(List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
+            )))
+            .configuration(
+                ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.1))
+                    .seed(Property.ofValue(123456789))
+                    .responseFormat(
+                        ChatConfiguration.ResponseFormat.builder()
+                            .type(Property.ofValue(ResponseFormatType.JSON))
+                            .jsonSchema(Property.ofValue(Map.of(
+                                "type", "object",
+                                "required", List.of("name", "birth"),
+                                "properties", Map.of(
+                                    "name", Map.of("type", "string"),
+                                    "birth", Map.of("type", "string")
+                                )
+                            )))
+                            .build()
+                    )
+                    .build()
+            )
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
+            .build();
+
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+
+            assertThat(output.getJsonOutput(), aMapWithSize(2));
+            assertThat(output.getJsonOutput().get("name"), equalTo("John"));
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
     void testChatCompletionVertexAI_givenEndpointSet_shouldThrowIllegalArgumentException() {
         RunContext runContext = runContextFactory.of(
             Map.of(

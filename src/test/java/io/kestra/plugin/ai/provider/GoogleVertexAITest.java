@@ -28,6 +28,8 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel;
 import jakarta.inject.Inject;
 
@@ -150,7 +152,7 @@ class GoogleVertexAITest {
 
         var chatModel = provider.chatModel(runContextFactory.of(Map.of()), ChatConfiguration.empty());
 
-        assertThat(chatModel).extracting("vertexAI.apiEndpoint").isEqualTo("aiplatform.googleapis.com");
+        assertThat(baseUrl(chatModel)).contains("https://aiplatform.googleapis.com");
     }
 
     @Test
@@ -164,7 +166,60 @@ class GoogleVertexAITest {
 
         var chatModel = provider.chatModel(runContextFactory.of(Map.of()), ChatConfiguration.empty());
 
-        assertThat(chatModel).extracting("vertexAI.apiEndpoint").isEqualTo("us-central1-aiplatform.googleapis.com");
+        assertThat(baseUrl(chatModel)).contains("https://us-central1-aiplatform.googleapis.com");
+    }
+
+    @Test
+    void chatModel_shouldSendBackThoughtSignaturesAndLeaveThinkingToTheModelByDefault() throws Exception {
+        var chatModel = vertexChatModel(ChatConfiguration.empty());
+
+        assertThat(chatModel).extracting("sendThinking").isEqualTo(true);
+        assertThat(chatModel).extracting("returnThinking").isEqualTo(false);
+        assertThat(chatModel).extracting("includeThoughts").isNull();
+        assertThat(chatModel).extracting("thinkingBudget").isNull();
+    }
+
+    @Test
+    void chatModel_shouldMapThinkingConfiguration() throws Exception {
+        var chatModel = vertexChatModel(
+            ChatConfiguration.builder()
+                .thinkingEnabled(Property.ofValue(true))
+                .thinkingBudgetTokens(Property.ofValue(1024))
+                .returnThinking(Property.ofValue(true))
+                .build()
+        );
+
+        assertThat(chatModel).extracting("includeThoughts").isEqualTo(true);
+        assertThat(chatModel).extracting("thinkingBudget").isEqualTo(1024);
+        assertThat(chatModel).extracting("returnThinking").isEqualTo(true);
+    }
+
+    @Test
+    void chatModel_shouldMapJsonResponseFormat() throws Exception {
+        var chatModel = vertexChatModel(
+            ChatConfiguration.builder()
+                .responseFormat(
+                    ChatConfiguration.ResponseFormat.builder()
+                        .type(Property.ofValue(ResponseFormatType.JSON))
+                        .jsonSchema(Property.ofValue(Map.of("type", "object", "properties", Map.of("city", Map.of("type", "string")))))
+                        .build()
+                )
+                .build()
+        );
+
+        assertThat(chatModel.defaultRequestParameters().responseFormat().type()).isEqualTo(ResponseFormatType.JSON);
+        assertThat(chatModel.defaultRequestParameters().responseFormat().jsonSchema()).isNotNull();
+    }
+
+    private ChatModel vertexChatModel(ChatConfiguration configuration) throws Exception {
+        var provider = GoogleVertexAI.builder()
+            .type(GoogleVertexAI.class.getName())
+            .modelName(Property.ofValue("gemini-3.5-flash-lite"))
+            .location(Property.ofValue("global"))
+            .serviceAccount(Property.ofValue(serviceAccountJson()))
+            .build();
+
+        return provider.chatModel(runContextFactory.of(Map.of()), configuration);
     }
 
     @Test
@@ -355,13 +410,13 @@ class GoogleVertexAITest {
             .build();
     }
 
-    private static Optional<String> baseUrl(Object embeddingModel) {
-        return ((HttpOptions) sdkField(embeddingModel, "client.apiClient.httpOptions")).baseUrl().map(url -> url.replaceAll("/+$", ""));
+    private static Optional<String> baseUrl(Object model) {
+        return ((HttpOptions) sdkField(model, "client.apiClient.httpOptions")).baseUrl().map(url -> url.replaceAll("/+$", ""));
     }
 
     // The only place reading google-genai internals: an SDK bump that renames them only needs fixing here.
-    private static Object sdkField(Object embeddingModel, String path) {
-        return PropertyOrFieldSupport.EXTRACTION.getValueOf(path, embeddingModel);
+    private static Object sdkField(Object model, String path) {
+        return PropertyOrFieldSupport.EXTRACTION.getValueOf(path, model);
     }
 
     private static String serviceAccountJson() throws Exception {
