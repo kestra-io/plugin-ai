@@ -173,7 +173,7 @@ class KestraTaskTest extends ContainerTest {
 
         // we use Gemini as the context window of the Langchain4J demo OpenAI API is limited to 5000
         var chat = ChatCompletion.builder()
-            .provider(VertexAITestEnv.provider(VertexAITestEnv.TOOL_CHAT_MODEL))
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .tools(
@@ -209,11 +209,50 @@ class KestraTaskTest extends ContainerTest {
             assertThat(output.getToolExecutions()).isNotEmpty();
             assertThat(output.getToolExecutions()).extracting("requestName").contains("kestra_task_request");
             assertThat(output.getIntermediateResponses()).isNotEmpty();
-            // langchain4j-vertex-ai-gemini maps function call turns to STOP instead of TOOL_EXECUTION, and Vertex AI omits the response id
-            // that requestDuration relies on (see AIOutput#extractTiming)
-            assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isIn(FinishReason.TOOL_EXECUTION, FinishReason.STOP);
+            assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
             assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
             assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_request");
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void parallelToolCallsOnVertexAIGemini3() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        // Gemini 3 attaches a thought signature to each function call of a turn, and rejects the tool results if any is missing
+        var chat = ChatCompletion.builder()
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .tools(
+                List.of(
+                    KestraTask.builder().tasks(
+                        List.of(
+                            Log.builder().id("log").type(Log.class.getName()).message("...").build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER)
+                            .content("Log the text 'hello' and log the text 'world', calling the tool once for each text in the same turn. Then answer 'done'.")
+                            .build()
+                    )
+                )
+            )
+            .build();
+
+        try {
+            var output = chat.run(runContext);
+            assertThat(output.getTextOutput()).isNotBlank();
+            assertThat(output.getToolExecutions()).hasSizeGreaterThanOrEqualTo(2);
+            assertThat(output.getToolExecutions()).extracting("requestName").containsOnly("kestra_task_log");
+            assertThat(output.getIntermediateResponses()).isNotEmpty();
+            assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
         } catch (RateLimitException e) {
             abort("Skipped: Vertex AI rate limited (429)");
         }
