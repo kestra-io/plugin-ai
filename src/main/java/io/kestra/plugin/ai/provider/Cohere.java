@@ -19,7 +19,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @JsonDeserialize
 @Schema(
     title = "Use Cohere models",
-    description = "Connects to the Cohere OpenAI-compatible Compatibility API with API key and model name for chat and embedding tasks."
+    description = "Connects to the Cohere OpenAI-compatible Compatibility API with API key and model name. Supports chat completion (including tool calling) and embeddings. Image generation is not available, and structured output follows Cohere's json_object format rather than OpenAI's strict JSON schema mode."
 )
 @Plugin(
     examples = {
