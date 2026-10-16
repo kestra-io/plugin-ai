@@ -55,6 +55,7 @@ class ChatCompletionTest extends ContainerTest {
     private final String ANTHROPIC_API_KEY = System.getenv("ANTHROPIC_API_KEY");
     private final String MISTRAL_API_KEY = System.getenv("MISTRAL_API_KEY");
     private final String DEEPSEEK_API_KEY = System.getenv("DEEPSEEK_API_KEY");
+    private final String COHERE_API_KEY = System.getenv("COHERE_API_KEY");
     private final String HUGGING_FACE_API_KEY = System.getenv("HUGGING_FACE_API_KEY");
     private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
     private final String AMAZON_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
@@ -1118,6 +1119,44 @@ class ChatCompletionTest extends ContainerTest {
             .provider(
                 DeepSeek.builder()
                     .type(DeepSeek.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .build();
+
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "COHERE_API_KEY", matches = ".*")
+    void testChatCompletionCohere() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", COHERE_API_KEY,
+                "modelName", "command-a-03-2025",
+                "baseUrl", "https://api.cohere.ai/compatibility/v1",
+                "messages", List.of(
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(
+                Cohere.builder()
+                    .type(Cohere.class.getName())
                     .apiKey(Property.ofExpression("{{ apiKey }}"))
                     .modelName(Property.ofExpression("{{ modelName }}"))
                     .baseUrl(Property.ofExpression("{{ baseUrl }}"))
