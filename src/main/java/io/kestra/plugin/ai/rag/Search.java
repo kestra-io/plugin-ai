@@ -101,7 +101,7 @@ import static io.kestra.core.models.tasks.common.FetchType.NONE;
 @Schema(
     title = "Search embeddings and optionally return results",
     description = """
-        Runs semantic search against the configured embedding store using the embedding of the provided `query`. `maxResults` limits hits and `minScore` filters low-similarity matches. `fetchType` controls output: NONE (metrics only), FETCH/FETCH_ONE (return matches), or STORE (write matches to internal storage)."""
+        Runs semantic search against the configured embedding store using the embedding of the provided `query`. `maxResults` limits hits and `minScore` filters low-similarity matches. `fetchType` controls output: NONE (metrics only), FETCH/FETCH_ONE (return matches), or STORE (write matches to internal storage). With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), the embedding call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. The query text is included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 public class Search extends Task implements RunnableTask<Search.Output> {
 

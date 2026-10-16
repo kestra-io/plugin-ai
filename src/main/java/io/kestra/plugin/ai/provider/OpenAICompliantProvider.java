@@ -2,7 +2,6 @@ package io.kestra.plugin.ai.provider;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -48,16 +47,6 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     @PluginProperty(secret = true, group = "main")
     private Property<String> apiKey;
 
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120));
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, timeout, Collections.emptyList());
-    }
-
     /**
      * Resolves the API key to use when building models.
      */
@@ -66,7 +55,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
         throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("OpenAI models do not support setting the topK parameter.");
@@ -111,7 +100,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return OpenAiImageModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(resolveApiKey(runContext))
@@ -120,7 +109,7 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         return OpenAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(resolveApiKey(runContext))

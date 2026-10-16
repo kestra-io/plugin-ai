@@ -22,6 +22,32 @@ Use `Fallback` to try chat providers in declaration order. It can advance to the
 
 All tasks that generate text accept a `configuration` object (`ChatConfiguration`) to tune the model: set `temperature`, `topK`, `topP`, `seed`, `maxToken`, `logRequests`, `logResponses`. Enable extended thinking with `thinkingEnabled`, `thinkingBudgetTokens`, and `returnThinking`. Control response format with `configuration.responseFormat` — set `type` to `TEXT` (default) or `JSON`; for JSON output also set `jsonSchema` and optionally `strictJson`.
 
+## OpenTelemetry traces
+
+LangChain4j calls model APIs with the JDK HTTP client. That client does not emit OpenTelemetry spans from environment variables alone, and [kotlp](https://github.com/kestra-io/kotlp) does not attach a Java agent, so HTTP auto-instrumentation never sees these calls. This plugin exports a GenAI client span for each chat, embedding, and image call instead.
+
+Spans are exported only when one of these is true:
+
+- The process has `OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` set and `OTEL_TRACES_EXPORTER` is not `none`. kotlp sets the endpoint when a task runner has `monitoring.enabled: true`.
+- Kestra already has a recording OpenTelemetry tracer. Spans are then children of the execution `traceparent` and follow Kestra's exporter, which is what lands them in Kestra's trace store.
+
+These tasks run in the worker JVM and do not declare `taskRunner`. The same variables apply when that JVM is the kotlp child, or when you point the worker at a collector.
+
+Each span records:
+
+- Operation: `gen_ai.operation.name` is `chat`, `embeddings`, or `image_generation`
+- Provider: `gen_ai.provider.name` (`openai`, `anthropic`, `gcp.gemini`, and the other provider ids)
+- Model: `gen_ai.request.model` and `gen_ai.response.model`
+- Token usage: `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`
+- Stop reason: `gen_ai.response.finish_reasons`
+- Latency: the span duration
+- Server: `server.address` and `server.port` when the provider has a base URL
+- Conversation: `gen_ai.conversation.id` from the execution correlation id, when present
+
+Prompt and response text are not included unless `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`. Leave it unset in production when prompts can contain secrets. Captured text is truncated. Inline `data:` image payloads are never copied onto the span. Provider error messages are not copied either; a failure sets `error.type` to the exception class.
+
+`observability` (Langfuse) is a separate export. It can be enabled on the same task.
+
 ## Tasks
 
 ### Completions

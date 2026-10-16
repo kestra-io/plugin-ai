@@ -1,7 +1,6 @@
 package io.kestra.plugin.ai.provider;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -10,6 +9,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -29,7 +29,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -168,12 +167,7 @@ public class Langdock extends ModelProvider {
     private Property<LangdockRegion> region = Property.ofValue(LangdockRegion.EU);
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
         throws IllegalVariableEvaluationException {
         LangdockModelFamily rFamily = resolveModelFamily(runContext);
         String rBaseUrl = resolveChatBaseUrl(runContext, rFamily);
@@ -185,12 +179,12 @@ public class Langdock extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) {
+    protected ImageModel buildImageModel(RunContext runContext) {
         throw new UnsupportedOperationException("Langdock is currently not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         String rBaseUrl = resolveEmbeddingsBaseUrl(runContext);
         return openAiDelegate(rBaseUrl).embeddingModel(runContext);
     }

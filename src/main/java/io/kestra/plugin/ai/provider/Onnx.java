@@ -56,6 +56,7 @@ import ai.onnxruntime.OrtSession;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.AbstractInProcessEmbeddingModel;
@@ -203,17 +204,22 @@ public class Onnx extends ModelProvider {
     private Property<PoolingMode> poolingMode = Property.ofValue(PoolingMode.MEAN);
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) {
+    protected ChatModel buildChatModel(
+        RunContext runContext,
+        ChatConfiguration configuration,
+        Duration timeout,
+        List<ChatModelListener> additionalListeners
+    ) {
         throw new UnsupportedOperationException("Onnx only supports embedding models.");
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) {
+    protected ImageModel buildImageModel(RunContext runContext) {
         throw new UnsupportedOperationException("Onnx only supports embedding models.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var rPoolingMode = runContext.render(poolingMode).as(PoolingMode.class).orElse(PoolingMode.MEAN);
         var maxLoadedModels = maxLoadedModels(runContext);
         var modelFile = copyToWorkingDir(runContext, modelUri, ".onnx");

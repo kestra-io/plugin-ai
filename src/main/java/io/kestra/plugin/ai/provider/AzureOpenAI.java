@@ -2,7 +2,6 @@ package io.kestra.plugin.ai.provider;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -15,6 +14,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -33,7 +33,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -96,6 +95,11 @@ public class AzureOpenAI extends ModelProvider {
     @PluginProperty(group = "main")
     private Property<String> endpoint;
 
+    @Override
+    public Property<String> telemetryServerUrl() {
+        return endpoint;
+    }
+
     @Schema(
         title = "API version",
         description = "Azure OpenAI REST API version to call. Not set by default, in which case the Azure SDK's latest supported version is used.",
@@ -129,12 +133,8 @@ public class AzureOpenAI extends ModelProvider {
     private Property<String> clientSecret;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+        throws IllegalVariableEvaluationException {
         if (configuration.getTopK() != null) {
             throw new IllegalArgumentException("Azure OpenAI models do not support setting the topK");
         }
@@ -179,7 +179,7 @@ public class AzureOpenAI extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var apiKey = runContext.render(this.apiKey).as(String.class).orElse(null);
         var tenantId = runContext.render(this.tenantId).as(String.class).orElse(null);
         var clientId = runContext.render(this.clientId).as(String.class).orElse(null);
@@ -205,7 +205,7 @@ public class AzureOpenAI extends ModelProvider {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var apiKey = runContext.render(this.apiKey).as(String.class).orElse(null);
         var tenantId = runContext.render(this.tenantId).as(String.class).orElse(null);
         var clientId = runContext.render(this.clientId).as(String.class).orElse(null);
