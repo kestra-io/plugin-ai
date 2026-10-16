@@ -22,13 +22,11 @@ import io.kestra.plugin.gcp.shared.GcpInterface;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel;
+import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
-import dev.langchain4j.model.vertexai.VertexAiEmbeddingModel;
 import dev.langchain4j.model.vertexai.VertexAiImageModel;
-import dev.langchain4j.model.vertexai.gemini.SchemaHelper;
-import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -42,7 +40,9 @@ import lombok.experimental.SuperBuilder;
 @JsonDeserialize
 @Schema(
     title = "Use Google Vertex AI models",
-    description = "Calls Vertex AI Gemini chat, embeddings, or images using project, location, and endpoint settings. Authenticates like the GCP plugin: `serviceAccount` when set, otherwise Application Default Credentials, optionally impersonating `impersonatedServiceAccount`; ensure response formats are supported by the selected model/region."
+    description = "Calls Vertex AI Gemini chat, embeddings, or images using project, location, and endpoint settings. Authenticates like the GCP plugin: `serviceAccount` when set, otherwise Application Default Credentials, optionally impersonating `impersonatedServiceAccount`; ensure response formats are supported by the selected model/region. " +
+        "Tool calls work on Gemini 3 models: the `thought_signature` returned with each function call is sent back automatically on the following turns. " +
+        "Thinking is left to the model default unless `thinkingEnabled` or `thinkingBudgetTokens` is set."
 )
 @Plugin(
     examples = {
@@ -102,12 +102,14 @@ import lombok.experimental.SuperBuilder;
 )
 public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     private static final String GLOBAL_LOCATION = "global";
-    // Chat's VertexAI SDK appends ":443" itself; the embedding and image SDKs expect host:port.
+    // The image SDK expects host:port; the chat and embedding SDKs resolve `global` themselves.
     private static final String GLOBAL_HOST = "aiplatform.googleapis.com";
+    // Non-Gemini embedding models cap a request at 20,000 tokens with texts truncated to 2,048: 9 always fit.
+    static final int TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH = 9;
 
     @Schema(
         title = "Endpoint URL",
-        description = "Vertex AI API endpoint for image and embedding models. Not set by default, in which case the endpoint is derived from `location` (`aiplatform.googleapis.com:443` for `global`). Must not be set for chat models, which always use Gemini.",
+        description = "Vertex AI API endpoint for image and embedding models, as `host:port` or a full `https://` URL. Not set by default, in which case the endpoint is derived from `location` (`aiplatform.googleapis.com` for `global`). Must not be set for chat models, which always use Gemini.",
         example = "us-central1-aiplatform.googleapis.com:443"
     )
     @PluginProperty(group = "main")
@@ -183,27 +185,31 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         allListeners.add(new TimingChatModelListener());
         allListeners.addAll(additionalListeners);
 
-        var responseFormat = configuration.computeResponseFormat(runContext);
-
         var connection = connection(runContext);
-        var renderedLocation = runContext.render(this.location).as(String.class).orElseThrow();
 
-        return VertexAiGeminiChatModel.builder()
+        // google-genai sends back the thought signature of each function call on the following turns, whatever
+        // returnThinking/sendThinking are set to; Gemini 3 rejects tool results without it (400 INVALID_ARGUMENT).
+        // It also resolves the `global` location to `aiplatform.googleapis.com` itself.
+        return GoogleGenAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .location(renderedLocation)
-            .apiEndpoint(isGlobal(renderedLocation) ? GLOBAL_HOST : null)
-            .project(projectId(runContext, connection))
-            .credentials(connection.credentials())
-            .temperature(runContext.render(configuration.getTemperature()).as(Double.class).map(d -> d.floatValue()).orElse(null))
+            .location(runContext.render(this.location).as(String.class).orElseThrow())
+            .projectId(projectId(runContext, connection))
+            .googleCredentials(connection.credentials())
+            .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
             .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
-            .topP(runContext.render(configuration.getTopP()).as(Double.class).map(d -> d.floatValue()).orElse(null))
+            .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
-            .responseMimeType(responseFormat.type() == ResponseFormatType.JSON ? "application/json" : null)
-            .responseSchema(responseFormat.jsonSchema() != null ? SchemaHelper.from(responseFormat.jsonSchema().rootElement()) : null)
+            .responseFormat(configuration.computeResponseFormat(runContext))
             .listeners(allListeners)
+            // Thinking is only configured when asked for, so each model keeps its own default
+            .includeThoughts(runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(null))
+            .thinkingBudget(runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null))
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(false))
+            .sendThinking(true)
             .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .timeout(timeout)
             .build();
     }
 
@@ -228,15 +234,16 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     @Override
     protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var connection = connection(runContext);
-        var renderedLocation = runContext.render(this.location).as(String.class).orElse(null);
+        var modelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
 
-        return VertexAiEmbeddingModel.builder()
-            .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .publisher("google")
-            .endpoint(endpoint(runContext, renderedLocation))
-            .location(renderedLocation)
-            .project(projectId(runContext, connection))
-            .credentials(connection.credentials())
+        // Not langchain4j-vertex-ai: it calls `countTokens` before embedding, which isn't served on `global`.
+        return GoogleGenAiEmbeddingModel.builder()
+            .modelName(modelName)
+            .location(runContext.render(this.location).as(String.class).orElse(null))
+            .projectId(projectId(runContext, connection))
+            .googleCredentials(connection.credentials())
+            .apiEndpoint(apiEndpoint(runContext.render(this.endpoint).as(String.class).orElse(null)))
+            .maxSegmentsPerBatch(isGeminiEmbedding(modelName) ? null : TEXT_EMBEDDING_MAX_SEGMENTS_PER_BATCH)
             .build();
     }
 
@@ -248,7 +255,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
         }
     }
 
-    // The SDKs derive `<location>-aiplatform.googleapis.com`, which doesn't exist for the `global` location.
+    // The image SDK derives `<location>-aiplatform.googleapis.com`, which doesn't exist for the `global` location.
     static boolean isGlobal(String location) {
         return GLOBAL_LOCATION.equalsIgnoreCase(location);
     }
@@ -256,6 +263,25 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     String endpoint(RunContext runContext, String renderedLocation) throws IllegalVariableEvaluationException {
         return runContext.render(this.endpoint).as(String.class)
             .orElse(isGlobal(renderedLocation) ? GLOBAL_HOST + ":443" : null);
+    }
+
+    // Matches fully-qualified names such as `publishers/google/models/gemini-embedding-001` too.
+    static boolean isGeminiEmbedding(String modelName) {
+        return modelName.substring(modelName.lastIndexOf('/') + 1).startsWith("gemini-embedding");
+    }
+
+    // The `endpoint` property is documented as host:port, while google-genai expects a base URL.
+    static String apiEndpoint(String endpoint) {
+        if (endpoint == null || endpoint.isBlank()) {
+            return null;
+        }
+        if (endpoint.contains("://")) {
+            if (!endpoint.startsWith("https://")) {
+                throw new IllegalArgumentException("The `endpoint` property must use `https`, the credentials' access token is sent to it.");
+            }
+            return endpoint;
+        }
+        return "https://" + (endpoint.endsWith(":443") ? endpoint.substring(0, endpoint.length() - ":443".length()) : endpoint);
     }
 
     private static String projectId(RunContext runContext, CredentialService.GcpConnection connection) throws IllegalVariableEvaluationException {

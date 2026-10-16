@@ -22,6 +22,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
@@ -33,6 +34,7 @@ import io.kestra.plugin.ai.provider.*;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.workersai.WorkersAiChatModelName;
 import jakarta.inject.Inject;
 
@@ -71,8 +73,6 @@ class ChatCompletionTest extends ContainerTest {
     private final String ZHIPU_API_KEY = System.getenv("ZHIPU_API_KEY");
     private final String WATSONX_API_KEY = System.getenv("WATSONX_API_KEY");
     private final String WATSONX_PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
-    private final String VERTEX_AI_PROJECT = System.getenv("VERTEX_AI_PROJECT");
-    private final String VERTEX_AI_LOCATION = System.getenv("VERTEX_AI_LOCATION");
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -290,14 +290,10 @@ class ChatCompletionTest extends ContainerTest {
      * Test Chat Completion using Google Vertex AI.
      */
     @Test
-    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_PROJECT", matches = ".*")
-    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_LOCATION", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     void testChatCompletionVertexAI() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "project", VERTEX_AI_PROJECT,
-                "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -308,12 +304,7 @@ class ChatCompletionTest extends ContainerTest {
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .messages(Property.ofExpression("{{ messages }}"))
             .provider(
-                GoogleVertexAI.builder()
-                    .type(GoogleVertexAI.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .location(Property.ofExpression("{{ location }}"))
-                    .projectId(Property.ofExpression("{{ project }}"))
-                    .build()
+                VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL)
             )
             .build();
 
@@ -332,16 +323,12 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_PROJECT", matches = ".*")
-    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_LOCATION", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     void testChatCompletionVertexAI_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "project", VERTEX_AI_PROJECT,
-                "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-3.5-flash-lite",
                 "messages", List.of(
-                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. Tell me a long story about a dragon.").build()
                 )
             )
         );
@@ -353,12 +340,7 @@ class ChatCompletionTest extends ContainerTest {
             )
             .messages(Property.ofExpression("{{ messages }}"))
             .provider(
-                GoogleVertexAI.builder()
-                    .type(GoogleVertexAI.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .location(Property.ofExpression("{{ location }}"))
-                    .projectId(Property.ofExpression("{{ project }}"))
-                    .build()
+                VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL)
             )
             .build();
 
@@ -368,7 +350,50 @@ class ChatCompletionTest extends ContainerTest {
             assertThat(output.getTextOutput(), notNullValue());
             // Vertex AI is backed by the same Gemini models and may omit a response id, in which case requestDuration is null by design (see AIOutput#extractTiming)
             assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
-            assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+            // Gemini 3 thinking tokens count toward maxOutputTokens but aren't part of the output token count
+            assertThat(output.getTokenUsage().getOutputTokenCount(), allOf(greaterThan(0), lessThanOrEqualTo(10)));
+            assertThat(output.getFinishReason(), equalTo(FinishReason.LENGTH));
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void testChatCompletionVertexAI_givenJsonResponseFormat_shouldReturnStructuredOutput() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofValue(List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
+            )))
+            .configuration(
+                ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.1))
+                    .seed(Property.ofValue(123456789))
+                    .responseFormat(
+                        ChatConfiguration.ResponseFormat.builder()
+                            .type(Property.ofValue(ResponseFormatType.JSON))
+                            .jsonSchema(Property.ofValue(Map.of(
+                                "type", "object",
+                                "required", List.of("name", "birth"),
+                                "properties", Map.of(
+                                    "name", Map.of("type", "string"),
+                                    "birth", Map.of("type", "string")
+                                )
+                            )))
+                            .build()
+                    )
+                    .build()
+            )
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
+            .build();
+
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+
+            assertThat(output.getJsonOutput(), aMapWithSize(2));
+            assertThat(output.getJsonOutput().get("name"), equalTo("John"));
         } catch (RateLimitException e) {
             abort("Skipped: Vertex AI rate limited (429)");
         }
@@ -436,6 +461,42 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         assertThat(output.getTextOutput(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionOllama_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "modelName", "tinydolphin",
+                "ollamaEndpoint", ollamaEndpoint,
+                "messages", List.of(
+                    // Ask for a long answer, so the only reason to stop at 10 tokens is maxToken
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Count from 1 to 100, separated by commas.").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                    .maxToken(Property.ofValue(10)).build()
+            )
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        assertThat(output.getFinishReason(), equalTo(FinishReason.LENGTH));
     }
 
     @Test
