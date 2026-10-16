@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 
 import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.DefaultRunContext;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
@@ -25,9 +24,10 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 
 /**
- * Exports one GenAI client span per model call when an OpenTelemetry tracer is already recording, or when kotlp (or
- * any other OTLP collector) has published {@code OTEL_EXPORTER_OTLP_ENDPOINT}. Disabled otherwise, so tasks that are
- * not being monitored keep their current behavior.
+ * Exports one GenAI client span per model call when kotlp (or any other OTLP collector) has published
+ * {@code OTEL_EXPORTER_OTLP_ENDPOINT}. Disabled otherwise, so tasks that are not being monitored keep the provider
+ * model unchanged. A recording OpenTelemetry bean in the worker is not used: wrapping on that bean alone hides
+ * provider fields and changes models that tests and callers inspect directly.
  */
 public final class LlmTelemetry {
     static final String INSTRUMENTATION_SCOPE = "io.kestra.plugin.ai";
@@ -91,18 +91,11 @@ public final class LlmTelemetry {
     }
 
     static OpenTelemetry resolve(RunContext runContext) {
-        // The endpoint kotlp injects wins over a tracer already running in the worker, so the spans are delivered
-        // to the collector that wraps this process.
         var config = OtlpExportConfig.fromEnvironment(environment());
-        if (config != null) {
-            return exporter(config, runContext.logger());
+        if (config == null) {
+            return null;
         }
-
-        var shared = sharedOpenTelemetry(runContext);
-        if (shared != null && records(shared)) {
-            return shared;
-        }
-        return null;
+        return exporter(config, runContext.logger());
     }
 
     static Map<String, String> environment() {
@@ -151,24 +144,6 @@ public final class LlmTelemetry {
         var sdk = tracesEndpoint == null ? null : EXPORTERS.remove(tracesEndpoint);
         if (sdk != null) {
             sdk.shutdown().join(5, TimeUnit.SECONDS);
-        }
-    }
-
-    private static boolean records(OpenTelemetry openTelemetry) {
-        var name = openTelemetry.getTracerProvider().getClass().getName();
-        return !name.contains("Noop") && !name.endsWith("DefaultTracerProvider");
-    }
-
-    @SuppressWarnings("deprecation")
-    private static OpenTelemetry sharedOpenTelemetry(RunContext runContext) {
-        if (!(runContext instanceof DefaultRunContext defaultRunContext)) {
-            return null;
-        }
-        try {
-            return defaultRunContext.services().additionalService(OpenTelemetry.class);
-        } catch (Exception e) {
-            runContext.logger().debug("No OpenTelemetry bean is available for LLM spans", e);
-            return null;
         }
     }
 

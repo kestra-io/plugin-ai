@@ -18,20 +18,24 @@ import io.opentelemetry.context.Scope;
 final class ObservedChatModel implements ChatModel {
     private final ChatModel delegate;
     private final TelemetrySession session;
+    // LocalAI and Workers AI implement chat(ChatRequest) only. The two-arg default calls doChat, which throws
+    // "Not implemented", so those providers have to be invoked through the one-arg method.
+    private final boolean legacyChat;
 
     ObservedChatModel(ChatModel delegate, TelemetrySession session) {
         this.delegate = delegate;
         this.session = session;
+        this.legacyChat = legacyChat(delegate);
     }
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest, ChatRequestOptions options) {
         var span = start(chatRequest);
         if (span == null) {
-            return delegate.chat(chatRequest, options);
+            return call(chatRequest, options);
         }
         try (Scope ignored = span.makeCurrent()) {
-            var response = delegate.chat(chatRequest, options);
+            var response = call(chatRequest, options);
             complete(span, response);
             return response;
         } catch (Exception e) {
@@ -55,10 +59,10 @@ final class ObservedChatModel implements ChatModel {
     public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
         var span = start(chatRequest);
         if (span == null) {
-            return delegate.chatAsync(chatRequest, options);
+            return callAsync(chatRequest, options);
         }
         try (Scope ignored = span.makeCurrent()) {
-            return delegate.chatAsync(chatRequest, options).whenComplete((response, error) ->
+            return callAsync(chatRequest, options).whenComplete((response, error) ->
             {
                 if (error != null) {
                     GenAiSpans.fail(session, span, error);
@@ -96,6 +100,35 @@ final class ObservedChatModel implements ChatModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         return delegate.supportedCapabilities();
+    }
+
+    private ChatResponse call(ChatRequest chatRequest, ChatRequestOptions options) {
+        if (legacyChat) {
+            return delegate.chat(chatRequest);
+        }
+        return delegate.chat(chatRequest, options);
+    }
+
+    private CompletableFuture<ChatResponse> callAsync(ChatRequest chatRequest, ChatRequestOptions options) {
+        if (legacyChat) {
+            return delegate.chatAsync(chatRequest);
+        }
+        return delegate.chatAsync(chatRequest, options);
+    }
+
+    private static boolean legacyChat(ChatModel delegate) {
+        var type = delegate.getClass();
+        return implemented(type, "chat", ChatRequest.class)
+            && !implemented(type, "chat", ChatRequest.class, ChatRequestOptions.class)
+            && !implemented(type, "doChat", ChatRequest.class);
+    }
+
+    private static boolean implemented(Class<?> type, String name, Class<?>... parameterTypes) {
+        try {
+            return !type.getMethod(name, parameterTypes).getDeclaringClass().isInterface();
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     private Span start(ChatRequest chatRequest) {
