@@ -595,6 +595,7 @@ class ChatCompletionTest extends ContainerTest {
                                 Property.ofValue(
                                     Map.of(
                                         "type", "object",
+                                        "required", List.of("name", "birth"),
                                         "properties", Map.of(
                                             "name", Map.of("type", "string"),
                                             "birth", Map.of("type", "string")

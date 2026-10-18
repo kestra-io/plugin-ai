@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai.tool.internal;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,7 +45,9 @@ public final class JsonObjectSchemaTranslator {
             .collect(
                 Collectors.toMap(
                     entry -> entry.getKey(),
-                    entry -> entry.getValue()
+                    entry -> entry.getValue(),
+                    (first, second) -> first,
+                    LinkedHashMap::new
                 )
             );
     }
@@ -66,7 +69,9 @@ public final class JsonObjectSchemaTranslator {
             .collect(
                 Collectors.toMap(
                     entry -> entry.getKey(),
-                    entry -> entry.getValue()
+                    entry -> entry.getValue(),
+                    (first, second) -> first,
+                    LinkedHashMap::new
                 )
             );
     }
@@ -129,7 +134,7 @@ public final class JsonObjectSchemaTranslator {
                 JsonSchemaElement schema = replaceDefinitions(entry.getValue(), definitions);
                 return Map.entry(entry.getKey(), schema);
             })
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first, LinkedHashMap::new));
     }
 
     private static JsonSchemaElement replaceDefinitions(JsonSchemaElement schema, Map<String, JsonSchemaElement> definitions) {
