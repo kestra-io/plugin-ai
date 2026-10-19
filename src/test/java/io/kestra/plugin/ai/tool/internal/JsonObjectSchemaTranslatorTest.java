@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JsonObjectSchemaTranslatorTest {
     @Test
     void keepsPropertyOrderOfTopLevelNestedAndDefinitionSchemas() {
-        Map<String, Object> company = ordered(
+        var company = ordered(
             "type", "object",
             "properties", ordered(
                 "ticker", ordered("type", "string"),
@@ -23,7 +23,7 @@ class JsonObjectSchemaTranslatorTest {
                 "exchange", ordered("type", "string")
             )
         );
-        Map<String, Object> address = ordered(
+        var address = ordered(
             "type", "object",
             "properties", ordered(
                 "street", ordered("type", "string"),
@@ -32,7 +32,7 @@ class JsonObjectSchemaTranslatorTest {
                 "zip", ordered("type", "string")
             )
         );
-        Map<String, Object> schema = ordered(
+        var schema = ordered(
             "type", "object",
             "required", List.of("event_summary", "sentiment"),
             "properties", ordered(
@@ -52,7 +52,7 @@ class JsonObjectSchemaTranslatorTest {
         assertThat(new HashMap<>(properties(company)).keySet()).doesNotContainSequence("ticker", "name", "cik", "exchange");
         assertThat(new HashMap<>(properties(address)).keySet()).doesNotContainSequence("street", "city", "country", "zip");
 
-        JsonObjectSchema result = JsonObjectSchemaTranslator.fromOpenAPISchema(schema, null);
+        var result = JsonObjectSchemaTranslator.fromOpenAPISchema(schema, null);
 
         assertThat(result.properties().keySet())
             .containsExactly("event_summary", "sentiment", "zeta", "alpha", "company", "headquarters");
@@ -69,7 +69,7 @@ class JsonObjectSchemaTranslatorTest {
 
     // Map.of does not keep insertion order, so the input schema is built from LinkedHashMaps, like a parsed flow
     private static Map<String, Object> ordered(Object... keysAndValues) {
-        Map<String, Object> map = new LinkedHashMap<>();
+        var map = new LinkedHashMap<String, Object>();
         for (int i = 0; i < keysAndValues.length; i += 2) {
             map.put((String) keysAndValues[i], keysAndValues[i + 1]);
         }

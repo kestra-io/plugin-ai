@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.completion;
 
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -581,6 +582,11 @@ class ChatCompletionTest extends ContainerTest {
             )
         );
 
+        // Ordered, so the same schema is sent on every run
+        var properties = new LinkedHashMap<String, Object>();
+        properties.put("name", Map.of("type", "string"));
+        properties.put("birth", Map.of("type", "string"));
+
         ChatCompletion task = ChatCompletion.builder()
             .messages(Property.ofExpression("{{ messages }}"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
@@ -596,10 +602,7 @@ class ChatCompletionTest extends ContainerTest {
                                     Map.of(
                                         "type", "object",
                                         "required", List.of("name", "birth"),
-                                        "properties", Map.of(
-                                            "name", Map.of("type", "string"),
-                                            "birth", Map.of("type", "string")
-                                        )
+                                        "properties", properties
                                     )
                                 )
                             )
