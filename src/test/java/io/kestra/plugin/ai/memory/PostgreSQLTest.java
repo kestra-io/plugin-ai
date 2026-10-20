@@ -25,6 +25,8 @@ import io.kestra.plugin.ai.embeddings.KestraKVStore;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
 
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -273,5 +275,29 @@ class PostgreSQLTest extends ContainerTest {
             assertThat(rs.next()).isTrue();
             assertThat(rs.getInt(1)).isGreaterThan(0);
         }
+    }
+
+    @Test
+    void overlappingRunsKeepTheirOwnMemory() throws Exception {
+        var memory = PostgreSQL.builder()
+            .host(Property.ofValue(postgres.getHost()))
+            .port(Property.ofValue(postgres.getMappedPort(5432)))
+            .database(Property.ofValue(postgres.getDatabaseName()))
+            .user(Property.ofValue(postgres.getUsername()))
+            .password(Property.ofValue(postgres.getPassword()))
+            .memoryId(Property.ofExpression("{{ conv }}"))
+            .build();
+        RunContext rcA = runContextFactory.of(Map.of("conv", "conv-a-" + IdUtils.create()));
+        RunContext rcB = runContextFactory.of(Map.of("conv", "conv-b-" + IdUtils.create()));
+
+        ChatMemory a = memory.chatMemory(rcA);
+        ChatMemory b = memory.chatMemory(rcB);
+        a.add(UserMessage.from("I am Alice"));
+        b.add(UserMessage.from("I am Bob"));
+        memory.close(rcA, a);
+        memory.close(rcB, b);
+
+        assertThat(memory.chatMemory(rcA).messages().toString()).contains("Alice").doesNotContain("Bob");
+        assertThat(memory.chatMemory(rcB).messages().toString()).contains("Bob").doesNotContain("Alice");
     }
 }

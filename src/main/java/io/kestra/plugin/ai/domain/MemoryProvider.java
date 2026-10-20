@@ -14,6 +14,7 @@ import io.kestra.core.runners.RunContext;
 
 import dev.langchain4j.memory.ChatMemory;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -69,11 +70,9 @@ public abstract class MemoryProvider extends AdditionalPlugin {
     /**
      * Tasks to achieve once the operations have been done
      *
-     * @param runContext
-     * @throws IllegalVariableEvaluationException
-     * @throws IOException
+     * @param chatMemory the memory returned by {@link #chatMemory(RunContext)} for this run, or {@code null} if the run failed before loading it, in which case nothing is saved
      */
-    public void close(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
+    public void close(RunContext runContext, @Nullable ChatMemory chatMemory) throws IllegalVariableEvaluationException, IOException {
         // by default: no-op
     }
 

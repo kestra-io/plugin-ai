@@ -39,6 +39,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -836,6 +837,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
         var logger = runContext.logger();
         var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
+        ChatMemory chatMemory = null;
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -867,7 +869,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
             GuardrailsEvaluator.applyGuardrails(guardrails, agent, runContext);
             if (memory != null) {
-                agent.chatMemory(memory.chatMemory(runContext));
+                chatMemory = memory.chatMemory(runContext);
+                agent.chatMemory(chatMemory);
             }
 
             List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
@@ -906,7 +909,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
-                memory.close(runContext);
+                memory.close(runContext, chatMemory);
             }
 
             TimingChatModelListener.clear();

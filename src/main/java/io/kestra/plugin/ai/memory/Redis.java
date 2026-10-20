@@ -3,7 +3,6 @@ package io.kestra.plugin.ai.memory;
 import java.io.IOException;
 import java.time.Duration;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -18,6 +17,7 @@ import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -97,9 +97,6 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class Redis extends MemoryProvider {
 
-    @JsonIgnore
-    private transient ChatMemory chatMemory;
-
     @NotNull
     @Schema(
         title = "Redis host",
@@ -125,7 +122,7 @@ public class Redis extends MemoryProvider {
         var rPort = runContext.render(this.getPort()).as(Integer.class).orElse(6379);
         var rDrop = runContext.render(this.getDrop()).as(Drop.class).orElse(Drop.NEVER);
 
-        this.chatMemory = MessageWindowChatMemory.withMaxMessages(runContext.render(this.getMessages()).as(Integer.class).orElseThrow());
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(runContext.render(this.getMessages()).as(Integer.class).orElseThrow());
         var key = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
 
         try (var jedis = new Jedis(rHost, rPort)) {
@@ -144,7 +141,7 @@ public class Redis extends MemoryProvider {
     }
 
     @Override
-    public void close(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
+    public void close(RunContext runContext, @Nullable ChatMemory chatMemory) throws IllegalVariableEvaluationException, IOException {
         if (chatMemory != null) {
             var rHost = runContext.render(this.getHost()).as(String.class).orElseThrow();
             var rPort = runContext.render(this.getPort()).as(Integer.class).orElse(6379);

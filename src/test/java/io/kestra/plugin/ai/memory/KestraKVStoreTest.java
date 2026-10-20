@@ -17,6 +17,8 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.ChatCompletion;
 
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,5 +92,36 @@ class KestraKVStoreTest extends ContainerTest {
         ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
         assertThat(ragOutput.getTextOutput()).contains("John");
+    }
+
+    @Test
+    void overlappingRunsKeepTheirOwnMemory() throws Exception {
+        var memory = KestraKVStore.builder().memoryId(Property.ofExpression("{{ conv }}")).build();
+        RunContext rcA = runContextFactory.of("io.kestra.plugin.ai.memory", Map.of("conv", "conv-a-" + IdUtils.create()));
+        RunContext rcB = runContextFactory.of("io.kestra.plugin.ai.memory", Map.of("conv", "conv-b-" + IdUtils.create()));
+
+        ChatMemory a = memory.chatMemory(rcA);
+        ChatMemory b = memory.chatMemory(rcB);
+        a.add(UserMessage.from("I am Alice"));
+        b.add(UserMessage.from("I am Bob"));
+        memory.close(rcA, a);
+        memory.close(rcB, b);
+
+        assertThat(memory.chatMemory(rcA).messages().toString()).contains("Alice").doesNotContain("Bob");
+        assertThat(memory.chatMemory(rcB).messages().toString()).contains("Bob").doesNotContain("Alice");
+    }
+
+    @Test
+    void runFailingBeforeLoadingMemoryDoesNotSaveAnotherRunsMemory() throws Exception {
+        var memory = KestraKVStore.builder().memoryId(Property.ofExpression("{{ conv }}")).build();
+        RunContext rcA = runContextFactory.of("io.kestra.plugin.ai.memory", Map.of("conv", "conv-a-" + IdUtils.create()));
+        RunContext rcB = runContextFactory.of("io.kestra.plugin.ai.memory", Map.of("conv", "conv-b-" + IdUtils.create()));
+
+        ChatMemory a = memory.chatMemory(rcA);
+        a.add(UserMessage.from("I am Alice"));
+        memory.close(rcA, a);
+        memory.close(rcB, null);
+
+        assertThat(memory.chatMemory(rcB).messages()).isEmpty();
     }
 }

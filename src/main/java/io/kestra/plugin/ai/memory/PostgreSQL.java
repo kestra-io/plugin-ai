@@ -6,7 +6,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.regex.Pattern;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -21,6 +20,7 @@ import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -68,9 +68,6 @@ import io.kestra.core.models.annotations.PluginProperty;
     }
 )
 public class PostgreSQL extends MemoryProvider {
-
-    @JsonIgnore
-    private transient ChatMemory chatMemory;
 
     @NotNull
     @Schema(
@@ -130,7 +127,7 @@ public class PostgreSQL extends MemoryProvider {
     public ChatMemory chatMemory(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
         var config = resolvedConfig(runContext);
 
-        this.chatMemory = MessageWindowChatMemory.withMaxMessages(
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(
             runContext.render(this.getMessages()).as(Integer.class).orElseThrow()
         );
 
@@ -170,7 +167,7 @@ public class PostgreSQL extends MemoryProvider {
     }
 
     @Override
-    public void close(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
+    public void close(RunContext runContext, @Nullable ChatMemory chatMemory) throws IllegalVariableEvaluationException, IOException {
         if (chatMemory == null)
             return;
 
