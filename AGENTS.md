@@ -52,6 +52,7 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.provider.AmazonBedrock`
 - `io.kestra.plugin.ai.provider.Anthropic`
 - `io.kestra.plugin.ai.provider.AzureOpenAI`
+- `io.kestra.plugin.ai.provider.Cohere`
 - `io.kestra.plugin.ai.provider.DashScope`
 - `io.kestra.plugin.ai.provider.DeepSeek`
 - `io.kestra.plugin.ai.provider.Fallback`

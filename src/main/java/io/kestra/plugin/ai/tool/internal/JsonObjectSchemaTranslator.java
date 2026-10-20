@@ -1,7 +1,9 @@
 package io.kestra.plugin.ai.tool.internal;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import io.kestra.core.utils.MapUtils;
@@ -41,12 +43,7 @@ public final class JsonObjectSchemaTranslator {
                     jsonSchemaElement
                 );
             })
-            .collect(
-                Collectors.toMap(
-                    entry -> entry.getKey(),
-                    entry -> entry.getValue()
-                )
-            );
+            .collect(toOrderedMap());
     }
 
     @SuppressWarnings("unchecked")
@@ -63,12 +60,7 @@ public final class JsonObjectSchemaTranslator {
                 );
             })
             .filter(entry -> !(entry.getValue() instanceof JsonNullSchema))
-            .collect(
-                Collectors.toMap(
-                    entry -> entry.getKey(),
-                    entry -> entry.getValue()
-                )
-            );
+            .collect(toOrderedMap());
     }
 
     @SuppressWarnings("unchecked")
@@ -129,7 +121,12 @@ public final class JsonObjectSchemaTranslator {
                 JsonSchemaElement schema = replaceDefinitions(entry.getValue(), definitions);
                 return Map.entry(entry.getKey(), schema);
             })
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            .collect(toOrderedMap());
+    }
+
+    // LinkedHashMap keeps the property order of the flow, which is the order the model generates the fields in
+    private static <V> Collector<Map.Entry<String, ? extends V>, ?, Map<String, V>> toOrderedMap() {
+        return Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first, LinkedHashMap::new);
     }
 
     private static JsonSchemaElement replaceDefinitions(JsonSchemaElement schema, Map<String, JsonSchemaElement> definitions) {

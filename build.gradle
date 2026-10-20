@@ -78,7 +78,6 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-open-ai:${langchain4jVersion}"
     // Langchain4j model providers (beta)
     implementation "dev.langchain4j:langchain4j-vertex-ai:${langchain4jBetaVersion}"
-    implementation "dev.langchain4j:langchain4j-vertex-ai-gemini:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-google-genai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-workers-ai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-local-ai:${langchain4jBetaVersion}"

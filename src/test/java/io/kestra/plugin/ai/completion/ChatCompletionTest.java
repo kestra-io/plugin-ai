@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.completion;
 
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,6 +56,7 @@ class ChatCompletionTest extends ContainerTest {
     private final String ANTHROPIC_API_KEY = System.getenv("ANTHROPIC_API_KEY");
     private final String MISTRAL_API_KEY = System.getenv("MISTRAL_API_KEY");
     private final String DEEPSEEK_API_KEY = System.getenv("DEEPSEEK_API_KEY");
+    private final String COHERE_API_KEY = System.getenv("COHERE_API_KEY");
     private final String HUGGING_FACE_API_KEY = System.getenv("HUGGING_FACE_API_KEY");
     private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
     private final String AMAZON_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
@@ -359,6 +361,47 @@ class ChatCompletionTest extends ContainerTest {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void testChatCompletionVertexAI_givenJsonResponseFormat_shouldReturnStructuredOutput() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofValue(List.of(
+                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
+            )))
+            .configuration(
+                ChatConfiguration.builder()
+                    .temperature(Property.ofValue(0.1))
+                    .seed(Property.ofValue(123456789))
+                    .responseFormat(
+                        ChatConfiguration.ResponseFormat.builder()
+                            .type(Property.ofValue(ResponseFormatType.JSON))
+                            .jsonSchema(Property.ofValue(Map.of(
+                                "type", "object",
+                                "required", List.of("name", "birth"),
+                                "properties", Map.of(
+                                    "name", Map.of("type", "string"),
+                                    "birth", Map.of("type", "string")
+                                )
+                            )))
+                            .build()
+                    )
+                    .build()
+            )
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
+            .build();
+
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+
+            assertThat(output.getJsonOutput(), aMapWithSize(2));
+            assertThat(output.getJsonOutput().get("name"), equalTo("John"));
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
     void testChatCompletionVertexAI_givenEndpointSet_shouldThrowIllegalArgumentException() {
         RunContext runContext = runContextFactory.of(
             Map.of(
@@ -420,6 +463,42 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         assertThat(output.getTextOutput(), notNullValue());
+    }
+
+    @Test
+    void testChatCompletionOllama_givenMaxTokenInput_shouldRespectMaxOutputTokens() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "modelName", "tinydolphin",
+                "ollamaEndpoint", ollamaEndpoint,
+                "messages", List.of(
+                    // Ask for a long answer, so the only reason to stop at 10 tokens is maxToken
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Count from 1 to 100, separated by commas.").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(
+                ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
+                    .maxToken(Property.ofValue(10)).build()
+            )
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ ollamaEndpoint }}"))
+                    .build()
+            )
+            .build();
+
+        ChatCompletion.Output output = task.run(runContext);
+
+        assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getTokenUsage().getOutputTokenCount(), equalTo(10));
+        assertThat(output.getFinishReason(), equalTo(FinishReason.LENGTH));
     }
 
     @Test
@@ -504,6 +583,11 @@ class ChatCompletionTest extends ContainerTest {
             )
         );
 
+        // Ordered, so the same schema is sent on every run
+        var properties = new LinkedHashMap<String, Object>();
+        properties.put("name", Map.of("type", "string"));
+        properties.put("birth", Map.of("type", "string"));
+
         ChatCompletion task = ChatCompletion.builder()
             .messages(Property.ofExpression("{{ messages }}"))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
@@ -518,10 +602,8 @@ class ChatCompletionTest extends ContainerTest {
                                 Property.ofValue(
                                     Map.of(
                                         "type", "object",
-                                        "properties", Map.of(
-                                            "name", Map.of("type", "string"),
-                                            "birth", Map.of("type", "string")
-                                        )
+                                        "required", List.of("name", "birth"),
+                                        "properties", properties
                                     )
                                 )
                             )
@@ -1041,6 +1123,44 @@ class ChatCompletionTest extends ContainerTest {
             .provider(
                 DeepSeek.builder()
                     .type(DeepSeek.class.getName())
+                    .apiKey(Property.ofExpression("{{ apiKey }}"))
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .baseUrl(Property.ofExpression("{{ baseUrl }}"))
+                    .build()
+            )
+            .build();
+
+        try {
+            ChatCompletion.Output output = task.run(runContext);
+            assertThat(output.getTextOutput(), notNullValue());
+            assertThat(output.getTextOutput(), containsString("John"));
+            assertThat(output.getRequestDuration(), notNullValue());
+        } catch (RateLimitException e) {
+            abort("Skipped: rate limited or quota exceeded");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "COHERE_API_KEY", matches = ".*")
+    void testChatCompletionCohere() throws Exception {
+        RunContext runContext = runContextFactory.of(
+            Map.of(
+                "apiKey", COHERE_API_KEY,
+                "modelName", "command-a-03-2025",
+                "baseUrl", "https://api.cohere.ai/compatibility/v1",
+                "messages", List.of(
+                    ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
+                )
+            )
+        );
+
+        ChatCompletion task = ChatCompletion.builder()
+            .messages(Property.ofExpression("{{ messages }}"))
+            // Use a low temperature and a fixed seed so the completion would be more deterministic
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .provider(
+                Cohere.builder()
+                    .type(Cohere.class.getName())
                     .apiKey(Property.ofExpression("{{ apiKey }}"))
                     .modelName(Property.ofExpression("{{ modelName }}"))
                     .baseUrl(Property.ofExpression("{{ baseUrl }}"))
