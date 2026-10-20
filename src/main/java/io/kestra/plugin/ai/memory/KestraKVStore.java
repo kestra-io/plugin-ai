@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -23,6 +22,7 @@ import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -95,12 +95,9 @@ import lombok.experimental.SuperBuilder;
 )
 public class KestraKVStore extends MemoryProvider {
 
-    @JsonIgnore
-    private transient ChatMemory chatMemory;
-
     @Override
     public ChatMemory chatMemory(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
-        this.chatMemory = MessageWindowChatMemory.withMaxMessages(runContext.render(this.getMessages()).as(Integer.class).orElseThrow());
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(runContext.render(this.getMessages()).as(Integer.class).orElseThrow());
 
         String key = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
         KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
@@ -125,7 +122,7 @@ public class KestraKVStore extends MemoryProvider {
     }
 
     @Override
-    public void close(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
+    public void close(RunContext runContext, @Nullable ChatMemory chatMemory) throws IllegalVariableEvaluationException, IOException {
         if (chatMemory != null) {
             String rMemoryId = runContext.render(this.getMemoryId()).as(String.class).orElseThrow();
             KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());

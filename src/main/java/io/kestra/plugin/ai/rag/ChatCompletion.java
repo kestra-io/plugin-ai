@@ -29,6 +29,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -385,6 +386,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     public Output run(RunContext runContext) throws Exception {
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
+        ChatMemory chatMemory = null;
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -413,7 +415,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 });
 
             if (memory != null) {
-                assistant.chatMemory(memory.chatMemory(runContext));
+                chatMemory = memory.chatMemory(runContext);
+                assistant.chatMemory(chatMemory);
             }
 
             GuardrailsEvaluator.applyGuardrails(guardrails, assistant, runContext);
@@ -447,7 +450,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
-                memory.close(runContext);
+                memory.close(runContext, chatMemory);
             }
 
             TimingChatModelListener.clear();
