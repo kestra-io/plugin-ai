@@ -109,7 +109,7 @@ public class ZhiPuAI extends ModelProvider {
 
     @Schema(
         title = "Maximum output tokens",
-        description = "Maximum number of tokens returned by a single request. Defaults to `512`.",
+        description = "Maximum number of tokens returned by a single request. Ignored when `configuration.maxToken` is set. Defaults to `512`.",
         example = "512"
     )
     @PluginProperty(group = "execution")
@@ -148,7 +148,7 @@ public class ZhiPuAI extends ModelProvider {
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(0.7))
             .stops(runContext.render(this.stops).asList(String.class))
             .maxRetries(runContext.render(this.maxRetries).as(Integer.class).orElse(3))
-            .maxToken(runContext.render(this.maxToken).as(Integer.class).orElse(512))
+            .maxToken(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(runContext.render(this.maxToken).as(Integer.class).orElse(512)))
             .listeners(allListeners)
             .build();
     }
