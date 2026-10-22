@@ -36,9 +36,7 @@ const rawSystemMessage = computed(() =>
 
 const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
 
-// Before an execution the raw definition value is shown, marked as a template when it contains
-// Pebble syntax. After an execution the model comes only from the task outputs (the provider-reported
-// name), never from the definition, so templated and Fallback configurations show what actually ran.
+// Before a run the raw definition is shown; after a run the model comes only from outputs (what actually ran).
 const isTemplate = (v: unknown): boolean => typeof v === "string" && (v.includes("{{") || v.includes("{%"));
 const TEMPLATE_MARKER = "template";
 
@@ -99,7 +97,7 @@ const maxSeqTools = computed(() => {
 const modelDisplay = computed(() => {
     if (!modelName.value) return "—";
     return !hasExecution.value && isTemplate(modelName.value)
-        ? `${modelName.value} (${TEMPLATE_MARKER})`
+        ? `(${TEMPLATE_MARKER}) ${modelName.value}` // marker first so ellipsis truncation can't hide it
         : modelName.value;
 });
 
@@ -263,7 +261,12 @@ const PRICING: Record<string, { input: number; output: number }> = {
 
 const costEstimate = computed(() => {
     if (!tokenUsage.value || !modelName.value) return null;
-    const p = PRICING[modelName.value];
+    // Providers report dated IDs (gpt-4o-2024-08-06): use the longest key equal to the name or followed by "-".
+    const name = modelName.value;
+    const key = Object.keys(PRICING)
+        .filter(k => name === k || name.startsWith(k + "-"))
+        .sort((a, b) => b.length - a.length)[0];
+    const p = key ? PRICING[key] : undefined;
     if (!p) return null;
     const total =
         (tokenUsage.value.inputTokenCount ?? 0) / 1_000_000 * p.input +

@@ -383,7 +383,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
             // unfortunately, as we have a deprecated aiResponse field, we have no choice but to first build an AIOutput,
             // then, create the final Output based on it.
-            AIOutput output = AIOutput.from(runContext, aiResponse, configuration.computeResponseFormat(runContext).type(), provider);
+            var output = AIOutput.from(runContext, aiResponse, configuration.computeResponseFormat(runContext).type(), provider);
 
             // if no duration was captured(null) then use fallback duration
             Long requestDuration = output.getRequestDuration() == null ? fallbackDuration : output.getRequestDuration();

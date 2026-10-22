@@ -509,8 +509,10 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
         @Schema(
             title = "Model name",
-            description = "Name of the model that computed the embeddings, as reported by the provider, falling back to the configured `modelName`. Null when neither is available.",
-            example = "gpt-4o-2024-08-06"
+            description = """
+                Name of the model that computed the embeddings, as reported by the provider, falling back to the configured `modelName`. Null when neither is available.
+                """,
+            example = "text-embedding-3-small"
         )
         @PluginProperty(group = "execution")
         private String modelName;

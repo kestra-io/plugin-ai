@@ -431,7 +431,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
 
-            AIOutput output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type(), chatProvider);
+            var output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type(), chatProvider);
             Long requestDuration = output.getRequestDuration() == null ? fallbackDuration : output.getRequestDuration();
             return Output.builder()
                 .completion(output.getTextOutput())

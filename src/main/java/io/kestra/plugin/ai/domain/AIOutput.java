@@ -140,7 +140,9 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
 
     @Schema(
         title = "Model name",
-        description = "Name of the model that produced the answer, as reported by the provider, falling back to the configured `modelName`. With the `Fallback` provider this is the model that actually answered. Null when neither is available.",
+        description = """
+            Name of the model that produced the answer, as reported by the provider, falling back to the configured `modelName`. With the `Fallback` provider this is the model that actually answered. Null when neither is available.
+            """,
         example = "gpt-4o-2024-08-06"
     )
     @PluginProperty(group = "execution")

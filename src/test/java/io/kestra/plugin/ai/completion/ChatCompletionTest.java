@@ -463,6 +463,7 @@ class ChatCompletionTest extends ContainerTest {
         ChatCompletion.Output output = task.run(runContext);
 
         assertThat(output.getTextOutput(), notNullValue());
+        assertThat(output.getModelName(), is("tinydolphin"));
     }
 
     @Test

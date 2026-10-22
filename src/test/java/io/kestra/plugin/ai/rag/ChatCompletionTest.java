@@ -92,6 +92,7 @@ class ChatCompletionTest extends ContainerTest {
 
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
+        assertThat(ragOutput.getModelName()).isEqualTo("tinydolphin");
     }
 
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")

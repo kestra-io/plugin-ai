@@ -84,10 +84,7 @@ public final class AIUtils {
         return JacksonMapper.toMap(json);
     }
 
-    /**
-     * Model name to publish: the one the provider reported, else the rendered provider `modelName`.
-     * Blank and LangChain4j's "unknown" placeholder count as not reported. Null when neither is available (e.g. Fallback).
-     */
+    // LangChain4j reports "unknown" when a model doesn't override modelName(); fall back to the configured name then.
     public static String modelName(RunContext runContext, ModelProvider provider, String reported) throws IllegalVariableEvaluationException {
         if (reported != null && !reported.isBlank() && !UNKNOWN_MODEL_NAME.equals(reported)) {
             return reported;

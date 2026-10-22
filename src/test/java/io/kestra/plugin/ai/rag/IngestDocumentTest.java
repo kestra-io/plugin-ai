@@ -54,6 +54,7 @@ class IngestDocumentTest extends ContainerTest {
 
         IngestDocument.Output output = task.run(runContext);
         assertThat(output.getIngestedDocuments()).isEqualTo(1);
+        assertThat(output.getModelName()).isEqualTo("chroma/all-minilm-l6-v2-f32");
 
         String kvKey = (String) output.getEmbeddingStoreOutputs().get("kvName");
         KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());

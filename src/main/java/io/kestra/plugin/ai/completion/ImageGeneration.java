@@ -144,8 +144,10 @@ public class ImageGeneration extends Task implements RunnableTask<ImageGeneratio
 
         @Schema(
             title = "Model name",
-            description = "Name of the model that produced the result, taken from the configured `modelName` since image models don't report one. Null when no `modelName` is configured.",
-            example = "gpt-4o-2024-08-06"
+            description = """
+                Name of the model that produced the result, taken from the configured `modelName` since image models don't report one. Null when no `modelName` is configured.
+                """,
+            example = "dall-e-3"
         )
         @PluginProperty(group = "execution")
         private String modelName;

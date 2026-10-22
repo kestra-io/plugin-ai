@@ -59,8 +59,7 @@ const ingestDocumentTask = {
     },
 };
 
-// Task whose display-facing fields all carry Pebble expressions. Before an execution they are shown
-// raw and marked as templates; after an execution the model comes from the outputs.
+// Pebble-templated fields: shown raw and marked before a run, model read from outputs after.
 const expressionAgentTask = {
     id: "ai-agent",
     type: "io.kestra.plugin.ai.agent.AIAgent",
@@ -463,7 +462,7 @@ export const ExpressionsShownRaw: Story = {
         expect(canvas.getByText(/\{\{ vars\.model }}/)).toBeInTheDocument();
         expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
         expect(canvas.getByText(/\{\{ secret\('ANTHROPIC_API_KEY'\) }}/)).toBeInTheDocument();
-        expect(canvas.getByText(/\{\{ vars\.model }} \(template\)/)).toBeInTheDocument();
+        expect(canvas.getByText(/\(template\) \{\{ vars\.model }}/)).toBeInTheDocument();
         expect(canvas.getAllByText("template").length).toBe(2);
     },
 };
@@ -496,6 +495,28 @@ export const TemplatedModelPostExecution: Story = {
         expect(canvas.getByText("claude-sonnet-4-5")).toBeInTheDocument();
         expect(canvas.queryByText(/\{\{ vars\.model }}/)).not.toBeInTheDocument();
         expect(canvas.getByText("~$18.000000")).toBeInTheDocument();
+    },
+};
+
+export const DatedModelNameKeepsCostEstimate: Story = {
+    name: "Dated provider model name still gets a cost estimate",
+    args: {
+        task: chatTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+        displayMode: "full",
+        execution: executionWith("exec-dated-010", "chat-completion", {
+            modelName: "gpt-4o-2024-08-06",
+            textOutput: "Done.",
+            finishReason: "STOP",
+            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            guardrailViolated: false,
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("gpt-4o-2024-08-06")).toBeInTheDocument();
+        expect(canvas.getByText("~$12.500000")).toBeInTheDocument();
     },
 };
 
