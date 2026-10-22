@@ -259,13 +259,18 @@ const PRICING: Record<string, { input: number; output: number }> = {
     "deepseek-reasoner": { input: 0.55, output: 2.19 },
 };
 
+// Accept only a version suffix (date, 3-digit revision, "latest") so "o1-mini" is not priced as "o1".
+const VERSION_SUFFIX = /^-(\d{4}-\d{2}-\d{2}|\d{8}|\d{3}|latest)$/;
+
+function findPricingKey(name: string): string | undefined {
+    return Object.keys(PRICING)
+        .filter(k => name === k || (name.startsWith(k) && VERSION_SUFFIX.test(name.slice(k.length))))
+        .sort((a, b) => b.length - a.length)[0];
+}
+
 const costEstimate = computed(() => {
     if (!tokenUsage.value || !modelName.value) return null;
-    // Providers report dated IDs (gpt-4o-2024-08-06): use the longest key equal to the name or followed by "-".
-    const name = modelName.value;
-    const key = Object.keys(PRICING)
-        .filter(k => name === k || name.startsWith(k + "-"))
-        .sort((a, b) => b.length - a.length)[0];
+    const key = findPricingKey(modelName.value);
     const p = key ? PRICING[key] : undefined;
     if (!p) return null;
     const total =

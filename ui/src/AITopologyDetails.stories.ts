@@ -520,6 +520,28 @@ export const DatedModelNameKeepsCostEstimate: Story = {
     },
 };
 
+export const UnpricedSiblingModelHasNoCostEstimate: Story = {
+    name: "Model without a pricing entry does not inherit its parent's price",
+    args: {
+        task: chatTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+        displayMode: "full",
+        execution: executionWith("exec-unpriced-011", "chat-completion", {
+            modelName: "o1-mini-2024-09-12",
+            textOutput: "Done.",
+            finishReason: "STOP",
+            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            guardrailViolated: false,
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("o1-mini-2024-09-12")).toBeInTheDocument();
+        expect(canvas.queryByText(/~\$/)).not.toBeInTheDocument();
+    },
+};
+
 export const FallbackModelPostExecution: Story = {
     name: "Fallback provider post-execution (output model differs from definition)",
     args: {
