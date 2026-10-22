@@ -431,7 +431,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
 
-            AIOutput output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type());
+            AIOutput output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type(), chatProvider);
             Long requestDuration = output.getRequestDuration() == null ? fallbackDuration : output.getRequestDuration();
             return Output.builder()
                 .completion(output.getTextOutput())
@@ -443,9 +443,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .intermediateResponses(output.getIntermediateResponses())
                 .requestDuration(requestDuration)
                 .sources(output.getSources())
+                .modelName(output.getModelName())
                 .build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
-            return buildGuardrailViolationOutput(runContext, e);
+            return buildGuardrailViolationOutput(runContext, e, AIUtils.modelName(runContext, chatProvider, null));
         } finally {
             toolProviders.forEach(tool -> tool.close(runContext));
 
@@ -457,8 +458,9 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         }
     }
 
-    private static Output buildGuardrailViolationOutput(RunContext runContext, GuardrailException e) {
+    private static Output buildGuardrailViolationOutput(RunContext runContext, GuardrailException e, String modelName) {
         return Output.builder()
+            .modelName(modelName)
             .guardrailViolated(true)
             .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, runContext.logger()))
             .build();

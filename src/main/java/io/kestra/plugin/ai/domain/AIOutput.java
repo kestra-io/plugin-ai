@@ -10,6 +10,7 @@ import org.apache.commons.lang3.time.StopWatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
@@ -137,10 +138,23 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     @PluginProperty(group = "advanced")
     private final String guardrailViolationMessage;
 
+    @Schema(
+        title = "Model name",
+        description = "Name of the model that produced the answer, as reported by the provider, falling back to the configured `modelName`. With the `Fallback` provider this is the model that actually answered. Null when neither is available.",
+        example = "gpt-4o-2024-08-06"
+    )
+    @PluginProperty(group = "execution")
+    private final String modelName;
+
     // WARNING: When adding additional properties here, don't forget to update completion and rag ChatCompletion.Output
 
     public static AIOutputBuilder<?, ?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
+        return builderFrom(runContext, result, responseFormatType, null);
+    }
+
+    public static AIOutputBuilder<?, ?> builderFrom(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType, ModelProvider provider) throws JsonProcessingException {
         return AIOutput.builder()
+            .modelName(resolveModelName(runContext, result, provider))
             .textOutput(responseFormatType == ResponseFormatType.TEXT ? result.content().text() : null)
             .jsonOutput(responseFormatType == ResponseFormatType.JSON ? JacksonMapper.toMap(result.content().text()) : null)
             .tokenUsage(TokenUsage.from(result.tokenUsage()))
@@ -165,8 +179,21 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
     }
 
     public static AIOutput from(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType) throws JsonProcessingException {
-        return builderFrom(runContext, result, responseFormatType)
+        return from(runContext, result, responseFormatType, null);
+    }
+
+    public static AIOutput from(RunContext runContext, Result<AiMessage> result, ResponseFormatType responseFormatType, ModelProvider provider) throws JsonProcessingException {
+        return builderFrom(runContext, result, responseFormatType, provider)
             .build();
+    }
+
+    private static String resolveModelName(RunContext runContext, Result<AiMessage> result, ModelProvider provider) throws JsonProcessingException {
+        var metadata = result.finalResponse().metadata();
+        try {
+            return AIUtils.modelName(runContext, provider, metadata == null ? null : metadata.modelName());
+        } catch (IllegalVariableEvaluationException e) {
+            throw new IllegalStateException("Unable to render the provider `modelName`", e);
+        }
     }
 
     private static Long extractTiming(RunContext runContext, String id) {

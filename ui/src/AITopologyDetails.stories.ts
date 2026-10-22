@@ -59,19 +59,17 @@ const ingestDocumentTask = {
     },
 };
 
-// Task whose display-facing fields all carry Pebble expressions from different context
-// sources, so the same task renders differently before vs. after an execution exists.
+// Task whose display-facing fields all carry Pebble expressions. Before an execution they are shown
+// raw and marked as templates; after an execution the model comes from the outputs.
 const expressionAgentTask = {
     id: "ai-agent",
     type: "io.kestra.plugin.ai.agent.AIAgent",
     provider: {
         type: "io.kestra.plugin.ai.provider.Anthropic",
-        modelName: "{{ vars.model }}", // flow context → resolves pre-execution
+        modelName: "{{ vars.model }}", // templated: shown raw with a template marker before an execution
         apiKey: "{{ secret('ANTHROPIC_API_KEY') }}",
     },
-    // vars + secret → resolves pre-execution (secret masked, never revealed).
     systemPrompt: "You are {{ vars.persona }}.\nAuth token: {{ secret('ANTHROPIC_API_KEY') }}",
-    // inputs.* → raw until an execution supplies the value.
     prompt: "{{ inputs.question }}",
 };
 
@@ -208,6 +206,7 @@ export const ChatCompletionPostExecution: Story = {
                     taskId: "chat-completion",
                     executionId: "exec-chat-001",
                     outputs: {
+                        modelName: "gpt-4o",
                         textOutput:
                             "Kestra is an open-source orchestration platform that lets you build, schedule, and monitor workflows as code.",
                         finishReason: "STOP",
@@ -244,6 +243,7 @@ export const AgentWithToolCalls: Story = {
                     taskId: "ai-agent",
                     executionId: "exec-agent-002",
                     outputs: {
+                        modelName: "gpt-4o",
                         textOutput:
                             "I found 3 recent executions of the 'etl-pipeline' flow: two succeeded and one failed due to a timeout.",
                         finishReason: "STOP",
@@ -319,6 +319,7 @@ export const RagCompletion: Story = {
                     taskId: "rag-chat",
                     executionId: "exec-rag-003",
                     outputs: {
+                        modelName: "gpt-4o",
                         textOutput:
                             "Based on the documentation, you can configure retries using the `retry` property on any task.",
                         finishReason: "STOP",
@@ -389,6 +390,7 @@ export const ThinkingEnabled: Story = {
                     taskId: "ai-agent",
                     executionId: "exec-think-004",
                     outputs: {
+                        modelName: "claude-3-7-sonnet-latest",
                         textOutput: "The optimal batch size for this workload is 500 records.",
                         finishReason: "STOP",
                         tokenUsage: {
@@ -432,6 +434,7 @@ export const GuardrailViolation: Story = {
                     taskId: "chat-completion",
                     executionId: "exec-guard-005",
                     outputs: {
+                        modelName: "gpt-4o",
                         textOutput: null,
                         finishReason: null,
                         tokenUsage: null,
@@ -449,8 +452,7 @@ export const GuardrailViolation: Story = {
 export const ExpressionsShownRaw: Story = {
     name: "Pebble expressions are shown raw (unresolved)",
     args: {
-        // Server-side expression rendering was dropped: every field with a "{{ ... }}"
-        // template now displays exactly as configured, with no resolution attempt.
+        // Every field with a "{{ ... }}" template displays as configured, flagged with a template marker.
         task: expressionAgentTask,
         namespace: "company.ai",
         flowId: "ai_pebble_resolution_test",
@@ -461,6 +463,89 @@ export const ExpressionsShownRaw: Story = {
         expect(canvas.getByText(/\{\{ vars\.model }}/)).toBeInTheDocument();
         expect(canvas.getByText(/\{\{ inputs\.question }}/)).toBeInTheDocument();
         expect(canvas.getByText(/\{\{ secret\('ANTHROPIC_API_KEY'\) }}/)).toBeInTheDocument();
+        expect(canvas.getByText(/\{\{ vars\.model }} \(template\)/)).toBeInTheDocument();
+        expect(canvas.getAllByText("template").length).toBe(2);
+    },
+};
+
+const executionWith = (id: string, taskId: string, outputs: Record<string, unknown>) => ({
+    id,
+    namespace: "company.team",
+    flowId: "ai-pipeline",
+    state: { current: "SUCCESS", startDate: "2024-01-21T10:00:00Z" },
+    taskRunList: [{ id: `tr-${id}`, taskId, executionId: id, outputs }],
+});
+
+export const TemplatedModelPostExecution: Story = {
+    name: "Templated model post-execution (model read from outputs)",
+    args: {
+        task: expressionAgentTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+        displayMode: "full",
+        execution: executionWith("exec-tpl-007", "ai-agent", {
+            modelName: "claude-sonnet-4-5",
+            textOutput: "Done.",
+            finishReason: "STOP",
+            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            guardrailViolated: false,
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("claude-sonnet-4-5")).toBeInTheDocument();
+        expect(canvas.queryByText(/\{\{ vars\.model }}/)).not.toBeInTheDocument();
+        expect(canvas.getByText("~$18.000000")).toBeInTheDocument();
+    },
+};
+
+export const FallbackModelPostExecution: Story = {
+    name: "Fallback provider post-execution (output model differs from definition)",
+    args: {
+        task: {
+            ...chatTask,
+            provider: {
+                type: "io.kestra.plugin.ai.provider.Fallback",
+                providers: [openAIProvider],
+            },
+        },
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+        displayMode: "full",
+        execution: executionWith("exec-fb-008", "chat-completion", {
+            modelName: "gemini-2.5-flash",
+            textOutput: "Kestra is an orchestration platform.",
+            finishReason: "STOP",
+            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            guardrailViolated: false,
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("gemini-2.5-flash")).toBeInTheDocument();
+        expect(canvas.getByText("~$2.800000")).toBeInTheDocument();
+    },
+};
+
+export const MissingModelOutputPostExecution: Story = {
+    name: "Post-execution without modelName output (no definition fallback, no cost)",
+    args: {
+        task: chatTask,
+        namespace: "company.team",
+        flowId: "ai-pipeline",
+        displayMode: "full",
+        execution: executionWith("exec-old-009", "chat-completion", {
+            textOutput: "Kestra is an orchestration platform.",
+            finishReason: "STOP",
+            tokenUsage: { inputTokenCount: 10, outputTokenCount: 10, totalTokenCount: 20 },
+            guardrailViolated: false,
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Model")).toBeInTheDocument();
+        expect(canvas.queryByText("gpt-4o")).not.toBeInTheDocument();
+        expect(canvas.queryByText("Cost est.")).not.toBeInTheDocument();
     },
 };
 
@@ -482,6 +567,7 @@ export const MaxTokensHit: Story = {
                     taskId: "chat-completion",
                     executionId: "exec-len-006",
                     outputs: {
+                        modelName: "gpt-4o",
                         textOutput:
                             "This is a very long response that was truncated because the model reached the maximum token limit configured for this request. The response continues with more content but was cut off at the limit set by maxOutputTokens...",
                         finishReason: "LENGTH",

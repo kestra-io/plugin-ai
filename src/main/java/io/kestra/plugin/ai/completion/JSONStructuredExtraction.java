@@ -245,7 +245,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         // Input guardrail check
         String inputViolation = GuardrailsEvaluator.checkInput(guardrails, rPrompt, runContext);
         if (inputViolation != null) {
-            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ");
+            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ", AIUtils.modelName(runContext, provider, null));
         }
 
         ResponseFormat responseFormat = ResponseFormat.builder()
@@ -282,7 +282,7 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         // Output guardrail check
         String outputViolation = GuardrailsEvaluator.checkOutput(guardrails, answer, runContext);
         if (outputViolation != null) {
-            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ");
+            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ", AIUtils.modelName(runContext, provider, answer.modelName()));
         }
 
         TokenUsage tokenUsage = TokenUsage.from(answer.tokenUsage());
@@ -291,14 +291,16 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
         return Output.builder()
             .schemaName(rSchemaName)
             .extractedJson(answer.aiMessage().text())
+            .modelName(AIUtils.modelName(runContext, provider, answer.modelName()))
             .tokenUsage(tokenUsage)
             .finishReason(answer.finishReason())
             .build();
     }
 
-    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x) {
+    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x, String modelName) {
         logger.warn(s, outputViolation);
         return Output.builder()
+            .modelName(modelName)
             .guardrailViolated(true)
             .guardrailViolationMessage(x + outputViolation)
             .build();
@@ -320,6 +322,14 @@ public class JSONStructuredExtraction extends Task implements RunnableTask<JSONS
             example = "{\"invoice_number\": \"INV-2026-014\", \"total_amount\": \"1240.00\", \"due_date\": \"2026-02-15\"}"
         )
         private String extractedJson;
+
+        @Schema(
+            title = "Model name",
+            description = "Name of the model that produced the result, as reported by the provider, falling back to the configured `modelName`. With the `Fallback` provider this is the model that actually answered. Null when neither is available.",
+            example = "gpt-4o-2024-08-06"
+        )
+        @PluginProperty(group = "execution")
+        private String modelName;
 
         @Schema(
             title = "Token usage",

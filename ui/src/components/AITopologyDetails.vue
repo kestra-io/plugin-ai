@@ -36,9 +36,15 @@ const rawSystemMessage = computed(() =>
 
 const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
 
-// Shown raw/unresolved: server-side expression rendering was dropped along with the SDK
-// dependency, so a property like "{{ inputs.x }}" now displays literally instead of resolved.
-const modelName = computed(() => rawModelName.value);
+// Before an execution the raw definition value is shown, marked as a template when it contains
+// Pebble syntax. After an execution the model comes only from the task outputs (the provider-reported
+// name), never from the definition, so templated and Fallback configurations show what actually ran.
+const isTemplate = (v: unknown): boolean => typeof v === "string" && (v.includes("{{") || v.includes("{%"));
+const TEMPLATE_MARKER = "template";
+
+const modelName = computed(() =>
+    hasExecution.value ? (outputs.value?.modelName as string | undefined) : rawModelName.value
+);
 const systemMessage = computed(() => rawSystemMessage.value);
 const prompt = computed(() => rawPrompt.value);
 
@@ -90,6 +96,13 @@ const maxSeqTools = computed(() => {
     return v != null ? String(v) : undefined;
 });
 
+const modelDisplay = computed(() => {
+    if (!modelName.value) return "—";
+    return !hasExecution.value && isTemplate(modelName.value)
+        ? `${modelName.value} (${TEMPLATE_MARKER})`
+        : modelName.value;
+});
+
 const memoryType = computed(() => lastSegment(taskConfig.value.memory?.type));
 
 const observabilityType = computed(() => {
@@ -117,7 +130,7 @@ function overflowSummary(names: string[]): string | undefined {
 const summaryRows = computed(() => {
     const rows: { label: string; value: string }[] = [
         { label: "Provider", value: provider.value ?? "—" },
-        { label: "Model", value: modelName.value ?? "—" },
+        { label: "Model", value: modelDisplay.value },
     ];
     const toolsSummary = overflowSummary(toolNames.value);
     if (toolsSummary) rows.push({ label: "Tools", value: toolsSummary });
@@ -282,13 +295,19 @@ const tokenOutputPct = computed(() =>
 
             <!-- ── System message ── -->
             <details v-if="systemMessage" class="ai-section" open>
-                <summary class="ai-section__title">System message</summary>
+                <summary class="ai-section__title">
+                    System message
+                    <KsTag v-if="isTemplate(systemMessage)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
+                </summary>
                 <pre class="ai-pre">{{ systemMessage }}</pre>
             </details>
 
             <!-- ── Prompt ── -->
             <details v-if="prompt" class="ai-section" open>
-                <summary class="ai-section__title">Prompt</summary>
+                <summary class="ai-section__title">
+                    Prompt
+                    <KsTag v-if="isTemplate(prompt)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
+                </summary>
                 <pre class="ai-pre">{{ prompt }}</pre>
             </details>
 
@@ -298,11 +317,17 @@ const tokenOutputPct = computed(() =>
                 <div class="ai-kv">
                     <template v-for="row in chatConfigRows" :key="row.label">
                         <span class="ai-kv__key">{{ row.label }}</span>
-                        <span class="ai-kv__val">{{ row.value }}</span>
+                        <span class="ai-kv__val">
+                            {{ row.value }}
+                            <KsTag v-if="isTemplate(row.value)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
+                        </span>
                     </template>
                     <template v-if="maxSeqTools">
                         <span class="ai-kv__key">Max tool calls</span>
-                        <span class="ai-kv__val">{{ maxSeqTools }}</span>
+                        <span class="ai-kv__val">
+                            {{ maxSeqTools }}
+                            <KsTag v-if="isTemplate(maxSeqTools)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
+                        </span>
                     </template>
                 </div>
             </details>

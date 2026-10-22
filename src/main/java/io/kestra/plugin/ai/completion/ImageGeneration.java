@@ -126,6 +126,7 @@ public class ImageGeneration extends Task implements RunnableTask<ImageGeneratio
 
         return Output.builder()
             .imageUrl(String.valueOf(imageUrl.content().url()))
+            .modelName(AIUtils.modelName(runContext, provider, null))
             .tokenUsage(tokenUsage)
             .finishReason(imageUrl.finishReason())
             .build();
@@ -140,6 +141,14 @@ public class ImageGeneration extends Task implements RunnableTask<ImageGeneratio
             example = "https://oaidalleapiprodscus.blob.core.windows.net/private/generated-image.png"
         )
         private String imageUrl;
+
+        @Schema(
+            title = "Model name",
+            description = "Name of the model that produced the result, taken from the configured `modelName` since image models don't report one. Null when no `modelName` is configured.",
+            example = "gpt-4o-2024-08-06"
+        )
+        @PluginProperty(group = "execution")
+        private String modelName;
 
         @Schema(
             title = "Token usage",

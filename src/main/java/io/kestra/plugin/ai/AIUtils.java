@@ -7,9 +7,11 @@ import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
@@ -22,6 +24,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 
 public final class AIUtils {
+    private static final String UNKNOWN_MODEL_NAME = "unknown";
 
     private AIUtils() {
         // utility class pattern
@@ -79,6 +82,20 @@ public final class AIUtils {
         }
 
         return JacksonMapper.toMap(json);
+    }
+
+    /**
+     * Model name to publish: the one the provider reported, else the rendered provider `modelName`.
+     * Blank and LangChain4j's "unknown" placeholder count as not reported. Null when neither is available (e.g. Fallback).
+     */
+    public static String modelName(RunContext runContext, ModelProvider provider, String reported) throws IllegalVariableEvaluationException {
+        if (reported != null && !reported.isBlank() && !UNKNOWN_MODEL_NAME.equals(reported)) {
+            return reported;
+        }
+        if (provider == null || provider.getModelName() == null) {
+            return null;
+        }
+        return runContext.render(provider.getModelName()).as(String.class).filter(name -> !name.isBlank()).orElse(null);
     }
 
     private static Integer orZero(Integer value) {
