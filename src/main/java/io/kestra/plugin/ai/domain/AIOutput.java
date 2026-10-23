@@ -189,12 +189,12 @@ public class AIOutput implements io.kestra.core.models.tasks.Output {
             .build();
     }
 
-    private static String resolveModelName(RunContext runContext, Result<AiMessage> result, ModelProvider provider) throws JsonProcessingException {
+    private static String resolveModelName(RunContext runContext, Result<AiMessage> result, ModelProvider provider) {
         var metadata = result.finalResponse().metadata();
         try {
             return AIUtils.modelName(runContext, provider, metadata == null ? null : metadata.modelName());
         } catch (IllegalVariableEvaluationException e) {
-            throw new IllegalStateException("Unable to render the provider `modelName`", e);
+            throw new IllegalStateException("Unable to render the provider `modelName`, check that its expression resolves to a string: " + e.getMessage(), e);
         }
     }
 

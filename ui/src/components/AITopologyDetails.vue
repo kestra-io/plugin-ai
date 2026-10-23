@@ -39,6 +39,7 @@ const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
 // Before a run the raw definition is shown; after a run the model comes only from outputs (what actually ran).
 const isTemplate = (v: unknown): boolean => typeof v === "string" && (v.includes("{{") || v.includes("{%"));
 const TEMPLATE_MARKER = "template";
+const EMPTY_VALUE = "-";
 
 const modelName = computed(() =>
     hasExecution.value ? (outputs.value?.modelName as string | undefined) : rawModelName.value
@@ -95,7 +96,7 @@ const maxSeqTools = computed(() => {
 });
 
 const modelDisplay = computed(() => {
-    if (!modelName.value) return "—";
+    if (!modelName.value) return EMPTY_VALUE;
     return !hasExecution.value && isTemplate(modelName.value)
         ? `(${TEMPLATE_MARKER}) ${modelName.value}` // marker first so ellipsis truncation can't hide it
         : modelName.value;
@@ -127,7 +128,7 @@ function overflowSummary(names: string[]): string | undefined {
 
 const summaryRows = computed(() => {
     const rows: { label: string; value: string }[] = [
-        { label: "Provider", value: provider.value ?? "—" },
+        { label: "Provider", value: provider.value ?? EMPTY_VALUE },
         { label: "Model", value: modelDisplay.value },
     ];
     const toolsSummary = overflowSummary(toolNames.value);
@@ -262,9 +263,13 @@ const PRICING: Record<string, { input: number; output: number }> = {
 // Accept only a version suffix (date, 3-digit revision, "latest") so "o1-mini" is not priced as "o1".
 const VERSION_SUFFIX = /^-(\d{4}-\d{2}-\d{2}|\d{8}|\d{3}|latest)$/;
 
+// A "-latest" key also prices the dated ID the provider reports for that alias.
 function findPricingKey(name: string): string | undefined {
     return Object.keys(PRICING)
-        .filter(k => name === k || (name.startsWith(k) && VERSION_SUFFIX.test(name.slice(k.length))))
+        .filter(k => {
+            const base = k.replace(/-latest$/, "");
+            return name === k || (name.startsWith(base) && VERSION_SUFFIX.test(name.slice(base.length)));
+        })
         .sort((a, b) => b.length - a.length)[0];
 }
 

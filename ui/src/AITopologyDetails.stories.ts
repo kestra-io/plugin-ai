@@ -389,7 +389,7 @@ export const ThinkingEnabled: Story = {
                     taskId: "ai-agent",
                     executionId: "exec-think-004",
                     outputs: {
-                        modelName: "claude-3-7-sonnet-latest",
+                        modelName: "claude-3-7-sonnet-20250219",
                         textOutput: "The optimal batch size for this workload is 500 records.",
                         finishReason: "STOP",
                         tokenUsage: {
@@ -412,6 +412,11 @@ export const ThinkingEnabled: Story = {
                 },
             ],
         },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("claude-3-7-sonnet-20250219")).toBeInTheDocument();
+        expect(canvas.getByText("~$0.001920")).toBeInTheDocument();
     },
 };
 
