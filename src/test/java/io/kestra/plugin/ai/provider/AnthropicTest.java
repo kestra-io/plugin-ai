@@ -88,4 +88,43 @@ class AnthropicTest {
                 .withoutHeader("Authorization")
         );
     }
+
+    @Test
+    void chatModel_shouldRespectProviderMaxTokensOverConfiguration() throws Exception {
+        wireMock.stubFor(
+            post(urlPathEqualTo("/v1/messages"))
+                .willReturn(okJson("""
+                    {
+                      "id": "msg_anthropic_test",
+                      "type": "message",
+                      "role": "assistant",
+                      "model": "claude-3-haiku-20240307",
+                      "content": [{"type": "text", "text": "Hello"}],
+                      "stop_reason": "end_turn",
+                      "usage": {"input_tokens": 10, "output_tokens": 5}
+                    }"""))
+        );
+
+        var task = ChatCompletion.builder()
+            .messages(Property.ofValue(java.util.List.of(ChatMessage.builder().type(ChatMessageType.USER).content("Hello").build())))
+            .configuration(ChatConfiguration.builder().maxToken(Property.ofValue(256)).build())
+            .provider(
+                Anthropic.builder()
+                    .type(Anthropic.class.getName())
+                    .apiKey(Property.ofValue("test-anthropic-key"))
+                    .modelName(Property.ofValue("claude-3-haiku-20240307"))
+                    .maxTokens(Property.ofValue(1024))
+                    .baseUrl(Property.ofValue("http://localhost:" + wireMock.getPort() + "/v1/"))
+                    .build()
+            )
+            .build();
+
+        var output = task.run(runContextFactory.of(Map.of()));
+        assertThat(output.getTextOutput()).contains("Hello");
+
+        wireMock.verify(
+            postRequestedFor(urlPathEqualTo("/v1/messages"))
+                .withRequestBody(matchingJsonPath("$.max_tokens", equalTo("1024")))
+        );
+    }
 }
