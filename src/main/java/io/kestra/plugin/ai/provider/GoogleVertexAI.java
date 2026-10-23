@@ -115,6 +115,11 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     @PluginProperty(group = "main")
     private Property<String> endpoint;
 
+    @Override
+    public Property<String> telemetryServerUrl() {
+        return endpoint;
+    }
+
     @Schema(
         title = "Project location",
         description = "Google Cloud region hosting the Vertex AI model, or `global` to use the global endpoint `aiplatform.googleapis.com`. No default: this property is required for chat models.",
@@ -170,12 +175,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     }
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
         throws IllegalVariableEvaluationException {
         if (this.endpoint != null) {
             throw new IllegalArgumentException("The `endpoint` property cannot be used for the Chat Model which uses Gemini only.");
@@ -214,7 +214,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         if (this.serviceAccount != null || this.impersonatedServiceAccount != null) {
             throw new IllegalArgumentException(
                 "The `serviceAccount` and `impersonatedServiceAccount` properties cannot be used for the Image Model, use Application Default Credentials instead."
@@ -232,7 +232,7 @@ public class GoogleVertexAI extends ModelProvider implements GcpInterface {
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var connection = connection(runContext);
         var modelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
 

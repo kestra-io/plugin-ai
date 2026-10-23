@@ -63,7 +63,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Schema(
     title = "Run an AI agent with tools",
     description = """
-        Combines a system message, prompt, and optional tools or content retrievers to invoke an LLM and return text/JSON outputs. Content retrievers always run; tools are only called when the model chooses them. `maxSequentialToolsInvocations` defaults to unlimited; memory keeps prior messages, and `outputFiles` collects files from the task working directory."""
+        Combines a system message, prompt, and optional tools or content retrievers to invoke an LLM and return text/JSON outputs. Content retrievers always run; tools are only called when the model chooses them. `maxSequentialToolsInvocations` defaults to unlimited; memory keeps prior messages, and `outputFiles` collects files from the task working directory. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), each model call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. Prompt and response text are included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 @Plugin(
     examples = {
@@ -796,7 +796,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
     @Schema(
         title = "Observability",
-        description = "OpenTelemetry export of the agent's model calls. Disabled by default, and capturing prompts, outputs and tool payloads is opt-in on top of enabling it.",
+        description = "Langfuse export of the agent's model calls. Disabled by default, and capturing prompts, outputs and tool payloads is opt-in on top of enabling it. Separate from the process OTLP spans exported when an endpoint such as the one kotlp sets is present.",
         example = "{type: \"io.kestra.plugin.ai.domain.LangfuseObservability\", publicKey: \"{{ secret('LANGFUSE_PUBLIC_KEY') }}\", secretKey: \"{{ secret('LANGFUSE_SECRET_KEY') }}\"}"
     )
     @PluginProperty(group = "advanced")

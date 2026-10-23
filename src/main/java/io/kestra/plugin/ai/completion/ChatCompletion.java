@@ -60,7 +60,7 @@ import java.util.concurrent.TimeUnit;
 @Schema(
     title = "Run chat completion with tools",
     description = """
-        Executes a chat turn from a message list (max one system message; last must be USER) using the configured provider. Optional tools may be invoked by the model; token metrics are reported. JSON-schema formats in `configuration` require provider support."""
+        Executes a chat turn from a message list (max one system message; last must be USER) using the configured provider. Optional tools may be invoked by the model; token metrics are reported. JSON-schema formats in `configuration` require provider support. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), each model call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. Prompt and response text are included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 @Plugin(
     examples = {
@@ -296,7 +296,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
 
     @Schema(
         title = "Observability",
-        description = "OpenTelemetry export of the model call. Disabled by default, and capturing prompts, outputs and tool payloads is opt-in on top of enabling it.",
+        description = "Langfuse export of the model call. Disabled by default, and capturing prompts, outputs and tool payloads is opt-in on top of enabling it. Separate from the process OTLP spans exported when an endpoint such as the one kotlp sets is present.",
         example = "{type: \"io.kestra.plugin.ai.domain.LangfuseObservability\", publicKey: \"{{ secret('LANGFUSE_PUBLIC_KEY') }}\", secretKey: \"{{ secret('LANGFUSE_SECRET_KEY') }}\"}"
     )
     @PluginProperty(group = "advanced")

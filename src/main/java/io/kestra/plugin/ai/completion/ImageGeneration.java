@@ -31,7 +31,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(
     title = "Generate images from a prompt",
     description = """
-        Calls the configured image model to create an image from the provided text prompt and returns the image URL. Output includes finish reason and token usage; image size/format limits follow the provider model."""
+        Calls the configured image model to create an image from the provided text prompt and returns the image URL. Output includes finish reason and token usage; image size/format limits follow the provider model. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), the call is exported as an OpenTelemetry span carrying provider, model, and latency. The prompt is included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`; inline image bytes are never copied onto the span."""
 )
 @NoArgsConstructor
 @Plugin(

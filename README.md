@@ -48,6 +48,12 @@
 - Provides plugin components under `io.kestra.plugin.ai`.
 - Includes classes such as `AIUtils`, `GoogleCustomWebSearch`, `TavilyWebSearch`, `SqlDatabaseRetriever`.
 
+## OpenTelemetry traces
+
+Chat, embedding, and image calls export an OpenTelemetry span when the process has an OTLP endpoint. [kotlp](https://github.com/kestra-io/kotlp) sets `OTEL_EXPORTER_OTLP_ENDPOINT` for a task runner with `monitoring.enabled: true`, and Kestra forwards those spans into its trace store. These tasks run in the worker and do not declare `taskRunner`; the same variables apply when that process is the one kotlp wrapped.
+
+LLM clients in this plugin use `java.net.http.HttpClient`, which does not emit spans from those variables alone, so the spans are created explicitly. Each one includes the provider, model, token usage, finish reason, server, and latency. Prompt and response text are omitted unless `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`.
+
 ## Documentation
 * Full documentation can be found under: [kestra.io/docs](https://kestra.io/docs)
 * Documentation for developing a plugin is included in the [Plugin Developer Guide](https://kestra.io/docs/plugin-developer-guide/)

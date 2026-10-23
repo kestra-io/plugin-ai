@@ -46,7 +46,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(
     title = "Ingest documents into embeddings",
     description = """
-        Loads text from local path, internal storage, URLs, or inline docs; splits with the chosen splitter; then writes embeddings to the configured store. `drop=true` clears the store first. Default splitter is absent; provide one for chunking."""
+        Loads text from local path, internal storage, URLs, or inline docs; splits with the chosen splitter; then writes embeddings to the configured store. `drop=true` clears the store first. Default splitter is absent; provide one for chunking. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), each embedding call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. Input text is included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 @Plugin(
     examples = {

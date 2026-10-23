@@ -11,6 +11,8 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -27,10 +29,12 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.plugins.AdditionalPlugin;
 import io.kestra.core.plugins.serdes.PluginDeserializer;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.ai.observability.LlmTelemetry;
 
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
@@ -43,9 +47,6 @@ import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.List;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Plugin
 @SuperBuilder(toBuilder = true)
@@ -93,19 +94,49 @@ public abstract class ModelProvider extends AdditionalPlugin {
     @PluginProperty(group = "advanced")
     private Property<String> caPem;
 
-    public abstract ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException;
-
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration);
+    public final ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120));
     }
 
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, timeout);
+    public final ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, timeout, Collections.emptyList());
     }
 
-    public abstract ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException;
+    public final ChatModel chatModel(
+        RunContext runContext,
+        ChatConfiguration configuration,
+        Duration timeout,
+        List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+        var listeners = additionalListeners == null ? List.<ChatModelListener> of() : additionalListeners;
+        return LlmTelemetry.observeChat(runContext, this, buildChatModel(runContext, configuration, timeout, listeners));
+    }
 
-    public abstract EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException;
+    protected abstract ChatModel buildChatModel(
+        RunContext runContext,
+        ChatConfiguration configuration,
+        Duration timeout,
+        List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException;
+
+    public final ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+        return LlmTelemetry.observeImage(runContext, this, buildImageModel(runContext));
+    }
+
+    protected abstract ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException;
+
+    public final EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+        return LlmTelemetry.observeEmbedding(runContext, this, buildEmbeddingModel(runContext));
+    }
+
+    protected abstract EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException;
+
+    /**
+     * Base URL reported as {@code server.address} on model spans. Subclasses that connect through a field other than
+     * {@code baseUrl} override this. Returns the subclass value, not a shadowed parent field.
+     */
+    @JsonIgnore
+    public Property<String> telemetryServerUrl() {
+        return getBaseUrl();
+    }
 
     protected JdkHttpClientBuilder buildHttpClientWithPemIfAvailable(RunContext runContext) throws IllegalVariableEvaluationException {
 
