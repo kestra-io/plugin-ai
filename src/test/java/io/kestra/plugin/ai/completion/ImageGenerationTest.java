@@ -83,6 +83,7 @@ public class ImageGenerationTest {
 
         // THEN
         assertThat(runOutput.getImageUrl(), is("https://mock-image-url.com/image.png"));
+        assertThat(runOutput.getModelName(), is("dall-e-3"));
 
         // Verify WireMock interaction
         verify(
