@@ -148,7 +148,7 @@ public class KestraTask extends ToolProvider {
                 }
                 return "...".equals(taskProperties.get(key));
             })
-            // LinkedHashMap keeps the declaration order, which the model sees as the order of the tool's parameters
+            // LinkedHashMap keeps the schema generator's property order, a HashMap would hand the model the parameters in hash order
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first, LinkedHashMap::new));
         schema.put("properties", properties);
 
