@@ -106,6 +106,7 @@ class ClassificationTest extends ContainerTest {
 
         // THEN
         assertThat(runOutput.getClassification(), notNullValue());
+        assertThat(runOutput.getModelName(), is("tinydolphin"));
     }
 
     @Test

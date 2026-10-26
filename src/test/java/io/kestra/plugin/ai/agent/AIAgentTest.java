@@ -260,6 +260,7 @@ class AIAgentTest {
             assertThat(successfulProviderCalls).hasValue(1);
             assertThat(output.isGuardrailViolated()).isFalse();
             assertThat(output.getTextOutput()).isEqualTo(expectedResponse);
+            assertThat(output.getModelName()).isEqualTo("gpt-4o-mini");
             assertThat(receivedMessages.get()).isNotNull();
             assertThat(receivedMessages.get().toString()).contains(systemMessage, prompt);
         } finally {
@@ -346,6 +347,8 @@ class AIAgentTest {
             assertThat(output.isGuardrailViolated()).isTrue();
             assertThat(output.getGuardrailViolationMessage()).contains("Response failed the output guardrail");
             assertThat(output.getTextOutput()).isNull();
+            // Fallback has no configured model name and nothing was reported
+            assertThat(output.getModelName()).isNull();
             unusedFallbackProvider.verify(0, postRequestedFor(urlEqualTo("/v1/chat/completions")));
         } finally {
             unusedFallbackProvider.stop();
@@ -1155,6 +1158,7 @@ class AIAgentTest {
         assertThat(output.isGuardrailViolated()).isTrue();
         assertThat(output.getGuardrailViolationMessage()).contains("Message too long");
         assertThat(output.getTextOutput()).isNull();
+        assertThat(output.getModelName()).isEqualTo("gpt-4o-mini");
     }
 
     @Test
