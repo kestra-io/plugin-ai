@@ -1,5 +1,6 @@
 package io.kestra.plugin.ai;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -79,6 +80,31 @@ public final class AIUtils {
         }
 
         return JacksonMapper.toMap(json);
+    }
+
+    /**
+     * Closes every element that is {@link AutoCloseable}, even when closing an earlier one fails.
+     *
+     * @throws Exception the first failure, with any later ones added as suppressed
+     */
+    public static void closeAll(Collection<?> resources) throws Exception {
+        Exception failure = null;
+        for (Object resource : resources) {
+            if (resource instanceof AutoCloseable closeable) {
+                try {
+                    closeable.close();
+                } catch (Exception e) {
+                    if (failure == null) {
+                        failure = e;
+                    } else {
+                        failure.addSuppressed(e);
+                    }
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
     }
 
     private static Integer orZero(Integer value) {

@@ -3,7 +3,6 @@ package io.kestra.plugin.ai.embeddings;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 
@@ -27,7 +26,6 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.slf4j.Logger;
@@ -94,9 +92,6 @@ import lombok.experimental.SuperBuilder;
     aliases = "io.kestra.plugin.langchain4j.embeddings.Elasticsearch"
 )
 public class Elasticsearch extends EmbeddingStoreProvider {
-    @JsonIgnore
-    private transient RestClient restClient;
-
     @NotNull
     @Schema(
         title = "Connection",
@@ -116,25 +111,22 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
-        restClient = connection.client(runContext).restClient();
+        var restClient = connection.client(runContext).restClient();
 
-        if (drop) {
-            restClient.performRequest(new Request("DELETE", runContext.render(indexName).as(String.class).orElseThrow()));
-        }
+        try {
+            if (drop) {
+                restClient.performRequest(new Request("DELETE", runContext.render(indexName).as(String.class).orElseThrow()));
+            }
 
-        return dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStore.builder()
-            .restClient(restClient)
-            .indexName(runContext.render(indexName).as(String.class).orElseThrow())
-            .build();
-    }
-
-    @Override
-    public Map<String, Object> outputs(RunContext runContext) throws IOException {
-        if (restClient != null) {
+            var embeddingStore = dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStore.builder()
+                .restClient(restClient)
+                .indexName(runContext.render(indexName).as(String.class).orElseThrow())
+                .build();
+            return new ClosingEmbeddingStore<>(embeddingStore, restClient);
+        } catch (IOException | IllegalVariableEvaluationException | RuntimeException e) {
             restClient.close();
+            throw e;
         }
-
-        return null;
     }
 
     // Copy of o.kestra.plugin.elasticsearch.ElasticsearchConnection

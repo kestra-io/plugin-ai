@@ -167,19 +167,26 @@ public class Search extends Task implements RunnableTask<Search.Output> {
         var store = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
         runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
-        var renderedQuery = runContext.render(query).as(String.class).orElseThrow();
-        var embedding = embeddingModel.embed(renderedQuery).content();
+        List<String> results;
+        try {
+            var renderedQuery = runContext.render(query).as(String.class).orElseThrow();
+            var embedding = embeddingModel.embed(renderedQuery).content();
 
-        var request = EmbeddingSearchRequest.builder()
-            .queryEmbedding(embedding)
-            .maxResults(runContext.render(maxResults).as(Integer.class).orElseThrow())
-            .minScore(runContext.render(minScore).as(Double.class).orElseThrow())
-            .build();
+            var request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(runContext.render(maxResults).as(Integer.class).orElseThrow())
+                .minScore(runContext.render(minScore).as(Double.class).orElseThrow())
+                .build();
 
-        var results = store.search(request).matches().stream()
-            .map(EmbeddingMatch::embedded)
-            .map(TextSegment::text)
-            .toList();
+            results = store.search(request).matches().stream()
+                .map(EmbeddingMatch::embedded)
+                .map(TextSegment::text)
+                .toList();
+        } finally {
+            if (store instanceof AutoCloseable closeable) {
+                closeable.close();
+            }
+        }
 
         Output output;
 

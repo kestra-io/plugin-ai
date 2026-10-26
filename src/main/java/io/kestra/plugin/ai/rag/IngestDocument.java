@@ -239,96 +239,103 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             embeddingModel.dimension(),
             runContext.render(drop).as(Boolean.class).orElseThrow()
         );
-        runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
-        var builder = EmbeddingStoreIngestor.builder()
-            .embeddingModel(embeddingModel)
-            .embeddingStore(embeddingStore);
+        try {
+            runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
-        if (documentSplitter != null) {
-            builder.documentSplitter(from(documentSplitter));
-        }
+            var builder = EmbeddingStoreIngestor.builder()
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore);
 
-        EmbeddingStoreIngestor ingestor = builder.build();
+            if (documentSplitter != null) {
+                builder.documentSplitter(from(documentSplitter));
+            }
 
-        List<Document> batch = new ArrayList<>(rBulkSize);
+            EmbeddingStoreIngestor ingestor = builder.build();
 
-        Counters counters = new Counters();
+            List<Document> batch = new ArrayList<>(rBulkSize);
 
-        if (rFromPath != null) {
-            Path finalPath = runContext.workingDir().resolve(Path.of(rFromPath));
-            List<Document> docs = FileSystemDocumentLoader.loadDocumentsRecursively(finalPath);
+            Counters counters = new Counters();
 
-            for (Document doc : docs) {
+            if (rFromPath != null) {
+                Path finalPath = runContext.workingDir().resolve(Path.of(rFromPath));
+                List<Document> docs = FileSystemDocumentLoader.loadDocumentsRecursively(finalPath);
+
+                for (Document doc : docs) {
+                    applyMetadata(doc, rMetadata);
+                    batch.add(doc);
+                    if (batch.size() >= rBulkSize) {
+                        flushBatch(batch, ingestor, counters);
+                    }
+                }
+            }
+
+            for (InlineDocument inlineDocument : ListUtils.emptyOnNull(fromDocuments)) {
+                Map<String, Object> metadataMap = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
+
+                Document doc = Document.document(
+                    runContext.render(inlineDocument.content).as(String.class).orElseThrow(),
+                    Metadata.from(metadataMap)
+                );
+
                 applyMetadata(doc, rMetadata);
                 batch.add(doc);
                 if (batch.size() >= rBulkSize) {
                     flushBatch(batch, ingestor, counters);
                 }
             }
-        }
 
-        for (InlineDocument inlineDocument : ListUtils.emptyOnNull(fromDocuments)) {
-            Map<String, Object> metadataMap = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
+            for (String uri : runContext.render(fromInternalURIs).asList(String.class)) {
+                try (InputStream file = runContext.storage().getFile(URI.create(uri))) {
+                    byte[] bytes = file.readAllBytes();
+                    var doc = Document.from(new String(bytes, StandardCharsets.UTF_8));
+                    applyMetadata(doc, rMetadata);
+                    batch.add(doc);
+                }
 
-            Document doc = Document.document(
-                runContext.render(inlineDocument.content).as(String.class).orElseThrow(),
-                Metadata.from(metadataMap)
-            );
-
-            applyMetadata(doc, rMetadata);
-            batch.add(doc);
-            if (batch.size() >= rBulkSize) {
-                flushBatch(batch, ingestor, counters);
+                if (batch.size() >= rBulkSize) {
+                    flushBatch(batch, ingestor, counters);
+                }
             }
-        }
 
-        for (String uri : runContext.render(fromInternalURIs).asList(String.class)) {
-            try (InputStream file = runContext.storage().getFile(URI.create(uri))) {
-                byte[] bytes = file.readAllBytes();
-                var doc = Document.from(new String(bytes, StandardCharsets.UTF_8));
+            for (String url : runContext.render(fromExternalURLs).asList(String.class)) {
+                var doc = UrlDocumentLoader.load(url, new TextDocumentParser());
                 applyMetadata(doc, rMetadata);
                 batch.add(doc);
+
+                if (batch.size() >= rBulkSize) {
+                    flushBatch(batch, ingestor, counters);
+                }
             }
 
-            if (batch.size() >= rBulkSize) {
+            if (!batch.isEmpty()) {
                 flushBatch(batch, ingestor, counters);
             }
-        }
 
-        for (String url : runContext.render(fromExternalURLs).asList(String.class)) {
-            var doc = UrlDocumentLoader.load(url, new TextDocumentParser());
-            applyMetadata(doc, rMetadata);
-            batch.add(doc);
+            runContext.metric(Counter.of("indexed.documents", counters.documents));
 
-            if (batch.size() >= rBulkSize) {
-                flushBatch(batch, ingestor, counters);
+            if (counters.input > 0) {
+                runContext.metric(Counter.of("input.token.count", counters.input));
+            }
+            if (counters.output > 0) {
+                runContext.metric(Counter.of("output.token.count", counters.output));
+            }
+            if (counters.total > 0) {
+                runContext.metric(Counter.of("total.token.count", counters.total));
+            }
+
+            return Output.builder()
+                .ingestedDocuments(counters.documents)
+                .embeddingStoreOutputs(embeddings.outputs(runContext, embeddingStore))
+                .inputTokenCount(counters.input == 0 ? null : counters.input)
+                .outputTokenCount(counters.output == 0 ? null : counters.output)
+                .totalTokenCount(counters.total == 0 ? null : counters.total)
+                .build();
+        } finally {
+            if (embeddingStore instanceof AutoCloseable closeable) {
+                closeable.close();
             }
         }
-
-        if (!batch.isEmpty()) {
-            flushBatch(batch, ingestor, counters);
-        }
-
-        runContext.metric(Counter.of("indexed.documents", counters.documents));
-
-        if (counters.input > 0) {
-            runContext.metric(Counter.of("input.token.count", counters.input));
-        }
-        if (counters.output > 0) {
-            runContext.metric(Counter.of("output.token.count", counters.output));
-        }
-        if (counters.total > 0) {
-            runContext.metric(Counter.of("total.token.count", counters.total));
-        }
-
-        return Output.builder()
-            .ingestedDocuments(counters.documents)
-            .embeddingStoreOutputs(embeddings.outputs(runContext))
-            .inputTokenCount(counters.input == 0 ? null : counters.input)
-            .outputTokenCount(counters.output == 0 ? null : counters.output)
-            .totalTokenCount(counters.total == 0 ? null : counters.total)
-            .build();
     }
 
     /** Adds the top-level metadata to a document, keeping any value already set by the loader or by the inline document. */

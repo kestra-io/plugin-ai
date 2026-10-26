@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -64,9 +63,6 @@ import io.kestra.core.models.annotations.PluginProperty;
     aliases = "io.kestra.plugin.langchain4j.embeddings.KestraKVStore"
 )
 public class KestraKVStore extends EmbeddingStoreProvider {
-    @JsonIgnore
-    private transient InMemoryEmbeddingStore<TextSegment> embeddingStore;
-
     @Schema(
         title = "KV pair name",
         description = "Key of the Kestra KV pair used to persist the in-memory embedding store between task runs. Defaults to `{{ flow.id }}-embedding-store`.",
@@ -80,6 +76,7 @@ public class KestraKVStore extends EmbeddingStoreProvider {
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
         String key = runContext.render(kvName).as(String.class).orElseThrow();
         Optional<KVEntry> kvEntry = runContext.namespaceKv(runContext.flowInfo().namespace()).get(key);
+        InMemoryEmbeddingStore<TextSegment> embeddingStore;
         if (!drop && kvEntry.isPresent()) {
             try {
                 Optional<KVValue> value = runContext.namespaceKv(runContext.flowInfo().namespace()).getValue(kvEntry.get().key());
@@ -96,9 +93,9 @@ public class KestraKVStore extends EmbeddingStoreProvider {
     }
 
     @Override
-    public Map<String, Object> outputs(RunContext runContext) throws IOException, IllegalVariableEvaluationException {
+    public Map<String, Object> outputs(RunContext runContext, EmbeddingStore<TextSegment> embeddingStore) throws IOException, IllegalVariableEvaluationException {
         String key = runContext.render(kvName).as(String.class).orElseThrow();
-        String storeContent = embeddingStore.serializeToJson();
+        String storeContent = ((InMemoryEmbeddingStore<TextSegment>) embeddingStore).serializeToJson();
 
         KVValueAndMetadata kvValueAndMetadata = new KVValueAndMetadata(null, storeContent);
         runContext.namespaceKv(runContext.flowInfo().namespace()).put(key, kvValueAndMetadata);

@@ -1,11 +1,11 @@
 package io.kestra.plugin.ai.rag;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
@@ -22,6 +22,7 @@ import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
+import io.kestra.plugin.ai.retriever.ClosingContentRetriever;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -387,6 +388,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
         ChatMemory chatMemory = null;
+        List<ContentRetriever> retrievers = new ArrayList<>();
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -397,7 +399,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             runContext.metric(Counter.of("ai.provider.calls", 1, "provider", chatProvider.getClass().getName()));
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
-                .retrievalAugmentor(buildRetrievalAugmentor(runContext))
+                .retrievalAugmentor(buildRetrievalAugmentor(runContext, retrievers))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
                 .toolArgumentsErrorHandler((error, context) ->
@@ -454,6 +456,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             TimingChatModelListener.clear();
+            AIUtils.closeAll(retrievers);
         }
     }
 
@@ -464,10 +467,13 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             .build();
     }
 
-    private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext) throws Exception {
-        List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
-            .map(throwFunction(provider -> provider.contentRetriever(runContext)))
-            .collect(Collectors.toList());
+    private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext, final List<ContentRetriever> retrievers) throws Exception {
+        List<ContentRetriever> toolContentRetrievers = new ArrayList<>();
+        for (ContentRetrieverProvider provider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
+            var toolContentRetriever = provider.contentRetriever(runContext);
+            retrievers.add(toolContentRetriever);
+            toolContentRetrievers.add(toolContentRetriever);
+        }
 
         Optional<ContentRetriever> contentRetriever = Optional.ofNullable(embeddings).map(
             throwFunction(
@@ -478,15 +484,17 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                     runContext.metric(Counter.of("ai.provider.calls", 1, "provider", actualProvider.getClass().getName()));
                     var embeddingStore = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
                     runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
-                    return EmbeddingStoreContentRetriever.builder()
+                    var embeddingStoreContentRetriever = EmbeddingStoreContentRetriever.builder()
                         .embeddingModel(embeddingModel)
                         .embeddingStore(embeddingStore)
                         .maxResults(contentRetrieverConfiguration.getMaxResults())
                         .minScore(contentRetrieverConfiguration.getMinScore())
                         .build();
+                    return ClosingContentRetriever.of(embeddingStoreContentRetriever, embeddingStore);
                 }
             )
         );
+        contentRetriever.ifPresent(retrievers::add);
 
         if (toolContentRetrievers.isEmpty() && contentRetriever.isEmpty()) {
             throw new IllegalArgumentException("Either `embeddings` or `contentRetrievers` must be provided.");

@@ -18,9 +18,13 @@ import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.IngestDocument;
 
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
@@ -80,4 +84,25 @@ class ElasticsearchTest extends ContainerTest {
         assertThat(output.getIngestedDocuments()).isEqualTo(1);
     }
 
+    @Test
+    void embeddingStoreClosesItsClientWhenClosed() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of());
+        var embeddings = Elasticsearch.builder()
+            .connection(
+                Elasticsearch.ElasticsearchConnection.builder()
+                    .hosts(List.of("http://localhost:" + elasticsearchContainer.getMappedPort(9200)))
+                    .build()
+            )
+            .indexName(Property.ofValue("closing-store"))
+            .build();
+
+        var store = embeddings.embeddingStore(runContext, 3, false);
+        var embedding = Embedding.from(new float[]{1f, 0f, 0f});
+        var segment = TextSegment.from("I am Alice");
+        assertThatCode(() -> store.add(embedding, segment)).doesNotThrowAnyException();
+
+        assertThat(store).isInstanceOf(AutoCloseable.class);
+        ((AutoCloseable) store).close();
+        assertThatThrownBy(() -> store.add(embedding, segment)).isInstanceOf(RuntimeException.class);
+    }
 }
