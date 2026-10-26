@@ -54,6 +54,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
+    compileOnly "tools.jackson.core:jackson-databind"
     implementation "io.kestra:kestra-api-client:2.0.3"
 
     // compileOnly as it comes from Kestra script library
