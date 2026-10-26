@@ -907,6 +907,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         } catch (final InputGuardrailException | OutputGuardrailException e) {
             return buildGuardrailViolationOutput(e, logger);
         } finally {
+            AIUtils.closeQuietly(logger, toolContentRetrievers);
             observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
 
@@ -915,7 +916,6 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             }
 
             TimingChatModelListener.clear();
-            AIUtils.closeAll(toolContentRetrievers);
         }
     }
 

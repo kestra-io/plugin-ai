@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.slf4j.Logger;
 
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.runners.RunContext;
@@ -83,27 +84,18 @@ public final class AIUtils {
     }
 
     /**
-     * Closes every element that is {@link AutoCloseable}, even when closing an earlier one fails.
-     *
-     * @throws Exception the first failure, with any later ones added as suppressed
+     * Closes every element that is {@link AutoCloseable}, logging a failure instead of throwing it,
+     * so cleanup in a {@code finally} never replaces the task's own result or exception.
      */
-    public static void closeAll(Collection<?> resources) throws Exception {
-        Exception failure = null;
+    public static void closeQuietly(Logger logger, Collection<?> resources) {
         for (Object resource : resources) {
             if (resource instanceof AutoCloseable closeable) {
                 try {
                     closeable.close();
                 } catch (Exception e) {
-                    if (failure == null) {
-                        failure = e;
-                    } else {
-                        failure.addSuppressed(e);
-                    }
+                    logger.warn("Unable to close {}", resource.getClass().getSimpleName(), e);
                 }
             }
-        }
-        if (failure != null) {
-            throw failure;
         }
     }
 

@@ -449,6 +449,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         } catch (final InputGuardrailException | OutputGuardrailException e) {
             return buildGuardrailViolationOutput(runContext, e);
         } finally {
+            AIUtils.closeQuietly(runContext.logger(), retrievers);
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
@@ -456,7 +457,6 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             }
 
             TimingChatModelListener.clear();
-            AIUtils.closeAll(retrievers);
         }
     }
 

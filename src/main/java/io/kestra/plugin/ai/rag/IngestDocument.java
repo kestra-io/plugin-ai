@@ -21,6 +21,7 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.ListUtils;
+import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
@@ -332,9 +333,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
                 .totalTokenCount(counters.total == 0 ? null : counters.total)
                 .build();
         } finally {
-            if (embeddingStore instanceof AutoCloseable closeable) {
-                closeable.close();
-            }
+            AIUtils.closeQuietly(runContext.logger(), List.of(embeddingStore));
         }
     }
 

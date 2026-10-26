@@ -124,7 +124,11 @@ public class Elasticsearch extends EmbeddingStoreProvider {
                 .build();
             return new ClosingEmbeddingStore<>(embeddingStore, restClient);
         } catch (IOException | IllegalVariableEvaluationException | RuntimeException e) {
-            restClient.close();
+            try {
+                restClient.close();
+            } catch (IOException closeError) {
+                e.addSuppressed(closeError);
+            }
             throw e;
         }
     }

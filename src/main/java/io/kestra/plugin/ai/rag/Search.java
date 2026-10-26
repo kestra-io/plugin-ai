@@ -19,6 +19,7 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
@@ -183,9 +184,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
                 .map(TextSegment::text)
                 .toList();
         } finally {
-            if (store instanceof AutoCloseable closeable) {
-                closeable.close();
-            }
+            AIUtils.closeQuietly(runContext.logger(), List.of(store));
         }
 
         Output output;
