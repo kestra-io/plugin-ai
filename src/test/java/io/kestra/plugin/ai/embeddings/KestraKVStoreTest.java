@@ -33,8 +33,8 @@ class KestraKVStoreTest {
 
         var storeA = embeddings.embeddingStore(rcA, 3, false);
         var storeB = embeddings.embeddingStore(rcB, 3, false);
-        storeA.add(Embedding.from(new float[]{1f, 0f, 0f}), TextSegment.from("I am Alice"));
-        storeB.add(Embedding.from(new float[]{0f, 1f, 0f}), TextSegment.from("I am Bob"));
+        storeA.add(Embedding.from(new float[] { 1f, 0f, 0f }), TextSegment.from("I am Alice"));
+        storeB.add(Embedding.from(new float[] { 0f, 1f, 0f }), TextSegment.from("I am Bob"));
         embeddings.outputs(rcA, storeA);
         embeddings.outputs(rcB, storeB);
 

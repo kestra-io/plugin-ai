@@ -170,8 +170,8 @@ public class Search extends Task implements RunnableTask<Search.Output> {
 
         List<String> results;
         try {
-            var renderedQuery = runContext.render(query).as(String.class).orElseThrow();
-            var embedding = embeddingModel.embed(renderedQuery).content();
+            var rQuery = runContext.render(query).as(String.class).orElseThrow();
+            var embedding = embeddingModel.embed(rQuery).content();
 
             var request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
@@ -184,7 +184,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
                 .map(TextSegment::text)
                 .toList();
         } finally {
-            AIUtils.closeQuietly(runContext.logger(), List.of(store));
+            AIUtils.closeQuietly(runContext.logger(), store);
         }
 
         Output output;

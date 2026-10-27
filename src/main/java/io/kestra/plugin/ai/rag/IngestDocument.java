@@ -334,7 +334,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
                 .totalTokenCount(counters.total == 0 ? null : counters.total)
                 .build();
         } finally {
-            AIUtils.closeQuietly(runContext.logger(), List.of(embeddingStore));
+            AIUtils.closeQuietly(runContext.logger(), embeddingStore);
         }
     }
 

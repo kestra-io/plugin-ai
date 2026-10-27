@@ -110,19 +110,22 @@ public class Qdrant extends EmbeddingStoreProvider {
                 .build()
         );
 
-        var renderedCollectionName = runContext.render(collectionName).as(String.class).orElseThrow();
-        var store = QdrantEmbeddingStore.builder()
-            .apiKey(renderedApiKey)
-            .host(renderedHost)
-            .port(renderedPort)
-            .collectionName(renderedCollectionName)
-            .client(client)
-            .build();
+        return ClosingEmbeddingStore.of(client, () ->
+        {
+            var renderedCollectionName = runContext.render(collectionName).as(String.class).orElseThrow();
+            var store = QdrantEmbeddingStore.builder()
+                .apiKey(renderedApiKey)
+                .host(renderedHost)
+                .port(renderedPort)
+                .collectionName(renderedCollectionName)
+                .client(client)
+                .build();
 
-        if (drop) {
-            store.removeAll();
-        }
+            if (drop) {
+                store.removeAll();
+            }
 
-        return store;
+            return store;
+        });
     }
 }

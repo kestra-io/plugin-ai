@@ -1,13 +1,13 @@
 package io.kestra.plugin.ai;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -97,18 +97,13 @@ public final class AIUtils {
         return runContext.render(provider.getModelName()).as(String.class).filter(name -> !name.isBlank()).orElse(null);
     }
 
-    /**
-     * Closes every element that is {@link AutoCloseable}, logging a failure instead of throwing it,
-     * so cleanup in a {@code finally} never replaces the task's own result or exception.
-     */
-    public static void closeQuietly(Logger logger, Collection<?> resources) {
-        for (Object resource : resources) {
-            if (resource instanceof AutoCloseable closeable) {
-                try {
-                    closeable.close();
-                } catch (Exception e) {
-                    logger.warn("Unable to close {}", resource.getClass().getSimpleName(), e);
-                }
+    /** Closes {@code resource} if it is {@link AutoCloseable}, logging a failure instead of throwing it so cleanup never replaces the task's own result. */
+    public static void closeQuietly(Logger logger, Object resource) {
+        if (resource instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                logger.warn("Unable to close {}", resource.getClass().getSimpleName(), e);
             }
         }
     }

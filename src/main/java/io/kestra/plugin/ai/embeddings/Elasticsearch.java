@@ -45,6 +45,7 @@ import co.elastic.clients.transport.instrumentation.NoopInstrumentation;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -111,26 +112,21 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
+        var rIndexName = runContext.render(indexName).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("The Elasticsearch embedding store requires an `indexName`."));
         var restClient = connection.client(runContext).restClient();
 
-        try {
+        return ClosingEmbeddingStore.of(restClient, () ->
+        {
             if (drop) {
-                restClient.performRequest(new Request("DELETE", runContext.render(indexName).as(String.class).orElseThrow()));
+                restClient.performRequest(new Request("DELETE", rIndexName));
             }
 
-            var embeddingStore = dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStore.builder()
+            return ElasticsearchEmbeddingStore.builder()
                 .restClient(restClient)
-                .indexName(runContext.render(indexName).as(String.class).orElseThrow())
+                .indexName(rIndexName)
                 .build();
-            return new ClosingEmbeddingStore<>(embeddingStore, restClient);
-        } catch (IOException | IllegalVariableEvaluationException | RuntimeException e) {
-            try {
-                restClient.close();
-            } catch (IOException closeError) {
-                e.addSuppressed(closeError);
-            }
-            throw e;
-        }
+        });
     }
 
     // Copy of o.kestra.plugin.elasticsearch.ElasticsearchConnection

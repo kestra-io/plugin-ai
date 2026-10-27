@@ -278,6 +278,19 @@ class IngestDocumentTest extends ContainerTest {
             .hasMessageContaining("String, UUID, Integer, Long, Float or Double");
     }
 
+    @Test
+    void closesTheEmbeddingStoreAfterIngesting() throws Exception {
+        var embeddings = new ClosableEmbeddingStoreProvider();
+
+        ingestTaskBuilder()
+            .embeddings(embeddings)
+            .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
+            .build()
+            .run(ollamaRunContext());
+
+        assertThat(embeddings.closed).isTrue();
+    }
+
     private RunContext ollamaRunContext() {
         return runContextFactory.of(
             "namespace", Map.of(

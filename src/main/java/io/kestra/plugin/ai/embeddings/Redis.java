@@ -101,16 +101,19 @@ public class Redis extends EmbeddingStoreProvider {
             DefaultJedisClientConfig.builder().build()
         );
 
-        var store = RedisEmbeddingStore.builder()
-            .unifiedJedis(jedis)
-            .indexName(rIndexName)
-            .dimension(dimension)
-            .build();
+        return ClosingEmbeddingStore.of(jedis, () ->
+        {
+            var store = RedisEmbeddingStore.builder()
+                .unifiedJedis(jedis)
+                .indexName(rIndexName)
+                .dimension(dimension)
+                .build();
 
-        if (drop) {
-            store.removeAll();
-        }
+            if (drop) {
+                store.removeAll();
+            }
 
-        return store;
+            return store;
+        });
     }
 }

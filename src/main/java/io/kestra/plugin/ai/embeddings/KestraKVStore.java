@@ -94,8 +94,13 @@ public class KestraKVStore extends EmbeddingStoreProvider {
 
     @Override
     public Map<String, Object> outputs(RunContext runContext, EmbeddingStore<TextSegment> embeddingStore) throws IOException, IllegalVariableEvaluationException {
+        if (!(embeddingStore instanceof InMemoryEmbeddingStore<TextSegment> inMemoryStore)) {
+            throw new IllegalArgumentException(
+                "The Kestra KV embedding store can only save the in-memory store it created, but received a `%s`.".formatted(embeddingStore.getClass().getName())
+            );
+        }
         String key = runContext.render(kvName).as(String.class).orElseThrow();
-        String storeContent = ((InMemoryEmbeddingStore<TextSegment>) embeddingStore).serializeToJson();
+        var storeContent = inMemoryStore.serializeToJson();
 
         KVValueAndMetadata kvValueAndMetadata = new KVValueAndMetadata(null, storeContent);
         runContext.namespaceKv(runContext.flowInfo().namespace()).put(key, kvValueAndMetadata);

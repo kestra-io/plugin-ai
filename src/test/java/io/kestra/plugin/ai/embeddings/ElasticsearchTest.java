@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.embeddings;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,6 +15,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.rag.IngestDocument;
@@ -93,16 +95,16 @@ class ElasticsearchTest extends ContainerTest {
                     .hosts(List.of("http://localhost:" + elasticsearchContainer.getMappedPort(9200)))
                     .build()
             )
-            .indexName(Property.ofValue("closing-store"))
+            .indexName(Property.ofValue("closing-store-%s".formatted(IdUtils.create().toLowerCase())))
             .build();
 
         var store = embeddings.embeddingStore(runContext, 3, false);
-        var embedding = Embedding.from(new float[]{1f, 0f, 0f});
+        var embedding = Embedding.from(new float[] { 1f, 0f, 0f });
         var segment = TextSegment.from("I am Alice");
         assertThatCode(() -> store.add(embedding, segment)).doesNotThrowAnyException();
 
         assertThat(store).isInstanceOf(AutoCloseable.class);
         ((AutoCloseable) store).close();
-        assertThatThrownBy(() -> store.add(embedding, segment)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> store.add(embedding, segment)).hasRootCauseInstanceOf(CancellationException.class);
     }
 }

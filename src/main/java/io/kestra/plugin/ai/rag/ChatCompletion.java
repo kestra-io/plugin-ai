@@ -388,7 +388,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
         ChatMemory chatMemory = null;
-        List<ContentRetriever> retrievers = new ArrayList<>();
+        var retrievers = new ArrayList<ContentRetriever>();
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -450,7 +450,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
         } catch (final InputGuardrailException | OutputGuardrailException e) {
             return buildGuardrailViolationOutput(runContext, e, AIUtils.modelName(runContext, chatProvider, null));
         } finally {
-            AIUtils.closeQuietly(runContext.logger(), retrievers);
+            retrievers.forEach(retriever -> AIUtils.closeQuietly(runContext.logger(), retriever));
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
@@ -470,12 +470,10 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     }
 
     private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext, final List<ContentRetriever> retrievers) throws Exception {
-        List<ContentRetriever> toolContentRetrievers = new ArrayList<>();
         for (ContentRetrieverProvider provider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
-            var toolContentRetriever = provider.contentRetriever(runContext);
-            retrievers.add(toolContentRetriever);
-            toolContentRetrievers.add(toolContentRetriever);
+            retrievers.add(provider.contentRetriever(runContext));
         }
+        var toolContentRetrievers = new ArrayList<>(retrievers);
 
         Optional<ContentRetriever> contentRetriever = Optional.ofNullable(embeddings).map(
             throwFunction(

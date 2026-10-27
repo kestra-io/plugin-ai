@@ -839,7 +839,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         var logger = runContext.logger();
         var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
         ChatMemory chatMemory = null;
-        List<ContentRetriever> toolContentRetrievers = new ArrayList<>();
+        var toolContentRetrievers = new ArrayList<ContentRetriever>();
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -907,7 +907,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         } catch (final InputGuardrailException | OutputGuardrailException e) {
             return buildGuardrailViolationOutput(e, logger, AIUtils.modelName(runContext, provider, null));
         } finally {
-            AIUtils.closeQuietly(logger, toolContentRetrievers);
+            toolContentRetrievers.forEach(retriever -> AIUtils.closeQuietly(logger, retriever));
             observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
 
