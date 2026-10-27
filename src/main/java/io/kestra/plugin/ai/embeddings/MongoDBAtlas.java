@@ -167,13 +167,13 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
 
         return ClosingEmbeddingStore.of(mongoClient, () ->
         {
-            var renderedCreateIndex = runContext.render(createIndex).as(Boolean.class).orElse(false);
+            var rCreateIndex = runContext.render(createIndex).as(Boolean.class).orElse(false);
             var store = MongoDbEmbeddingStore.builder()
                 .fromClient(mongoClient)
-                .databaseName(runContext.render(database).as(String.class).orElseThrow())
-                .collectionName(runContext.render(collectionName).as(String.class).orElseThrow())
-                .indexName(runContext.render(indexName).as(String.class).orElseThrow())
-                .createIndex(renderedCreateIndex)
+                .databaseName(runContext.render(database).as(String.class).orElseThrow(() -> new IllegalArgumentException("'database' is required")))
+                .collectionName(runContext.render(collectionName).as(String.class).orElseThrow(() -> new IllegalArgumentException("'collectionName' is required")))
+                .indexName(runContext.render(indexName).as(String.class).orElseThrow(() -> new IllegalArgumentException("'indexName' is required")))
+                .createIndex(rCreateIndex)
                 .indexMapping(
                     metadataFieldNames != null ? IndexMapping.builder()
                         .dimension(dimension)
@@ -182,7 +182,7 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
                 )
                 .build();
 
-            if (renderedCreateIndex) {
+            if (rCreateIndex) {
                 // Creating a vector search index can take up to a minute, so this delay allows the index to become queryable
                 try {
                     Await.until(

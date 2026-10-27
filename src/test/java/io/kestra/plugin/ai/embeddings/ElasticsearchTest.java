@@ -88,11 +88,11 @@ class ElasticsearchTest extends ContainerTest {
 
     @Test
     void embeddingStoreClosesItsClientWhenClosed() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of());
+        var runContext = runContextFactory.of(Map.of());
         var embeddings = Elasticsearch.builder()
             .connection(
                 Elasticsearch.ElasticsearchConnection.builder()
-                    .hosts(List.of("http://localhost:" + elasticsearchContainer.getMappedPort(9200)))
+                    .hosts(List.of("http://localhost:%d".formatted(elasticsearchContainer.getMappedPort(9200))))
                     .build()
             )
             .indexName(Property.ofValue("closing-store-%s".formatted(IdUtils.create().toLowerCase())))

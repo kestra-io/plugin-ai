@@ -254,9 +254,9 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
             EmbeddingStoreIngestor ingestor = builder.build();
 
-            List<Document> batch = new ArrayList<>(rBulkSize);
+            var batch = new ArrayList<Document>(rBulkSize);
 
-            Counters counters = new Counters();
+            var counters = new Counters();
 
             if (rFromPath != null) {
                 Path finalPath = runContext.workingDir().resolve(Path.of(rFromPath));
@@ -272,11 +272,11 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             }
 
             for (InlineDocument inlineDocument : ListUtils.emptyOnNull(fromDocuments)) {
-                Map<String, Object> metadataMap = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
+                var rMetadataMap = runContext.render(inlineDocument.metadata).asMap(String.class, Object.class);
 
                 Document doc = Document.document(
-                    runContext.render(inlineDocument.content).as(String.class).orElseThrow(),
-                    Metadata.from(metadataMap)
+                    runContext.render(inlineDocument.content).as(String.class).orElseThrow(() -> new IllegalArgumentException("'content' is required")),
+                    Metadata.from(rMetadataMap)
                 );
 
                 applyMetadata(doc, rMetadata);

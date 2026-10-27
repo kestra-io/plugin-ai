@@ -875,7 +875,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 agent.chatMemory(chatMemory);
             }
 
-            for (ContentRetrieverProvider contentRetrieverProvider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
+            for (var contentRetrieverProvider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
                 toolContentRetrievers.add(contentRetrieverProvider.contentRetriever(runContext));
             }
             if (!toolContentRetrievers.isEmpty()) {

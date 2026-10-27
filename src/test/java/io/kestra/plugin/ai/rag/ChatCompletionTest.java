@@ -404,7 +404,7 @@ class ChatCompletionTest extends ContainerTest {
 
     @Test
     void closesTheEmbeddingStoreAfterChatting() throws Exception {
-        RunContext runContext = runContextFactory.of(
+        var runContext = runContextFactory.of(
             "namespace", Map.of(
                 "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
                 "endpoint", ollamaEndpoint

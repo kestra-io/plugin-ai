@@ -98,26 +98,26 @@ public class Qdrant extends EmbeddingStoreProvider {
 
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IllegalVariableEvaluationException {
-        var renderedHost = runContext.render(host).as(String.class).orElseThrow();
-        var renderedPort = runContext.render(port).as(Integer.class).orElseThrow();
-        var renderedApiKey = runContext.render(apiKey).as(String.class).orElseThrow();
+        var rHost = runContext.render(host).as(String.class).orElseThrow(() -> new IllegalArgumentException("'host' is required"));
+        var rPort = runContext.render(port).as(Integer.class).orElseThrow(() -> new IllegalArgumentException("'port' is required"));
+        var rApiKey = runContext.render(apiKey).as(String.class).orElseThrow(() -> new IllegalArgumentException("'apiKey' is required"));
 
         // dimension is useless since the given embedding dimension will be used inside Qdrant
 
         var client = new QdrantClient(
-            QdrantGrpcClient.newBuilder(renderedHost, renderedPort, false)
-                .withApiKey(renderedApiKey)
+            QdrantGrpcClient.newBuilder(rHost, rPort, false)
+                .withApiKey(rApiKey)
                 .build()
         );
 
         return ClosingEmbeddingStore.of(client, () ->
         {
-            var renderedCollectionName = runContext.render(collectionName).as(String.class).orElseThrow();
+            var rCollectionName = runContext.render(collectionName).as(String.class).orElseThrow(() -> new IllegalArgumentException("'collectionName' is required"));
             var store = QdrantEmbeddingStore.builder()
-                .apiKey(renderedApiKey)
-                .host(renderedHost)
-                .port(renderedPort)
-                .collectionName(renderedCollectionName)
+                .apiKey(rApiKey)
+                .host(rHost)
+                .port(rPort)
+                .collectionName(rCollectionName)
                 .client(client)
                 .build();
 

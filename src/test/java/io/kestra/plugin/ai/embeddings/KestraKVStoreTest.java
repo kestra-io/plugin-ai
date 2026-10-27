@@ -26,10 +26,10 @@ class KestraKVStoreTest {
     @Test
     void overlappingRunsKeepTheirOwnEmbeddings() throws Exception {
         var embeddings = KestraKVStore.builder().kvName(Property.ofExpression("{{ kv }}")).build();
-        String kvA = "kv-a-" + IdUtils.create();
-        String kvB = "kv-b-" + IdUtils.create();
-        RunContext rcA = runContextFactory.of("io.kestra.plugin.ai.embeddings", Map.of("kv", kvA));
-        RunContext rcB = runContextFactory.of("io.kestra.plugin.ai.embeddings", Map.of("kv", kvB));
+        var kvA = "kv-a-%s".formatted(IdUtils.create());
+        var kvB = "kv-b-%s".formatted(IdUtils.create());
+        var rcA = runContextFactory.of("io.kestra.plugin.ai.embeddings", Map.of("kv", kvA));
+        var rcB = runContextFactory.of("io.kestra.plugin.ai.embeddings", Map.of("kv", kvB));
 
         var storeA = embeddings.embeddingStore(rcA, 3, false);
         var storeB = embeddings.embeddingStore(rcB, 3, false);
@@ -43,6 +43,6 @@ class KestraKVStoreTest {
     }
 
     private static String storedJson(RunContext runContext, String key) throws Exception {
-        return runContext.namespaceKv(runContext.flowInfo().namespace()).getValue(key).orElseThrow().value().toString();
+        return runContext.namespaceKv(runContext.flowInfo().namespace()).getValue(key).orElseThrow(() -> new IllegalStateException("KV key %s not found".formatted(key))).value().toString();
     }
 }

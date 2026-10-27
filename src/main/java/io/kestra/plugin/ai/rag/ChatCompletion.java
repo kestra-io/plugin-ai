@@ -36,7 +36,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -470,10 +469,9 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     }
 
     private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext, final List<ContentRetriever> retrievers) throws Exception {
-        for (ContentRetrieverProvider provider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
+        for (var provider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
             retrievers.add(provider.contentRetriever(runContext));
         }
-        var toolContentRetrievers = new ArrayList<>(retrievers);
 
         Optional<ContentRetriever> contentRetriever = Optional.ofNullable(embeddings).map(
             throwFunction(
@@ -494,24 +492,17 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 }
             )
         );
-        contentRetriever.ifPresent(retrievers::add);
+        // always add it first so it has precedence over the additional content retrievers
+        contentRetriever.ifPresent(retrievers::addFirst);
 
-        if (toolContentRetrievers.isEmpty() && contentRetriever.isEmpty()) {
+        if (retrievers.isEmpty()) {
             throw new IllegalArgumentException("Either `embeddings` or `contentRetrievers` must be provided.");
         }
 
-        if (toolContentRetrievers.isEmpty()) {
-            return DefaultRetrievalAugmentor.builder().contentRetriever(contentRetriever.get()).build();
-        } else {
-            // always add it first so it has precedence over the additional content retrievers
-            contentRetriever.ifPresent(ct -> toolContentRetrievers.addFirst(ct));
-            QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
-
-            // Create a query router that will route each query to the embedding store content retriever and the tools content retrievers
-            return DefaultRetrievalAugmentor.builder()
-                .queryRouter(queryRouter)
-                .build();
-        }
+        // Create a query router that will route each query to the embedding store content retriever and the tools content retrievers
+        return DefaultRetrievalAugmentor.builder()
+            .queryRouter(new DefaultQueryRouter(retrievers.toArray(new ContentRetriever[0])))
+            .build();
     }
 
     @Override

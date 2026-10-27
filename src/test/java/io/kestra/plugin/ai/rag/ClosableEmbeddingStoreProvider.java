@@ -13,9 +13,6 @@ import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 public final class ClosableEmbeddingStoreProvider extends EmbeddingStoreProvider {
     final AtomicBoolean closed = new AtomicBoolean();
 
-    public ClosableEmbeddingStoreProvider() {
-    }
-
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) {
         return new ClosableStore();

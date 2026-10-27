@@ -93,11 +93,11 @@ public class Redis extends EmbeddingStoreProvider {
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
 
         var rHost = runContext.render(host).as(String.class).orElseThrow();
-        var resolvedPort = runContext.render(port).as(Integer.class).orElseThrow();
+        var rPort = runContext.render(port).as(Integer.class).orElseThrow(() -> new IllegalArgumentException("'port' is required"));
         var rIndexName = runContext.render(indexName).as(String.class).orElse("embedding-index");
 
         var jedis = new JedisPooled(
-            new HostAndPort(rHost, resolvedPort),
+            new HostAndPort(rHost, rPort),
             DefaultJedisClientConfig.builder().build()
         );
 

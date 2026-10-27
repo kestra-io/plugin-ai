@@ -170,13 +170,13 @@ public class Search extends Task implements RunnableTask<Search.Output> {
 
         List<String> results;
         try {
-            var rQuery = runContext.render(query).as(String.class).orElseThrow();
+            var rQuery = runContext.render(query).as(String.class).orElseThrow(() -> new IllegalArgumentException("'query' is required"));
             var embedding = embeddingModel.embed(rQuery).content();
 
             var request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
-                .maxResults(runContext.render(maxResults).as(Integer.class).orElseThrow())
-                .minScore(runContext.render(minScore).as(Double.class).orElseThrow())
+                .maxResults(runContext.render(maxResults).as(Integer.class).orElseThrow(() -> new IllegalArgumentException("'maxResults' is required")))
+                .minScore(runContext.render(minScore).as(Double.class).orElseThrow(() -> new IllegalArgumentException("'minScore' is required")))
                 .build();
 
             results = store.search(request).matches().stream()
