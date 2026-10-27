@@ -327,6 +327,7 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
 
             return Output.builder()
                 .ingestedDocuments(counters.documents)
+                .modelName(AIUtils.modelName(runContext, provider, embeddingModel.modelName()))
                 .embeddingStoreOutputs(embeddings.outputs(runContext, embeddingStore))
                 .inputTokenCount(counters.input == 0 ? null : counters.input)
                 .outputTokenCount(counters.output == 0 ? null : counters.output)
@@ -510,6 +511,16 @@ public class IngestDocument extends Task implements RunnableTask<IngestDocument.
             example = "42"
         )
         private Integer ingestedDocuments;
+
+        @Schema(
+            title = "Model name",
+            description = """
+                Name of the model that computed the embeddings, as reported by the provider, falling back to the configured `modelName`. Null when neither is available.
+                """,
+            example = "text-embedding-3-small"
+        )
+        @PluginProperty(group = "execution")
+        private String modelName;
 
         @Schema(
             title = "Input token count",

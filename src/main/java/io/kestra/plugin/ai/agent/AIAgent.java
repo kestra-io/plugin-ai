@@ -898,14 +898,14 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             var tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
 
-            var outputBuilder = AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
+            var outputBuilder = AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type(), provider)
                 .outputFiles(gatherOutputFiles(runContext));
             if (completion.finalResponse().id() == null) {
                 outputBuilder.requestDuration(fallbackDuration);
             }
             return outputBuilder.build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
-            return buildGuardrailViolationOutput(e, logger);
+            return buildGuardrailViolationOutput(e, logger, AIUtils.modelName(runContext, provider, null));
         } finally {
             AIUtils.closeQuietly(logger, toolContentRetrievers);
             observabilityListeners.close();
@@ -919,8 +919,9 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         }
     }
 
-    private static AIOutput buildGuardrailViolationOutput(GuardrailException e, Logger logger) {
+    private static AIOutput buildGuardrailViolationOutput(GuardrailException e, Logger logger, String modelName) {
         return AIOutput.builder()
+            .modelName(modelName)
             .guardrailViolated(true)
             .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
             .outputFiles(Collections.emptyMap())

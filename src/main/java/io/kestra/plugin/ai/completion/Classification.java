@@ -182,7 +182,7 @@ public class Classification extends Task implements RunnableTask<Classification.
         // Input guardrail check
         String inputViolation = GuardrailsEvaluator.checkInput(guardrails, rPrompt, runContext);
         if (inputViolation != null) {
-            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ");
+            return buildGuardrailViolationOutput(logger, "Input guardrail violated: {}", inputViolation, "Input guardrail: ", AIUtils.modelName(runContext, provider, null));
         }
 
         List<dev.langchain4j.data.message.ChatMessage> chatMessages = new ArrayList<>();
@@ -203,7 +203,7 @@ public class Classification extends Task implements RunnableTask<Classification.
         // Output guardrail check
         String outputViolation = GuardrailsEvaluator.checkOutput(guardrails, response, runContext);
         if (outputViolation != null) {
-            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ");
+            return buildGuardrailViolationOutput(logger, "Output guardrail violated: {}", outputViolation, "Output guardrail: ", AIUtils.modelName(runContext, provider, response.modelName()));
         }
 
         TokenUsage tokenUsage = TokenUsage.from(response.tokenUsage());
@@ -211,14 +211,16 @@ public class Classification extends Task implements RunnableTask<Classification.
 
         return Output.builder()
             .classification(response.aiMessage().text())
+            .modelName(AIUtils.modelName(runContext, provider, response.modelName()))
             .tokenUsage(tokenUsage)
             .finishReason(response.finishReason())
             .build();
     }
 
-    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x) {
+    private static Output buildGuardrailViolationOutput(Logger logger, String s, String outputViolation, String x, String modelName) {
         logger.warn(s, outputViolation);
         return Output.builder()
+            .modelName(modelName)
             .guardrailViolated(true)
             .guardrailViolationMessage(x + outputViolation)
             .build();
@@ -233,6 +235,16 @@ public class Classification extends Task implements RunnableTask<Classification.
             example = "BILLING"
         )
         private final String classification;
+
+        @Schema(
+            title = "Model name",
+            description = """
+                Name of the model that produced the result, as reported by the provider, falling back to the configured `modelName`. With the `Fallback` provider this is the model that actually answered. Null when neither is available.
+                """,
+            example = "gpt-4o-2024-08-06"
+        )
+        @PluginProperty(group = "execution")
+        private String modelName;
 
         @Schema(
             title = "Token usage",

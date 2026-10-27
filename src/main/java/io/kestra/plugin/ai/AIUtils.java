@@ -9,9 +9,11 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
@@ -24,6 +26,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 
 public final class AIUtils {
+    private static final String UNKNOWN_MODEL_NAME = "unknown";
 
     private AIUtils() {
         // utility class pattern
@@ -81,6 +84,17 @@ public final class AIUtils {
         }
 
         return JacksonMapper.toMap(json);
+    }
+
+    // LangChain4j reports "unknown" when a model doesn't override modelName(); fall back to the configured name then.
+    public static String modelName(RunContext runContext, ModelProvider provider, String reported) throws IllegalVariableEvaluationException {
+        if (reported != null && !reported.isBlank() && !UNKNOWN_MODEL_NAME.equals(reported)) {
+            return reported;
+        }
+        if (provider == null || provider.getModelName() == null) {
+            return null;
+        }
+        return runContext.render(provider.getModelName()).as(String.class).filter(name -> !name.isBlank()).orElse(null);
     }
 
     /**

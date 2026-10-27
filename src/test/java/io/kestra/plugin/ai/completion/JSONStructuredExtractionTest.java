@@ -118,6 +118,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
         assertThat(runOutput.getExtractedJson(), notNullValue());
         assertThat(runOutput.getExtractedJson().toLowerCase().contains("alice"), is(Boolean.TRUE));
         assertThat(runOutput.getExtractedJson().toLowerCase().contains("london"), is(Boolean.TRUE));
+        assertThat(runOutput.getModelName(), is("tinydolphin"));
     }
 
     @Test
