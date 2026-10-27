@@ -77,4 +77,32 @@ class SearchTest extends ContainerTest {
         assertThat(searchTaskOutput.getResults()).isEqualTo(List.of("Banana"));
         assertThat(searchTaskOutput.getSize()).isEqualTo(1);
     }
+
+    @Test
+    void closesTheEmbeddingStoreAfterSearching() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "modelName", "chroma/all-minilm-l6-v2-f32",
+                "endpoint", ollamaEndpoint
+            )
+        );
+        var embeddings = new ClosableEmbeddingStoreProvider();
+
+        Search.builder()
+            .provider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ modelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(embeddings)
+            .query(Property.ofValue("Cherry"))
+            .maxResults(Property.ofValue(5))
+            .minScore(Property.ofValue(0.8))
+            .build()
+            .run(runContext);
+
+        assertThat(embeddings.closed).isTrue();
+    }
 }

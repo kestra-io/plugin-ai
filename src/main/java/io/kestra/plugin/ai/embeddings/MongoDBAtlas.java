@@ -165,53 +165,56 @@ public class MongoDBAtlas extends EmbeddingStoreProvider {
 
         var mongoClient = MongoClients.create(buildUri(runContext));
 
-        var renderedCreateIndex = runContext.render(createIndex).as(Boolean.class).orElse(false);
-        var store = MongoDbEmbeddingStore.builder()
-            .fromClient(mongoClient)
-            .databaseName(runContext.render(database).as(String.class).orElseThrow())
-            .collectionName(runContext.render(collectionName).as(String.class).orElseThrow())
-            .indexName(runContext.render(indexName).as(String.class).orElseThrow())
-            .createIndex(renderedCreateIndex)
-            .indexMapping(
-                metadataFieldNames != null ? IndexMapping.builder()
-                    .dimension(dimension)
-                    .metadataFieldNames(new HashSet<>(runContext.render(metadataFieldNames).asList(String.class)))
-                    .build() : null
-            )
-            .build();
+        return ClosingEmbeddingStore.of(mongoClient, () ->
+        {
+            var rCreateIndex = runContext.render(createIndex).as(Boolean.class).orElse(false);
+            var store = MongoDbEmbeddingStore.builder()
+                .fromClient(mongoClient)
+                .databaseName(runContext.render(database).as(String.class).orElseThrow(() -> new IllegalArgumentException("'database' is required")))
+                .collectionName(runContext.render(collectionName).as(String.class).orElseThrow(() -> new IllegalArgumentException("'collectionName' is required")))
+                .indexName(runContext.render(indexName).as(String.class).orElseThrow(() -> new IllegalArgumentException("'indexName' is required")))
+                .createIndex(rCreateIndex)
+                .indexMapping(
+                    metadataFieldNames != null ? IndexMapping.builder()
+                        .dimension(dimension)
+                        .metadataFieldNames(new HashSet<>(runContext.render(metadataFieldNames).asList(String.class)))
+                        .build() : null
+                )
+                .build();
 
-        if (renderedCreateIndex) {
-            // Creating a vector search index can take up to a minute, so this delay allows the index to become queryable
-            try {
-                Await.until(
-                    () ->
-                    {
-                        try {
-                            // Try a harmless dummy query to check index readiness
-                            store.search(
-                                EmbeddingSearchRequest.builder()
-                                    .queryEmbedding(Embedding.from(Collections.nCopies(dimension, 0.0f)))
-                                    .maxResults(1)
-                                    .build()
-                            );
-                            return true;
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    },
-                    Duration.ofSeconds(1),
-                    Duration.ofMinutes(1)
-                );
-            } catch (TimeoutException | RuntimeException e) {
-                throw new RuntimeException("MongoDB vector index was not ready within 1 minute.", e);
+            if (rCreateIndex) {
+                // Creating a vector search index can take up to a minute, so this delay allows the index to become queryable
+                try {
+                    Await.until(
+                        () ->
+                        {
+                            try {
+                                // Try a harmless dummy query to check index readiness
+                                store.search(
+                                    EmbeddingSearchRequest.builder()
+                                        .queryEmbedding(Embedding.from(Collections.nCopies(dimension, 0.0f)))
+                                        .maxResults(1)
+                                        .build()
+                                );
+                                return true;
+                            } catch (Exception e) {
+                                return false;
+                            }
+                        },
+                        Duration.ofSeconds(1),
+                        Duration.ofMinutes(1)
+                    );
+                } catch (TimeoutException | RuntimeException e) {
+                    throw new RuntimeException("MongoDB vector index was not ready within 1 minute.", e);
+                }
             }
-        }
 
-        if (drop) {
-            store.removeAll();
-        }
+            if (drop) {
+                store.removeAll();
+            }
 
-        return store;
+            return store;
+        });
     }
 
     private String buildUri(RunContext runContext) throws IllegalVariableEvaluationException {

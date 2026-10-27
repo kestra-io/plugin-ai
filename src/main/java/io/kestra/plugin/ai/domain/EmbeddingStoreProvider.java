@@ -27,7 +27,7 @@ import lombok.experimental.SuperBuilder;
 public abstract class EmbeddingStoreProvider extends AdditionalPlugin {
     public abstract EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException;
 
-    public Map<String, Object> outputs(RunContext runContext) throws IOException, IllegalVariableEvaluationException {
+    public Map<String, Object> outputs(RunContext runContext, EmbeddingStore<TextSegment> embeddingStore) throws IOException, IllegalVariableEvaluationException {
         return null;
     }
 }

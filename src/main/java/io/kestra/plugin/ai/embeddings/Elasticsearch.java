@@ -3,7 +3,6 @@ package io.kestra.plugin.ai.embeddings;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 
@@ -27,7 +26,6 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.slf4j.Logger;
@@ -47,6 +45,7 @@ import co.elastic.clients.transport.instrumentation.NoopInstrumentation;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -94,9 +93,6 @@ import lombok.experimental.SuperBuilder;
     aliases = "io.kestra.plugin.langchain4j.embeddings.Elasticsearch"
 )
 public class Elasticsearch extends EmbeddingStoreProvider {
-    @JsonIgnore
-    private transient RestClient restClient;
-
     @NotNull
     @Schema(
         title = "Connection",
@@ -116,25 +112,21 @@ public class Elasticsearch extends EmbeddingStoreProvider {
 
     @Override
     public EmbeddingStore<TextSegment> embeddingStore(RunContext runContext, int dimension, boolean drop) throws IOException, IllegalVariableEvaluationException {
-        restClient = connection.client(runContext).restClient();
+        var rIndexName = runContext.render(indexName).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("The Elasticsearch embedding store requires an `indexName`."));
+        var restClient = connection.client(runContext).restClient();
 
-        if (drop) {
-            restClient.performRequest(new Request("DELETE", runContext.render(indexName).as(String.class).orElseThrow()));
-        }
+        return ClosingEmbeddingStore.of(restClient, () ->
+        {
+            if (drop) {
+                restClient.performRequest(new Request("DELETE", rIndexName));
+            }
 
-        return dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStore.builder()
-            .restClient(restClient)
-            .indexName(runContext.render(indexName).as(String.class).orElseThrow())
-            .build();
-    }
-
-    @Override
-    public Map<String, Object> outputs(RunContext runContext) throws IOException {
-        if (restClient != null) {
-            restClient.close();
-        }
-
-        return null;
+            return ElasticsearchEmbeddingStore.builder()
+                .restClient(restClient)
+                .indexName(rIndexName)
+                .build();
+        });
     }
 
     // Copy of o.kestra.plugin.elasticsearch.ElasticsearchConnection

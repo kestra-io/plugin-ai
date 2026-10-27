@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -17,6 +18,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.MockOpenAI;
 import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
@@ -40,6 +42,9 @@ class ChatCompletionTest extends ContainerTest {
     private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
     private final String RAPID_API_KEY = System.getenv("RAPID_API_KEY");
     private final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
+
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
 
     @Inject
     private TestRunContextFactory runContextFactory;
@@ -395,5 +400,39 @@ class ChatCompletionTest extends ContainerTest {
         } catch (RateLimitException e) {
             abort("Skipped: OpenAI rate limited or quota exceeded");
         }
+    }
+
+    @Test
+    void closesTheEmbeddingStoreAfterChatting() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
+                "endpoint", ollamaEndpoint
+            )
+        );
+        var embeddings = new ClosableEmbeddingStoreProvider();
+
+        ChatCompletion.builder()
+            .chatProvider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .modelName(Property.ofValue("gpt-4o-mini"))
+                    .apiKey(Property.ofValue("placeholder"))
+                    .baseUrl(Property.ofValue(llm.baseUrl()))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(embeddings)
+            .prompt(Property.ofValue("What is Kestra?"))
+            .build()
+            .run(runContext);
+
+        assertThat(embeddings.closed).isTrue();
     }
 }

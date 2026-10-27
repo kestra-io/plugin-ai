@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -93,6 +95,17 @@ public final class AIUtils {
             return null;
         }
         return runContext.render(provider.getModelName()).as(String.class).filter(name -> !name.isBlank()).orElse(null);
+    }
+
+    /** Closes {@code resource} if it is {@link AutoCloseable}, logging a failure instead of throwing it so cleanup never replaces the task's own result. */
+    public static void closeQuietly(Logger logger, Object resource) {
+        if (resource instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                logger.warn("Unable to close {}", resource.getClass().getSimpleName(), e);
+            }
+        }
     }
 
     private static Integer orZero(Integer value) {

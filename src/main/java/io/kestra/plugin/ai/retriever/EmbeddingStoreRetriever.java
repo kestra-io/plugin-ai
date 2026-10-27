@@ -177,14 +177,17 @@ public class EmbeddingStoreRetriever extends ContentRetrieverProvider {
     public ContentRetriever contentRetriever(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
         var embeddingModel = embeddingProvider.embeddingModel(runContext);
         runContext.metric(Counter.of("ai.provider.calls", 1, "provider", embeddingProvider.getClass().getName()));
+        var rMaxResults = runContext.render(this.maxResults).as(Integer.class).orElse(3);
+        var rMinScore = runContext.render(this.minScore).as(Double.class).orElse(0.0);
         var embeddingStore = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
         runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
-        return EmbeddingStoreContentRetriever.builder()
+        var contentRetriever = EmbeddingStoreContentRetriever.builder()
             .embeddingModel(embeddingModel)
             .embeddingStore(embeddingStore)
-            .maxResults(runContext.render(this.maxResults).as(Integer.class).orElse(3))
-            .minScore(runContext.render(this.minScore).as(Double.class).orElse(0.0))
+            .maxResults(rMaxResults)
+            .minScore(rMinScore)
             .build();
+        return ClosingContentRetriever.of(contentRetriever, embeddingStore);
     }
 }

@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.agent;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -838,6 +839,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         var logger = runContext.logger();
         var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
         ChatMemory chatMemory = null;
+        var toolContentRetrievers = new ArrayList<ContentRetriever>();
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -873,9 +875,9 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
                 agent.chatMemory(chatMemory);
             }
 
-            List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
-                .map(throwFunction(provider -> provider.contentRetriever(runContext)))
-                .toList();
+            for (var contentRetrieverProvider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
+                toolContentRetrievers.add(contentRetrieverProvider.contentRetriever(runContext));
+            }
             if (!toolContentRetrievers.isEmpty()) {
                 QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
 
@@ -905,6 +907,7 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
         } catch (final InputGuardrailException | OutputGuardrailException e) {
             return buildGuardrailViolationOutput(e, logger, AIUtils.modelName(runContext, provider, null));
         } finally {
+            toolContentRetrievers.forEach(retriever -> AIUtils.closeQuietly(logger, retriever));
             observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
 
