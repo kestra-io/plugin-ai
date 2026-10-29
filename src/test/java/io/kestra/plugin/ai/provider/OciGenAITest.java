@@ -33,8 +33,7 @@ class OciGenAITest {
 
     private String previousUserHome;
 
-    // The OCI SDK reads its auth config from ~/.oci/config: point it to a throwaway config with a generated key.
-    // Building the chat model does not call OCI.
+    // Throwaway ~/.oci/config with a generated key; building the model does not call OCI.
     @BeforeEach
     void setUp(@TempDir Path home) throws Exception {
         var generator = KeyPairGenerator.getInstance("RSA");

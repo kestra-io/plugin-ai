@@ -324,7 +324,7 @@ shadowJar {
     exclude "**/*.dSYM/**"
 }
 
-// Guards the service-file merge: loads the shaded jar in isolation and checks grpc's dns resolver and pick_first.
+// Guards the service-file merge: checks the OCI SDK HTTP provider is shaded, then loads the jar in isolation and checks grpc's dns resolver and pick_first.
 tasks.register("verifyShadedGrpc") {
     dependsOn shadowJar
     doLast {
