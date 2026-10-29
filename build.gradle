@@ -81,6 +81,8 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-workers-ai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-local-ai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-community-oci-genai:${langchain4jBetaVersion}"
+    // HTTP client of the OCI SDK (without it the OCI client cannot be created): same version as oci-java-sdk-common, see components below
+    implementation "com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3"
     implementation "dev.langchain4j:langchain4j-mariadb:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-tablestore:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-community-dashscope:${langchain4jBetaVersion}"
@@ -265,6 +267,19 @@ jar {
     }
 }
 
+dependencies {
+    components {
+        // langchain4j-oci brings the OCI SDK without an HTTP client: keep jersey3 on the same version as the SDK it brings
+        withModule("com.oracle.oci.sdk:oci-java-sdk-common") {
+            allVariants {
+                withDependencies {
+                    add("com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:${id.version}")
+                }
+            }
+        }
+    }
+}
+
 configurations.runtimeClasspath {
     exclude group: "com.azure", module: "azure-core-test"
     exclude group: "org.junit.jupiter"
@@ -292,6 +307,8 @@ shadowJar {
         // native libraries loaded via JNI/reflection
         exclude(dependency("com.microsoft.onnxruntime:.*"))
         exclude(dependency("ai.djl.*:.*"))
+        // HTTP client of the OCI SDK is loaded through ServiceLoader
+        exclude(dependency("com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:.*"))
     }
 
     exclude "org/slf4j/**"
@@ -307,11 +324,20 @@ shadowJar {
     exclude "**/*.dSYM/**"
 }
 
-// Guards the service-file merge: loads the shaded jar in isolation and checks grpc's dns resolver and pick_first.
+// Guards the service-file merge: checks the OCI SDK HTTP provider is shaded, then loads the jar in isolation and checks grpc's dns resolver and pick_first.
 tasks.register("verifyShadedGrpc") {
     dependsOn shadowJar
     doLast {
         def jarFile = shadowJar.archiveFile.get().asFile
+        // OCI SDK HTTP client is loaded through ServiceLoader: minimize() must not drop it
+        new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
+            def provider = "com.oracle.bmc.http.client.jersey3.Jersey3HttpProvider"
+            def services = zip.getEntry("META-INF/services/com.oracle.bmc.http.client.HttpProvider")
+            if (zip.getEntry(provider.replace('.', '/') + ".class") == null || services == null
+                || !zip.getInputStream(services).text.contains(provider)) {
+                throw new GradleException("${provider} or its META-INF/services entry is missing from ${jarFile.name} -- OciGenAI cannot create its OCI client.")
+            }
+        }
         def loader = new URLClassLoader([jarFile.toURI().toURL()] as URL[], ClassLoader.getPlatformClassLoader())
         try {
             def nameResolverRegistryClass = loader.loadClass("io.grpc.NameResolverRegistry")
