@@ -11,8 +11,8 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ContentRetrieverProvider;
+import io.kestra.plugin.ai.tool.internal.FirecrawlWebSearchEngines;
 
-import dev.langchain4j.community.web.search.firecrawl.FirecrawlWebSearchEngine;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,7 +32,8 @@ import lombok.experimental.SuperBuilder;
 @JsonDeserialize
 @Schema(
     title = "Retrieve web results with Firecrawl",
-    description = "Uses [Firecrawl Search](https://www.firecrawl.dev/search?utm_source=kestra&utm_medium=integration) to fetch live web context for RAG. Requires a Firecrawl API key; `maxResults` caps returned results and defaults to 3. Set `scrapeContent` to retrieve each result page as Markdown. Requests use Firecrawl credits."
+    description = """
+        Uses [Firecrawl Search](https://www.firecrawl.dev/search) to fetch live web context for RAG. Requires a Firecrawl API key; `maxResults` caps returned results and defaults to 3. Set `scrapeContent` to retrieve each result page as Markdown. Requests use Firecrawl credits."""
 )
 @Plugin(
     examples = {
@@ -61,7 +62,7 @@ import lombok.experimental.SuperBuilder;
 public class FirecrawlWebSearch extends ContentRetrieverProvider {
     @Schema(
         title = "API Key",
-        description = "Firecrawl API key used to authenticate search requests, obtainable from [the Firecrawl dashboard](https://www.firecrawl.dev/app/api-keys?utm_source=kestra&utm_medium=integration). Store it as a Kestra secret rather than inline. No default: this property is required.",
+        description = "Firecrawl API key used to authenticate search requests, obtainable from [the Firecrawl dashboard](https://www.firecrawl.dev/app/api-keys). Store it as a Kestra secret rather than inline. No default: this property is required.",
         example = "{{ secret('FIRECRAWL_API_KEY') }}"
     )
     @NotNull
@@ -121,23 +122,17 @@ public class FirecrawlWebSearch extends ContentRetrieverProvider {
 
     @Override
     public ContentRetriever contentRetriever(RunContext runContext) throws IllegalVariableEvaluationException {
-        var builder = FirecrawlWebSearchEngine.builder()
-            .apiKey(
-                runContext.render(this.apiKey).as(String.class)
-                    .orElseThrow(() -> new IllegalArgumentException("`apiKey` is required: set it to your Firecrawl API key, stored as a Kestra secret"))
-            )
-            .scrapeContent(runContext.render(this.scrapeContent).as(Boolean.class).orElse(false));
-        runContext.render(this.location).as(String.class).ifPresent(builder::location);
-        runContext.render(this.timeBasedFilter).as(String.class).ifPresent(builder::timeBasedFilter);
-        runContext.render(this.baseUrl).as(String.class).ifPresent(builder::baseUrl);
-        runContext.render(this.timeout).as(Duration.class).ifPresent(builder::timeout);
-        var rMaxResults = runContext.render(this.maxResults).as(Integer.class).orElse(3);
-        if (rMaxResults < 1 || rMaxResults > 100) {
-            throw new IllegalArgumentException("`maxResults` must be between 1 and 100, got " + rMaxResults);
-        }
+        var searchEngine = FirecrawlWebSearchEngines.buildEngine(
+            runContext.render(this.apiKey).as(String.class).orElse(null),
+            runContext.render(this.scrapeContent).as(Boolean.class).orElse(false),
+            runContext.render(this.location).as(String.class).orElse(null),
+            runContext.render(this.timeBasedFilter).as(String.class).orElse(null),
+            runContext.render(this.baseUrl).as(String.class).orElse(null),
+            runContext.render(this.timeout).as(Duration.class).orElse(null)
+        );
         return WebSearchContentRetriever.builder()
-            .webSearchEngine(builder.build())
-            .maxResults(rMaxResults)
+            .webSearchEngine(searchEngine)
+            .maxResults(FirecrawlWebSearchEngines.checkMaxResults(runContext.render(this.maxResults).as(Integer.class).orElse(3)))
             .build();
     }
 }

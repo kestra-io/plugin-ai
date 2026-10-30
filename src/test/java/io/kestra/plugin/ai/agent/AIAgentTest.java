@@ -717,7 +717,7 @@ class AIAgentTest {
     void withFirecrawlWebSearchContentRetriever() throws Exception {
         llm.reply(messages -> messages.toString().contains("Paris") ? "The capital of France is Paris." : "No web context received.");
 
-        RunContext runContext = runContextFactory.of(
+        var runContext = runContextFactory.of(
             Map.of(
                 "apiKey", "demo",
                 "modelName", "gpt-4o-mini",
@@ -758,7 +758,7 @@ class AIAgentTest {
 
     @Test
     void withFirecrawlWebSearchContentRetrieverAgainstMockedApi() throws Exception {
-        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        var wireMock = new WireMockServer(wireMockConfig().dynamicPort());
         try {
             wireMock.start();
             wireMock.stubFor(
@@ -771,7 +771,7 @@ class AIAgentTest {
             );
             llm.reply(messages -> messages.toString().contains("Kestra 2.0 ships new AI tasks") ? "Kestra 2.0 is the latest release." : "No web context received.");
 
-            RunContext runContext = runContextFactory.of(
+            var runContext = runContextFactory.of(
                 Map.of(
                     "apiKey", "demo",
                     "modelName", "gpt-4o-mini",
@@ -821,7 +821,7 @@ class AIAgentTest {
 
     @Test
     void withFirecrawlWebSearchToolAgainstMockedApi() throws Exception {
-        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        var wireMock = new WireMockServer(wireMockConfig().dynamicPort());
         try {
             wireMock.start();
             wireMock.stubFor(
@@ -834,7 +834,7 @@ class AIAgentTest {
             );
             llm.callTool("searchWeb", "{\"arg0\":\"latest Kestra release\"}");
 
-            RunContext runContext = runContextFactory.of(
+            var runContext = runContextFactory.of(
                 Map.of(
                     "apiKey", "demo",
                     "modelName", "gpt-4o-mini",
@@ -880,7 +880,7 @@ class AIAgentTest {
 
     @Test
     void withFirecrawlWebSearchRejectingOutOfRangeMaxResults() {
-        RunContext runContext = runContextFactory.of(Map.of());
+        var runContext = runContextFactory.of(Map.of());
 
         assertThatThrownBy(
             () -> io.kestra.plugin.ai.tool.FirecrawlWebSearch.builder()
@@ -899,8 +899,21 @@ class AIAgentTest {
     }
 
     @Test
+    void withFirecrawlWebSearchRejectingNonHttpBaseUrl() {
+        var runContext = runContextFactory.of(Map.of());
+
+        assertThatThrownBy(
+            () -> FirecrawlWebSearch.builder()
+                .apiKey(Property.ofValue("fc-test"))
+                .baseUrl(Property.ofValue("file:///etc/passwd"))
+                .build()
+                .contentRetriever(runContext)
+        ).hasMessageContaining("`baseUrl` must be an http or https URL");
+    }
+
+    @Test
     void withFirecrawlWebSearchToolFailingOnInvalidApiKey() throws Exception {
-        WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+        var wireMock = new WireMockServer(wireMockConfig().dynamicPort());
         try {
             wireMock.start();
             wireMock.stubFor(
@@ -910,7 +923,7 @@ class AIAgentTest {
             );
             llm.callTool("searchWeb", "{\"arg0\":\"latest Kestra release\"}");
 
-            RunContext runContext = runContextFactory.of(
+            var runContext = runContextFactory.of(
                 Map.of(
                     "apiKey", "demo",
                     "modelName", "gpt-4o-mini",

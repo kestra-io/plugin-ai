@@ -12,9 +12,9 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ToolProvider;
+import io.kestra.plugin.ai.tool.internal.FirecrawlWebSearchEngines;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.community.web.search.firecrawl.FirecrawlWebSearchEngine;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchRequest;
@@ -98,12 +98,12 @@ import lombok.experimental.SuperBuilder;
 @Schema(
     title = "Search the web with Firecrawl",
     description = """
-        Uses [Firecrawl Search](https://www.firecrawl.dev/search?utm_source=kestra&utm_medium=integration) to fetch live web results for the agent. Requires a Firecrawl API key; each search uses Firecrawl credits. Set `scrapeContent` to also return each result page as Markdown."""
+        Uses [Firecrawl Search](https://www.firecrawl.dev/search) to fetch live web results for the agent. Requires a Firecrawl API key; each search uses Firecrawl credits. Set `scrapeContent` to also return each result page as Markdown."""
 )
 public class FirecrawlWebSearch extends ToolProvider {
     @Schema(
         title = "Firecrawl API Key",
-        description = "Firecrawl API key authorizing web-search calls, obtainable from [the Firecrawl dashboard](https://www.firecrawl.dev/app/api-keys?utm_source=kestra&utm_medium=integration). Store it as a Kestra secret rather than inline. No default: this property is required.",
+        description = "Firecrawl API key authorizing web-search calls, obtainable from [the Firecrawl dashboard](https://www.firecrawl.dev/app/api-keys). Store it as a Kestra secret rather than inline. No default: this property is required.",
         example = "{{ secret('FIRECRAWL_API_KEY') }}"
     )
     @NotNull
@@ -163,21 +163,15 @@ public class FirecrawlWebSearch extends ToolProvider {
 
     @Override
     public Map<ToolSpecification, ToolExecutor> tool(RunContext runContext, Map<String, Object> additionalVariables) throws IllegalVariableEvaluationException {
-        var builder = FirecrawlWebSearchEngine.builder()
-            .apiKey(
-                runContext.render(this.apiKey).as(String.class, additionalVariables)
-                    .orElseThrow(() -> new IllegalArgumentException("`apiKey` is required: set it to your Firecrawl API key, stored as a Kestra secret"))
-            )
-            .scrapeContent(runContext.render(this.scrapeContent).as(Boolean.class, additionalVariables).orElse(false));
-        runContext.render(this.location).as(String.class, additionalVariables).ifPresent(builder::location);
-        runContext.render(this.timeBasedFilter).as(String.class, additionalVariables).ifPresent(builder::timeBasedFilter);
-        runContext.render(this.baseUrl).as(String.class, additionalVariables).ifPresent(builder::baseUrl);
-        runContext.render(this.timeout).as(Duration.class, additionalVariables).ifPresent(builder::timeout);
-        var searchEngine = builder.build();
-        var rMaxResults = runContext.render(this.maxResults).as(Integer.class, additionalVariables).orElse(5);
-        if (rMaxResults < 1 || rMaxResults > 100) {
-            throw new IllegalArgumentException("`maxResults` must be between 1 and 100, got " + rMaxResults);
-        }
+        var searchEngine = FirecrawlWebSearchEngines.buildEngine(
+            runContext.render(this.apiKey).as(String.class, additionalVariables).orElse(null),
+            runContext.render(this.scrapeContent).as(Boolean.class, additionalVariables).orElse(false),
+            runContext.render(this.location).as(String.class, additionalVariables).orElse(null),
+            runContext.render(this.timeBasedFilter).as(String.class, additionalVariables).orElse(null),
+            runContext.render(this.baseUrl).as(String.class, additionalVariables).orElse(null),
+            runContext.render(this.timeout).as(Duration.class, additionalVariables).orElse(null)
+        );
+        var rMaxResults = FirecrawlWebSearchEngines.checkMaxResults(runContext.render(this.maxResults).as(Integer.class, additionalVariables).orElse(5));
 
         // WebSearchTool sends no result count, so Firecrawl would return its default of 10 results per search
         WebSearchEngine cappedSearchEngine = request -> searchEngine.search(
