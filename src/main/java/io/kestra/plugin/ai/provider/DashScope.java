@@ -113,7 +113,7 @@ public class DashScope extends ModelProvider {
 
     @Schema(
         title = "Maximum output tokens",
-        description = "Maximum number of tokens returned by a single request. Not set by default, in which case the DashScope default applies.",
+        description = "Maximum number of tokens returned by a single request. Ignored when `configuration.maxToken` is set. Not set by default, in which case the DashScope default applies.",
         example = "1024"
     )
     @PluginProperty(group = "execution")
@@ -157,7 +157,7 @@ public class DashScope extends ModelProvider {
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .repetitionPenalty(runContext.render(this.repetitionPenalty).as(Float.class).orElse(null))
             .temperature(fTemperature)
-            .maxTokens(runContext.render(this.maxTokens).as(Integer.class).orElse(null))
+            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(runContext.render(this.maxTokens).as(Integer.class).orElse(null)))
             .listeners(allListeners)
             .build();
     }
