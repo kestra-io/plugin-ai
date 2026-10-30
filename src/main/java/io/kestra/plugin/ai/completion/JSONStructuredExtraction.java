@@ -49,7 +49,7 @@ import java.util.List;
 @Schema(
     title = "Extract JSON fields from text",
     description = """
-        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given input (`prompt` or `contentBlocks`). Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason."""
+        Builds a JSON schema from `jsonFields` (all required) and asks the model to return compliant JSON for the given input (`prompt` or `contentBlocks`). Requires a provider that supports JSON response formats; otherwise include schema hints in the prompt. Returns extracted JSON, token usage, and finish reason. With an OTLP endpoint configured (kotlp sets `OTEL_EXPORTER_OTLP_ENDPOINT` when `taskRunner.monitoring.enabled` is `true`), the model call is exported as an OpenTelemetry span carrying provider, model, token usage, and latency. Prompt and response text are included only when `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `true`."""
 )
 @Plugin(
     examples = {

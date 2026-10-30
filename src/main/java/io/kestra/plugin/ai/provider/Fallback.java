@@ -83,18 +83,12 @@ public class Fallback extends ModelProvider {
     private Property<@Size(min = 1) List<ModelProvider>> providers;
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, provider -> provider.chatModel(runContext, configuration));
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, provider -> provider.chatModel(runContext, configuration, timeout));
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
-        throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(
+        RunContext runContext,
+        ChatConfiguration configuration,
+        Duration timeout,
+        List<ChatModelListener> additionalListeners
+    ) throws IllegalVariableEvaluationException {
         return chatModel(runContext, provider -> provider.chatModel(runContext, configuration, timeout, additionalListeners));
     }
 
@@ -126,12 +120,12 @@ public class Fallback extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         throw new UnsupportedOperationException("Fallback provider supports chat models only.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         throw new UnsupportedOperationException("Fallback provider supports chat models only.");
     }
 }

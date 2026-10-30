@@ -2,7 +2,6 @@ package io.kestra.plugin.ai.provider;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -10,6 +9,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
@@ -33,7 +33,6 @@ import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @SuperBuilder
@@ -109,12 +108,8 @@ public class AmazonBedrock extends ModelProvider {
     private Property<AmazonBedrockEmbeddingModelType> modelType = Property.ofValue(AmazonBedrockEmbeddingModelType.COHERE);
 
     @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
-        return chatModel(runContext, configuration, Duration.ofSeconds(120), Collections.emptyList());
-    }
-
-    @Override
-    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners) throws IllegalVariableEvaluationException {
+    protected ChatModel buildChatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout, List<ChatModelListener> additionalListeners)
+        throws IllegalVariableEvaluationException {
         if (configuration.getSeed() != null) {
             throw new IllegalArgumentException("Amazon Bedrock models do not support setting the seed.");
         }
@@ -156,12 +151,12 @@ public class AmazonBedrock extends ModelProvider {
     }
 
     @Override
-    public ImageModel imageModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected ImageModel buildImageModel(RunContext runContext) throws IllegalVariableEvaluationException {
         throw new UnsupportedOperationException("Amazon Bedrock is currently not supported for image generation.");
     }
 
     @Override
-    public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected EmbeddingModel buildEmbeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
         var modelType = runContext.render(this.modelType).as(AmazonBedrockEmbeddingModelType.class).orElseThrow();
         var modelName = runContext.render(this.getModelName()).as(String.class).orElseThrow();
         var bedrockRuntimeClient = BedrockRuntimeClient.builder()
