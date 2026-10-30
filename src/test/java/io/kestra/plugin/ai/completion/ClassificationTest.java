@@ -8,21 +8,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import dev.langchain4j.exception.RateLimitException;
-
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
-import io.kestra.plugin.ai.provider.GoogleGemini;
-import io.kestra.plugin.ai.provider.GoogleVertexAI;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.provider.OpenRouter;
 
+import dev.langchain4j.exception.RateLimitException;
 import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -37,62 +35,19 @@ import static org.junit.jupiter.api.Assumptions.abort;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
 class ClassificationTest extends ContainerTest {
-    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
     private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
-    private final String VERTEX_AI_PROJECT = System.getenv("VERTEX_AI_PROJECT");
-    private final String VERTEX_AI_LOCATION = System.getenv("VERTEX_AI_LOCATION");
 
     @Inject
     private RunContextFactory runContextFactory;
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
-    void testClassificationGemini() throws Exception {
-        // GIVEN
-        RunContext runContext = runContextFactory.of(
-            Map.of(
-                "prompt", "Is 'This is a joke' a good joke?",
-                "classes", List.of("true", "false"),
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-3.5-flash-lite"
-            )
-        );
-
-        Classification task = Classification.builder()
-            .prompt(Property.ofExpression("{{ prompt }}"))
-            .systemMessage(Property.ofValue("You are a text classification assistant."))
-            .classes(Property.ofExpression("{{ classes }}"))
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
-            )
-            .build();
-
-        // WHEN / THEN
-        try {
-            Classification.Output runOutput = task.run(runContext);
-
-            assertThat(runOutput.getClassification(), notNullValue());
-        } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
-        }
-    }
-
-    @Test
-    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_PROJECT", matches = ".*")
-    @EnabledIfEnvironmentVariable(named = "VERTEX_AI_LOCATION", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     void testClassificationVertexAI() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "prompt", "Is 'This is a joke' a good joke?",
-                "classes", List.of("true", "false"),
-                "project", VERTEX_AI_PROJECT,
-                "location", VERTEX_AI_LOCATION,
-                "modelName", "gemini-3.5-flash-lite"
+                "classes", List.of("true", "false")
             )
         );
 
@@ -101,12 +56,7 @@ class ClassificationTest extends ContainerTest {
             .systemMessage(Property.ofValue("You are a text classification assistant."))
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(
-                GoogleVertexAI.builder()
-                    .type(GoogleVertexAI.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .location(Property.ofExpression("{{ location }}"))
-                    .project(Property.ofExpression("{{ project }}"))
-                    .build()
+                VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL)
             )
             .build();
 
@@ -132,13 +82,15 @@ class ClassificationTest extends ContainerTest {
         );
 
         Classification task = Classification.builder()
-            .contentBlocks(Property.ofValue(
-                List.of(
-                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
-                        .text("Is 'This is a joke' a good joke?")
-                        .build()
+            .contentBlocks(
+                Property.ofValue(
+                    List.of(
+                        io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                            .text("Is 'This is a joke' a good joke?")
+                            .build()
+                    )
                 )
-            ))
+            )
             .classes(Property.ofExpression("{{ classes }}"))
             .provider(
                 Ollama.builder()
@@ -154,6 +106,7 @@ class ClassificationTest extends ContainerTest {
 
         // THEN
         assertThat(runOutput.getClassification(), notNullValue());
+        assertThat(runOutput.getModelName(), is("tinydolphin"));
     }
 
     @Test
@@ -394,13 +347,15 @@ class ClassificationTest extends ContainerTest {
 
         Classification task = Classification.builder()
             .prompt(Property.ofValue("hello"))
-            .contentBlocks(Property.ofValue(
-                List.of(
-                    io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
-                        .text("hello")
-                        .build()
+            .contentBlocks(
+                Property.ofValue(
+                    List.of(
+                        io.kestra.plugin.ai.domain.ChatMessage.ContentBlock.builder()
+                            .text("hello")
+                            .build()
+                    )
                 )
-            ))
+            )
             .classes(Property.ofValue(List.of("true", "false")))
             .build();
 

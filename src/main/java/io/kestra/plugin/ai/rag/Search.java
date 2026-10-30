@@ -19,6 +19,7 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+import io.kestra.plugin.ai.AIUtils;
 import io.kestra.plugin.ai.domain.EmbeddingStoreProvider;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
@@ -167,19 +168,24 @@ public class Search extends Task implements RunnableTask<Search.Output> {
         var store = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
         runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
 
-        var renderedQuery = runContext.render(query).as(String.class).orElseThrow();
-        var embedding = embeddingModel.embed(renderedQuery).content();
+        List<String> results;
+        try {
+            var rQuery = runContext.render(query).as(String.class).orElseThrow(() -> new IllegalArgumentException("'query' is required"));
+            var embedding = embeddingModel.embed(rQuery).content();
 
-        var request = EmbeddingSearchRequest.builder()
-            .queryEmbedding(embedding)
-            .maxResults(runContext.render(maxResults).as(Integer.class).orElseThrow())
-            .minScore(runContext.render(minScore).as(Double.class).orElseThrow())
-            .build();
+            var request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(runContext.render(maxResults).as(Integer.class).orElseThrow(() -> new IllegalArgumentException("'maxResults' is required")))
+                .minScore(runContext.render(minScore).as(Double.class).orElseThrow(() -> new IllegalArgumentException("'minScore' is required")))
+                .build();
 
-        var results = store.search(request).matches().stream()
-            .map(EmbeddingMatch::embedded)
-            .map(TextSegment::text)
-            .toList();
+            results = store.search(request).matches().stream()
+                .map(EmbeddingMatch::embedded)
+                .map(TextSegment::text)
+                .toList();
+        } finally {
+            AIUtils.closeQuietly(runContext.logger(), store);
+        }
 
         Output output;
 

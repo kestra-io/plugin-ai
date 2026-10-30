@@ -54,6 +54,7 @@ class IngestDocumentTest extends ContainerTest {
 
         IngestDocument.Output output = task.run(runContext);
         assertThat(output.getIngestedDocuments()).isEqualTo(1);
+        assertThat(output.getModelName()).isEqualTo("chroma/all-minilm-l6-v2-f32");
 
         String kvKey = (String) output.getEmbeddingStoreOutputs().get("kvName");
         KVStore kvStore = runContext.namespaceKv(runContext.flowInfo().namespace());
@@ -275,6 +276,19 @@ class IngestDocumentTest extends ContainerTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("tags")
             .hasMessageContaining("String, UUID, Integer, Long, Float or Double");
+    }
+
+    @Test
+    void closesTheEmbeddingStoreAfterIngesting() throws Exception {
+        var embeddings = new ClosableEmbeddingStoreProvider();
+
+        ingestTaskBuilder()
+            .embeddings(embeddings)
+            .fromDocuments(List.of(IngestDocument.InlineDocument.builder().content(Property.ofValue("I'm Loïc")).build()))
+            .build()
+            .run(ollamaRunContext());
+
+        assertThat(embeddings.closed).isTrue();
     }
 
     private RunContext ollamaRunContext() {

@@ -5,11 +5,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.TokenUsage;
 import io.kestra.plugin.ai.domain.ToolProvider;
 
@@ -22,6 +26,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 
 public final class AIUtils {
+    private static final String UNKNOWN_MODEL_NAME = "unknown";
 
     private AIUtils() {
         // utility class pattern
@@ -79,6 +84,28 @@ public final class AIUtils {
         }
 
         return JacksonMapper.toMap(json);
+    }
+
+    // LangChain4j reports "unknown" when a model doesn't override modelName(); fall back to the configured name then.
+    public static String modelName(RunContext runContext, ModelProvider provider, String reported) throws IllegalVariableEvaluationException {
+        if (reported != null && !reported.isBlank() && !UNKNOWN_MODEL_NAME.equals(reported)) {
+            return reported;
+        }
+        if (provider == null || provider.getModelName() == null) {
+            return null;
+        }
+        return runContext.render(provider.getModelName()).as(String.class).filter(name -> !name.isBlank()).orElse(null);
+    }
+
+    /** Closes {@code resource} if it is {@link AutoCloseable}, logging a failure instead of throwing it so cleanup never replaces the task's own result. */
+    public static void closeQuietly(Logger logger, Object resource) {
+        if (resource instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                logger.warn("Unable to close {}", resource.getClass().getSimpleName(), e);
+            }
+        }
     }
 
     private static Integer orZero(Integer value) {

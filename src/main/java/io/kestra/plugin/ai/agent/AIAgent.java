@@ -2,6 +2,7 @@ package io.kestra.plugin.ai.agent;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +40,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -836,6 +838,8 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
         var logger = runContext.logger();
         var observabilityListeners = LangfuseObservabilityListeners.create(runContext, observability, this.getId(), provider, configuration);
+        ChatMemory chatMemory = null;
+        var toolContentRetrievers = new ArrayList<ContentRetriever>();
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -867,12 +871,13 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
 
             GuardrailsEvaluator.applyGuardrails(guardrails, agent, runContext);
             if (memory != null) {
-                agent.chatMemory(memory.chatMemory(runContext));
+                chatMemory = memory.chatMemory(runContext);
+                agent.chatMemory(chatMemory);
             }
 
-            List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
-                .map(throwFunction(provider -> provider.contentRetriever(runContext)))
-                .toList();
+            for (var contentRetrieverProvider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
+                toolContentRetrievers.add(contentRetrieverProvider.contentRetriever(runContext));
+            }
             if (!toolContentRetrievers.isEmpty()) {
                 QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
 
@@ -893,28 +898,30 @@ public class AIAgent extends Task implements RunnableTask<AIOutput>, OutputFiles
             var tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
 
-            var outputBuilder = AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type())
+            var outputBuilder = AIOutput.builderFrom(runContext, completion, configuration.computeResponseFormat(runContext).type(), provider)
                 .outputFiles(gatherOutputFiles(runContext));
             if (completion.finalResponse().id() == null) {
                 outputBuilder.requestDuration(fallbackDuration);
             }
             return outputBuilder.build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
-            return buildGuardrailViolationOutput(e, logger);
+            return buildGuardrailViolationOutput(e, logger, AIUtils.modelName(runContext, provider, null));
         } finally {
+            toolContentRetrievers.forEach(retriever -> AIUtils.closeQuietly(logger, retriever));
             observabilityListeners.close();
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
-                memory.close(runContext);
+                memory.close(runContext, chatMemory);
             }
 
             TimingChatModelListener.clear();
         }
     }
 
-    private static AIOutput buildGuardrailViolationOutput(GuardrailException e, Logger logger) {
+    private static AIOutput buildGuardrailViolationOutput(GuardrailException e, Logger logger, String modelName) {
         return AIOutput.builder()
+            .modelName(modelName)
             .guardrailViolated(true)
             .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, logger))
             .outputFiles(Collections.emptyMap())

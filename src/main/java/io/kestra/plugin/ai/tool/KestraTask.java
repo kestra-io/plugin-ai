@@ -1,6 +1,7 @@
 package io.kestra.plugin.ai.tool;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -130,7 +131,7 @@ public class KestraTask extends ToolProvider {
     }
 
     @SuppressWarnings("unchecked")
-    private void removeAlreadySet(Map<String, Object> schema, Map<String, Object> taskProperties) {
+    void removeAlreadySet(Map<String, Object> schema, Map<String, Object> taskProperties) {
         var properties = (Map<String, Object>) schema.get("properties");
         var required = (List<String>) schema.get("required");
 
@@ -147,7 +148,8 @@ public class KestraTask extends ToolProvider {
                 }
                 return "...".equals(taskProperties.get(key));
             })
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            // LinkedHashMap keeps the schema generator's property order, a HashMap would hand the model the parameters in hash order
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first, LinkedHashMap::new));
         schema.put("properties", properties);
 
         required = requiredFields.stream()

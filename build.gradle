@@ -1,7 +1,7 @@
 plugins {
-    id 'io.kestra.gradle.repository-conventions' version '1.2.11'
-    id "io.kestra.gradle.plugin-doc-lint" version '1.2.11'
-    id 'io.kestra.gradle.spotless-conventions' version '1.2.11'
+    id 'io.kestra.gradle.repository-conventions' version '1.2.12'
+    id "io.kestra.gradle.plugin-doc-lint" version '1.2.12'
+    id 'io.kestra.gradle.spotless-conventions' version '1.2.12'
     id 'java-library'
     id "idea"
     id 'jacoco'
@@ -9,14 +9,14 @@ plugins {
     id 'signing'
     id 'net.researchgate.release' version '3.2.0'
     id "com.vanniktech.maven.publish" version "0.37.0"
-    id "io.kestra.gradle.inject-bom-versions" version '1.2.11'
+    id "io.kestra.gradle.inject-bom-versions" version '1.2.12'
     id 'com.github.node-gradle.node' version '7.1.0'
 }
 
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
-def langchain4jVersion = "1.21.0"
-def langchain4jBetaVersion = "1.21.0-beta31"
+def langchain4jVersion = "1.22.0"
+def langchain4jBetaVersion = "1.22.0-beta32"
 
 repositories {
     mavenLocal()
@@ -54,7 +54,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
-    implementation "io.kestra:kestra-api-client:2.0.1"
+    implementation "io.kestra:kestra-api-client:2.0.3"
 
     // compileOnly as it comes from Kestra script library
     compileOnly('com.github.docker-java:docker-java') {
@@ -62,6 +62,9 @@ dependencies {
         exclude group: 'com.github.docker-java', module: 'docker-java-transport-jersey'
     }
     compileOnly 'com.github.docker-java:docker-java-transport-httpclient5'
+
+    // Shared GCP authentication (same behavior as plugin-gcp)
+    implementation 'io.kestra.plugin:plugin-gcp-lib:1.1.1'
 
     // Langchain4j model providers (stable)
     implementation "dev.langchain4j:langchain4j:${langchain4jVersion}"
@@ -74,10 +77,12 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-open-ai:${langchain4jVersion}"
     // Langchain4j model providers (beta)
     implementation "dev.langchain4j:langchain4j-vertex-ai:${langchain4jBetaVersion}"
-    implementation "dev.langchain4j:langchain4j-vertex-ai-gemini:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-google-genai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-workers-ai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-local-ai:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-community-oci-genai:${langchain4jBetaVersion}"
+    // HTTP client of the OCI SDK (without it the OCI client cannot be created): same version as oci-java-sdk-common, see components below
+    implementation "com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3"
     implementation "dev.langchain4j:langchain4j-mariadb:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-tablestore:${langchain4jBetaVersion}"
     implementation "dev.langchain4j:langchain4j-community-dashscope:${langchain4jBetaVersion}"
@@ -85,7 +90,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-watsonx:${langchain4jBetaVersion}"
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
-    implementation "org.apache.tika:tika-core:4.0.0"
+    implementation "org.apache.tika:tika-core:4.1.0"
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0:${langchain4jBetaVersion}"
 
@@ -115,19 +120,21 @@ dependencies {
 
     // retrievers
     implementation "dev.langchain4j:langchain4j-experimental-sql:${langchain4jBetaVersion}"
-    compileOnly "com.zaxxer:HikariCP"
 
     // agents
     // Pinned below langchain4jBetaVersion: langchain4j-agentic-a2a >= 1.19.0-beta29 pulls
     // org.a2aproject.sdk 1.1.0.Final, whose generated grpc classes require a protobuf-java
     // version newer than the one Kestra's platform BOM enforces (3.25.8), which lacks the
     // RuntimeVersion gencode-check class and breaks A2AClient at runtime with NoClassDefFoundError.
-    def langchain4jAgenticVersion = "1.20.1-beta30"
+    def langchain4jAgenticVersion = "1.22.0-beta32"
     implementation "dev.langchain4j:langchain4j-agentic:${langchain4jAgenticVersion}"
     implementation "dev.langchain4j:langchain4j-agentic-a2a:${langchain4jAgenticVersion}"
 
     // skills
     implementation "dev.langchain4j:langchain4j-skills:${langchain4jBetaVersion}"
+
+    // in-process ONNX embeddings (OnnxBertBiEncoder); brings onnxruntime + DJL tokenizers natives
+    implementation "dev.langchain4j:langchain4j-embeddings:${langchain4jBetaVersion}"
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
@@ -175,7 +182,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.0.5"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.3.1"
 
     testImplementation 'org.testcontainers:testcontainers-ollama:2.0.5'
     testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'
@@ -261,6 +268,19 @@ jar {
     }
 }
 
+dependencies {
+    components {
+        // langchain4j-oci brings the OCI SDK without an HTTP client: keep jersey3 on the same version as the SDK it brings
+        withModule("com.oracle.oci.sdk:oci-java-sdk-common") {
+            allVariants {
+                withDependencies {
+                    add("com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:${id.version}")
+                }
+            }
+        }
+    }
+}
+
 configurations.runtimeClasspath {
     exclude group: "com.azure", module: "azure-core-test"
     exclude group: "org.junit.jupiter"
@@ -270,6 +290,10 @@ configurations.runtimeClasspath {
 
 shadowJar {
     archiveClassifier.set(null)
+    // Shadow 9 defaults to EXCLUDE, which drops duplicate service files before mergeServiceFiles() (lost grpc's dns resolver).
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
     mergeServiceFiles()
     zip64 true
 
@@ -281,6 +305,11 @@ shadowJar {
         exclude(dependency("io.netty:.*"))
         exclude(dependency("com.fasterxml.jackson.*:.*"))
         exclude(dependency("dev.langchain4j.*:.*"))
+        // native libraries loaded via JNI/reflection
+        exclude(dependency("com.microsoft.onnxruntime:.*"))
+        exclude(dependency("ai.djl.*:.*"))
+        // HTTP client of the OCI SDK is loaded through ServiceLoader
+        exclude(dependency("com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:.*"))
     }
 
     exclude "org/slf4j/**"
@@ -291,7 +320,51 @@ shadowJar {
     exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
     exclude "META-INF/INDEX.LIST"
     exclude "module-info.class"
+    // native debug symbols shipped by onnxruntime (~64 MB), never loaded at runtime
+    exclude "**/*.pdb"
+    exclude "**/*.dSYM/**"
 }
+
+// Guards the service-file merge: checks the OCI SDK HTTP provider is shaded, then loads the jar in isolation and checks grpc's dns resolver and pick_first.
+tasks.register("verifyShadedGrpc") {
+    dependsOn shadowJar
+    doLast {
+        def jarFile = shadowJar.archiveFile.get().asFile
+        // OCI SDK HTTP client is loaded through ServiceLoader: minimize() must not drop it
+        new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
+            def provider = "com.oracle.bmc.http.client.jersey3.Jersey3HttpProvider"
+            def services = zip.getEntry("META-INF/services/com.oracle.bmc.http.client.HttpProvider")
+            if (zip.getEntry(provider.replace('.', '/') + ".class") == null || services == null
+                || !zip.getInputStream(services).text.contains(provider)) {
+                throw new GradleException("${provider} or its META-INF/services entry is missing from ${jarFile.name} -- OciGenAI cannot create its OCI client.")
+            }
+        }
+        def loader = new URLClassLoader([jarFile.toURI().toURL()] as URL[], ClassLoader.getPlatformClassLoader())
+        try {
+            def nameResolverRegistryClass = loader.loadClass("io.grpc.NameResolverRegistry")
+            def nameResolverRegistry = nameResolverRegistryClass.getMethod("getDefaultRegistry").invoke(null)
+            def defaultScheme = nameResolverRegistryClass.getMethod("getDefaultScheme").invoke(nameResolverRegistry)
+            if (defaultScheme != "dns") {
+                throw new GradleException(
+                    "grpc default NameResolver scheme is '${defaultScheme}' instead of 'dns' in ${jarFile.name} " +
+                    "-- shadowJar's merge of META-INF/services/io.grpc.NameResolverProvider regressed."
+                )
+            }
+
+            def loadBalancerRegistryClass = loader.loadClass("io.grpc.LoadBalancerRegistry")
+            def loadBalancerRegistry = loadBalancerRegistryClass.getMethod("getDefaultRegistry").invoke(null)
+            if (loadBalancerRegistryClass.getMethod("getProvider", String).invoke(loadBalancerRegistry, "pick_first") == null) {
+                throw new GradleException(
+                    "pick_first LoadBalancerProvider missing from ${jarFile.name} " +
+                    "-- shadowJar's merge of META-INF/services/io.grpc.LoadBalancerProvider regressed."
+                )
+            }
+        } finally {
+            loader.close()
+        }
+    }
+}
+check.dependsOn verifyShadedGrpc
 
 /**********************************************************************************************************************\
  * Version

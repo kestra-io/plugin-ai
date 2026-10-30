@@ -8,8 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import dev.langchain4j.exception.RateLimitException;
-
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.kestra.core.junit.annotations.KestraTest;
@@ -18,13 +16,14 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.GuardrailRule;
 import io.kestra.plugin.ai.domain.Guardrails;
-import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.provider.OpenRouter;
 
+import dev.langchain4j.exception.RateLimitException;
 import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -39,24 +38,21 @@ import static org.junit.jupiter.api.Assumptions.abort;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
 class JSONStructuredExtractionTest extends ContainerTest {
-    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
     private final String OPENROUTER_API_KEY = System.getenv("OPENROUTER_API_KEY");
 
     @Inject
     private RunContextFactory runContextFactory;
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
-    void testJSONStructuredGemini() throws Exception {
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void testJSONStructuredVertexAI() throws Exception {
         // GIVEN
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "prompt", "Hello, my name is John. I was born on January 1, 2000.",
                 "systemMessage", "You extract structured JSON data from natural language text.",
                 "jsonFields", List.of("name", "date"),
-                "schemaName", "Person",
-                "modelName", "gemini-3.5-flash-lite",
-                "apiKey", GEMINI_API_KEY
+                "schemaName", "Person"
             )
         );
 
@@ -66,11 +62,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
             .schemaName(Property.ofExpression("{{ schemaName }}"))
             .jsonFields(Property.ofExpression("{{ jsonFields }}"))
             .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
+                VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL)
             )
             .build();
 
@@ -84,7 +76,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
             assertThat(json.has("name"), is(true));
             assertThat(json.has("date"), is(true));
         } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
+            abort("Skipped: Vertex AI rate limited (429)");
         }
     }
 
@@ -126,6 +118,7 @@ class JSONStructuredExtractionTest extends ContainerTest {
         assertThat(runOutput.getExtractedJson(), notNullValue());
         assertThat(runOutput.getExtractedJson().toLowerCase().contains("alice"), is(Boolean.TRUE));
         assertThat(runOutput.getExtractedJson().toLowerCase().contains("london"), is(Boolean.TRUE));
+        assertThat(runOutput.getModelName(), is("tinydolphin"));
     }
 
     @Test

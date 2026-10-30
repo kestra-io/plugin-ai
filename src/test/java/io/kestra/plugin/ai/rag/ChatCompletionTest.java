@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -17,18 +18,18 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.ContainerTest;
+import io.kestra.plugin.ai.MockOpenAI;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.embeddings.KestraKVStore;
-import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Ollama;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.retriever.GoogleCustomWebSearch;
 import io.kestra.plugin.ai.retriever.TavilyWebSearch;
 import io.kestra.plugin.ai.tool.CodeExecution;
 
-import jakarta.inject.Inject;
-
 import dev.langchain4j.exception.RateLimitException;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.abort;
@@ -41,6 +42,9 @@ class ChatCompletionTest extends ContainerTest {
     private final String TAVILY_API_KEY = System.getenv("TAVILY_API_KEY");
     private final String RAPID_API_KEY = System.getenv("RAPID_API_KEY");
     private final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
+
+    @RegisterExtension
+    static final MockOpenAI llm = new MockOpenAI();
 
     @Inject
     private TestRunContextFactory runContextFactory;
@@ -93,6 +97,7 @@ class ChatCompletionTest extends ContainerTest {
 
         var ragOutput = rag.run(runContext);
         assertThat(ragOutput.getTextOutput()).isNotNull();
+        assertThat(ragOutput.getModelName()).isEqualTo("tinydolphin");
     }
 
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
@@ -270,26 +275,16 @@ class ChatCompletionTest extends ContainerTest {
         assertThat(output.getToolExecutions()).isNotEmpty();
     }
 
-    @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     @Test
-    void testGeminiChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            "namespace", Map.of(
-                "modelName", "gemini-3.5-flash-lite",
-                "apiKey", GOOGLE_API_KEY
-            )
-        );
+    void testVertexAIChatCompletion_givenRAG_shouldReturnsSources() throws Exception {
+        // a dedicated KV store, as the other tests fill the default one with embeddings of a different dimension
+        RunContext runContext = runContextFactory.of("namespace", Map.of());
 
         // First ingest some documents
         var ingest = IngestDocument.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-embedding-001"))
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .build()
-            )
-            .embeddings(KestraKVStore.builder().build())
+            .provider(VertexAITestEnv.embeddingProvider())
+            .embeddings(KestraKVStore.builder().kvName(Property.ofValue("vertex-ai-embedding-store")).build())
             .fromDocuments(
                 List.of(
                     IngestDocument.InlineDocument.builder()
@@ -306,21 +301,9 @@ class ChatCompletionTest extends ContainerTest {
             IngestDocument.Output ingestOutput = ingest.run(runContext);
             assertThat(ingestOutput.getIngestedDocuments()).isEqualTo(2);
             var rag = ChatCompletion.builder()
-                .chatProvider(
-                    GoogleGemini.builder()
-                        .type(GoogleGemini.class.getName())
-                        .modelName(Property.ofExpression("{{ modelName }}"))
-                        .apiKey(Property.ofExpression("{{ apiKey }}"))
-                        .build()
-                )
-                .embeddingProvider(
-                    GoogleGemini.builder()
-                        .type(GoogleGemini.class.getName())
-                        .modelName(Property.ofValue("gemini-embedding-001"))
-                        .apiKey(Property.ofExpression("{{ apiKey }}"))
-                        .build()
-                )
-                .embeddings(KestraKVStore.builder().build())
+                .chatProvider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
+                .embeddingProvider(VertexAITestEnv.embeddingProvider())
+                .embeddings(KestraKVStore.builder().kvName(Property.ofValue("vertex-ai-embedding-store")).build())
                 .prompt(Property.ofValue("What is the capital of France and how many people live there?"))
                 .chatConfiguration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
                 .build();
@@ -337,7 +320,7 @@ class ChatCompletionTest extends ContainerTest {
             assertThat(foundParisSource).isTrue();
             assertThat(ragOutput.getSources().getFirst().getMetadata()).isNotNull();
         } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
+            abort("Skipped: Vertex AI rate limited (429)");
         }
     }
 
@@ -417,5 +400,39 @@ class ChatCompletionTest extends ContainerTest {
         } catch (RateLimitException e) {
             abort("Skipped: OpenAI rate limited or quota exceeded");
         }
+    }
+
+    @Test
+    void closesTheEmbeddingStoreAfterChatting() throws Exception {
+        var runContext = runContextFactory.of(
+            "namespace", Map.of(
+                "embeddingModelName", "chroma/all-minilm-l6-v2-f32",
+                "endpoint", ollamaEndpoint
+            )
+        );
+        var embeddings = new ClosableEmbeddingStoreProvider();
+
+        ChatCompletion.builder()
+            .chatProvider(
+                OpenAI.builder()
+                    .type(OpenAI.class.getName())
+                    .modelName(Property.ofValue("gpt-4o-mini"))
+                    .apiKey(Property.ofValue("placeholder"))
+                    .baseUrl(Property.ofValue(llm.baseUrl()))
+                    .build()
+            )
+            .embeddingProvider(
+                Ollama.builder()
+                    .type(Ollama.class.getName())
+                    .modelName(Property.ofExpression("{{ embeddingModelName }}"))
+                    .endpoint(Property.ofExpression("{{ endpoint }}"))
+                    .build()
+            )
+            .embeddings(embeddings)
+            .prompt(Property.ofValue("What is Kestra?"))
+            .build()
+            .run(runContext);
+
+        assertThat(embeddings.closed).isTrue();
     }
 }

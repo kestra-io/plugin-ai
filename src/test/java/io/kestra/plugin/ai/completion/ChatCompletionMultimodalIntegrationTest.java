@@ -4,11 +4,16 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 import io.kestra.plugin.ai.domain.ChatMessage;
+import io.kestra.plugin.ai.provider.Fallback;
+import io.kestra.plugin.ai.provider.OpenAI;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -27,6 +32,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
@@ -49,6 +56,89 @@ class ChatCompletionMultimodalIntegrationTest {
 
     @Inject
     private RunContextFactory runContextFactory;
+
+    @Test
+    void testChatCompletionWithFallbackProvider() throws Exception {
+        WireMockServer unavailableProvider = new WireMockServer(wireMockConfig().dynamicPort());
+        WireMockServer successfulProvider = new WireMockServer(wireMockConfig().dynamicPort());
+        unavailableProvider.start();
+        successfulProvider.start();
+        try {
+            unavailableProvider.stubFor(
+                post(urlEqualTo("/v1/chat/completions"))
+                    .willReturn(
+                        aResponse()
+                            .withStatus(503)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                {"error":{"message":"simulated provider outage","type":"server_error"}}
+                                """)
+                    )
+            );
+
+            String expectedResponse = "completion returned by the second provider";
+            successfulProvider.stubFor(
+                post(urlEqualTo("/v1/chat/completions"))
+                    .willReturn(
+                        aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                {
+                                  "id":"chatcmpl-fallback",
+                                  "object":"chat.completion",
+                                  "created":0,
+                                  "model":"gpt-4o-mini",
+                                  "choices":[{"index":0,"message":{"role":"assistant","content":"%s"},"finish_reason":"stop"}],
+                                  "usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}
+                                }
+                                """.formatted(expectedResponse))
+                    )
+            );
+
+            RunContext runContext = runContextFactory.of(Map.of());
+            var fallback = Fallback.builder()
+                .type(Fallback.class.getName())
+                .providers(
+                    Property.ofValue(
+                        List.of(
+                            OpenAI.builder()
+                                .type(OpenAI.class.getName())
+                                .modelName(Property.ofValue("gpt-4o-mini"))
+                                .apiKey(Property.ofValue("test-key"))
+                                .baseUrl(Property.ofValue(unavailableProvider.baseUrl() + "/v1"))
+                                .build(),
+                            OpenAI.builder()
+                                .type(OpenAI.class.getName())
+                                .modelName(Property.ofValue("gpt-4o-mini"))
+                                .apiKey(Property.ofValue("test-key"))
+                                .baseUrl(Property.ofValue(successfulProvider.baseUrl() + "/v1"))
+                                .build()
+                        )
+                    )
+                )
+                .build();
+
+            ChatCompletion task = ChatCompletion.builder()
+                .provider(fallback)
+                .messages(
+                    Property.ofValue(
+                        List.of(ChatMessage.builder().type(ChatMessageType.USER).content("Use fallback to complete this request.").build())
+                    )
+                )
+                .configuration(ChatConfiguration.empty())
+                .build();
+
+            ChatCompletion.Output output = task.run(runContext);
+
+            unavailableProvider.verify(postRequestedFor(urlEqualTo("/v1/chat/completions")));
+            successfulProvider.verify(postRequestedFor(urlEqualTo("/v1/chat/completions")));
+            assertThat(output.getTextOutput(), equalTo(expectedResponse));
+        } finally {
+            unavailableProvider.stop();
+            successfulProvider.stop();
+        }
+    }
 
     @Test
     void shouldKeepLegacyMessageContentAsTextByDefault() throws Exception {

@@ -13,3 +13,24 @@ kestra:
       static:
         endpoints:
           - host: localhost
+
+# Disable Micronaut embedded gRPC server and health check: in the test environment it binds
+# SocketUtils.findAvailableTcpPort(), which races across the concurrent test-class contexts
+# (junit-platform.properties) and fails with "Address already in use".
+grpc:
+  server:
+    enabled: false
+    health:
+      enabled: false
+
+# Kestra 2.x backs the "memory" repository with an in-memory H2 database whose default URL
+# (jdbc:h2:mem:public) is shared by every application context in the JVM. Test classes run
+# concurrently (junit-platform.properties), so two contexts could run the H2 schema migration on
+# the same database at once and fail with "object already exists: JQ_STRING". A per-context
+# random name gives each context its own database; it lives as long as the context's connection pool.
+datasources:
+  h2:
+    url: jdbc:h2:mem:${random.shortuuid};TIME ZONE=UTC;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    driverClassName: org.h2.Driver

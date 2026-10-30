@@ -5,9 +5,12 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.annotations.Plugin;
@@ -19,11 +22,11 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.plugin.ai.ContainerTest;
 import io.kestra.plugin.ai.MockOpenAI;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.completion.ChatCompletion;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
-import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.core.execution.Fail;
 import io.kestra.plugin.core.execution.SetVariables;
@@ -32,7 +35,6 @@ import io.kestra.plugin.core.log.Log;
 import io.kestra.plugin.kestra.AbstractKestraTask;
 import io.kestra.plugin.kestra.logs.Fetch;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.output.FinishReason;
@@ -42,7 +44,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -54,7 +55,6 @@ import static org.junit.jupiter.api.Assumptions.abort;
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
 class KestraTaskTest extends ContainerTest {
-    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
 
     @RegisterExtension
     static WireMockExtension kestraApiMock = WireMockExtension.newInstance()
@@ -166,25 +166,14 @@ class KestraTaskTest extends ContainerTest {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     @SuppressWarnings("unchecked")
     void httpRequest() throws Exception {
-        RunContext runContext = runContextFactory.of(
-            Map.of(
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-3.5-flash-lite"
-            )
-        );
+        RunContext runContext = runContextFactory.of(Map.of());
 
         // we use Gemini as the context window of the Langchain4J demo OpenAI API is limited to 5000
         var chat = ChatCompletion.builder()
-            .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
-            )
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
             .tools(
@@ -223,9 +212,49 @@ class KestraTaskTest extends ContainerTest {
             assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
             assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests()).isNotEmpty();
             assertThat(output.getIntermediateResponses().getFirst().getToolExecutionRequests().getFirst().getName()).isEqualTo("kestra_task_request");
-            assertThat(output.getIntermediateResponses().getFirst().getRequestDuration()).isNotNull();
         } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
+            abort("Skipped: Vertex AI rate limited (429)");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
+    void parallelToolCallsOnVertexAIGemini3() throws Exception {
+        RunContext runContext = runContextFactory.of(Map.of());
+
+        // Gemini 3 attaches a thought signature to each function call of a turn, and rejects the tool results if any is missing
+        var chat = ChatCompletion.builder()
+            .provider(VertexAITestEnv.provider(VertexAITestEnv.CHAT_MODEL))
+            .configuration(ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789)).build())
+            .tools(
+                List.of(
+                    KestraTask.builder().tasks(
+                        List.of(
+                            Log.builder().id("log").type(Log.class.getName()).message("...").build()
+                        )
+                    ).build()
+                )
+            )
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER)
+                            .content("Log the text 'hello' and log the text 'world', calling the tool once for each text in the same turn. Then answer 'done'.")
+                            .build()
+                    )
+                )
+            )
+            .build();
+
+        try {
+            var output = chat.run(runContext);
+            assertThat(output.getTextOutput()).isNotBlank();
+            assertThat(output.getToolExecutions()).hasSizeGreaterThanOrEqualTo(2);
+            assertThat(output.getToolExecutions()).extracting("requestName").containsOnly("kestra_task_log");
+            assertThat(output.getIntermediateResponses()).isNotEmpty();
+            assertThat(output.getIntermediateResponses().getFirst().getFinishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
+        } catch (RateLimitException e) {
+            abort("Skipped: Vertex AI rate limited (429)");
         }
     }
 

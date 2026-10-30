@@ -1,11 +1,11 @@
 package io.kestra.plugin.ai.rag;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
@@ -22,6 +22,7 @@ import io.kestra.plugin.ai.TokenBudgetChatModel;
 import io.kestra.plugin.ai.domain.*;
 import io.kestra.plugin.ai.guardrail.GuardrailsEvaluator;
 import io.kestra.plugin.ai.provider.TimingChatModelListener;
+import io.kestra.plugin.ai.retriever.ClosingContentRetriever;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -29,12 +30,12 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -385,6 +386,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
     public Output run(RunContext runContext) throws Exception {
         List<ToolProvider> toolProviders = ListUtils.emptyOnNull(tools);
         Duration taskTimeout = runContext.render(this.getTimeout()).as(Duration.class).orElse(Duration.ofSeconds(120));
+        ChatMemory chatMemory = null;
+        var retrievers = new ArrayList<ContentRetriever>();
 
         try {
             var chatModel = TokenBudgetChatModel.wrap(
@@ -395,7 +398,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             runContext.metric(Counter.of("ai.provider.calls", 1, "provider", chatProvider.getClass().getName()));
             AiServices<Assistant> assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
-                .retrievalAugmentor(buildRetrievalAugmentor(runContext))
+                .retrievalAugmentor(buildRetrievalAugmentor(runContext, retrievers))
                 .tools(AIUtils.buildTools(runContext, Collections.emptyMap(), toolProviders))
                 .systemMessageProvider(throwFunction(memoryId -> runContext.render(systemMessage).as(String.class).orElse(null)))
                 .toolArgumentsErrorHandler((error, context) ->
@@ -413,7 +416,8 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 });
 
             if (memory != null) {
-                assistant.chatMemory(memory.chatMemory(runContext));
+                chatMemory = memory.chatMemory(runContext);
+                assistant.chatMemory(chatMemory);
             }
 
             GuardrailsEvaluator.applyGuardrails(guardrails, assistant, runContext);
@@ -428,7 +432,7 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
             TokenUsage tokenUsage = TokenUsage.from(completion.tokenUsage());
             AIUtils.sendMetrics(runContext, tokenUsage);
 
-            AIOutput output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type());
+            var output = AIOutput.from(runContext, completion, chatConfiguration.computeResponseFormat(runContext).type(), chatProvider);
             Long requestDuration = output.getRequestDuration() == null ? fallbackDuration : output.getRequestDuration();
             return Output.builder()
                 .completion(output.getTextOutput())
@@ -440,31 +444,34 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                 .intermediateResponses(output.getIntermediateResponses())
                 .requestDuration(requestDuration)
                 .sources(output.getSources())
+                .modelName(output.getModelName())
                 .build();
         } catch (final InputGuardrailException | OutputGuardrailException e) {
-            return buildGuardrailViolationOutput(runContext, e);
+            return buildGuardrailViolationOutput(runContext, e, AIUtils.modelName(runContext, chatProvider, null));
         } finally {
+            retrievers.forEach(retriever -> AIUtils.closeQuietly(runContext.logger(), retriever));
             toolProviders.forEach(tool -> tool.close(runContext));
 
             if (memory != null) {
-                memory.close(runContext);
+                memory.close(runContext, chatMemory);
             }
 
             TimingChatModelListener.clear();
         }
     }
 
-    private static Output buildGuardrailViolationOutput(RunContext runContext, GuardrailException e) {
+    private static Output buildGuardrailViolationOutput(RunContext runContext, GuardrailException e, String modelName) {
         return Output.builder()
+            .modelName(modelName)
             .guardrailViolated(true)
             .guardrailViolationMessage(GuardrailsEvaluator.logAndFormatViolation(e, runContext.logger()))
             .build();
     }
 
-    private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext) throws Exception {
-        List<ContentRetriever> toolContentRetrievers = runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class).stream()
-            .map(throwFunction(provider -> provider.contentRetriever(runContext)))
-            .collect(Collectors.toList());
+    private RetrievalAugmentor buildRetrievalAugmentor(final RunContext runContext, final List<ContentRetriever> retrievers) throws Exception {
+        for (var provider : runContext.render(contentRetrievers).asList(ContentRetrieverProvider.class)) {
+            retrievers.add(provider.contentRetriever(runContext));
+        }
 
         Optional<ContentRetriever> contentRetriever = Optional.ofNullable(embeddings).map(
             throwFunction(
@@ -475,32 +482,27 @@ public class ChatCompletion extends Task implements RunnableTask<ChatCompletion.
                     runContext.metric(Counter.of("ai.provider.calls", 1, "provider", actualProvider.getClass().getName()));
                     var embeddingStore = embeddings.embeddingStore(runContext, embeddingModel.dimension(), false);
                     runContext.metric(Counter.of("ai.embedding.store.calls", 1, "store", embeddings.getClass().getName()));
-                    return EmbeddingStoreContentRetriever.builder()
+                    var embeddingStoreContentRetriever = EmbeddingStoreContentRetriever.builder()
                         .embeddingModel(embeddingModel)
                         .embeddingStore(embeddingStore)
                         .maxResults(contentRetrieverConfiguration.getMaxResults())
                         .minScore(contentRetrieverConfiguration.getMinScore())
                         .build();
+                    return ClosingContentRetriever.of(embeddingStoreContentRetriever, embeddingStore);
                 }
             )
         );
+        // always add it first so it has precedence over the additional content retrievers
+        contentRetriever.ifPresent(retrievers::addFirst);
 
-        if (toolContentRetrievers.isEmpty() && contentRetriever.isEmpty()) {
+        if (retrievers.isEmpty()) {
             throw new IllegalArgumentException("Either `embeddings` or `contentRetrievers` must be provided.");
         }
 
-        if (toolContentRetrievers.isEmpty()) {
-            return DefaultRetrievalAugmentor.builder().contentRetriever(contentRetriever.get()).build();
-        } else {
-            // always add it first so it has precedence over the additional content retrievers
-            contentRetriever.ifPresent(ct -> toolContentRetrievers.addFirst(ct));
-            QueryRouter queryRouter = new DefaultQueryRouter(toolContentRetrievers.toArray(new ContentRetriever[0]));
-
-            // Create a query router that will route each query to the embedding store content retriever and the tools content retrievers
-            return DefaultRetrievalAugmentor.builder()
-                .queryRouter(queryRouter)
-                .build();
-        }
+        // Create a query router that will route each query to the embedding store content retriever and the tools content retrievers
+        return DefaultRetrievalAugmentor.builder()
+            .queryRouter(new DefaultQueryRouter(retrievers.toArray(new ContentRetriever[0])))
+            .build();
     }
 
     @Override

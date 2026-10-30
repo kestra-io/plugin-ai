@@ -13,12 +13,11 @@ import com.alicloud.openservices.tablestore.model.search.FieldType;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
-import io.kestra.plugin.ai.provider.GoogleGemini;
+import io.kestra.plugin.ai.VertexAITestEnv;
 import io.kestra.plugin.ai.rag.IngestDocument;
 
-import jakarta.inject.Inject;
-
 import dev.langchain4j.exception.RateLimitException;
+import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.abort;
@@ -28,7 +27,6 @@ class TablestoreTest {
     private final String TABLESTORE_INSTANCE_NAME = System.getenv("TABLESTORE_INSTANCE_NAME");
     private final String TABLESTORE_ACCESS_KEY_ID = System.getenv("TABLESTORE_ACCESS_KEY_ID");
     private final String TABLESTORE_ACCESS_KEY_SECRET = System.getenv("TABLESTORE_ACCESS_KEY_SECRET");
-    private static final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -36,13 +34,11 @@ class TablestoreTest {
     @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".*")
     @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_ID", matches = ".*")
     @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_SECRET", matches = ".*")
-    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".*")
+    @EnabledIfEnvironmentVariable(named = VertexAITestEnv.CREDENTIALS_ENV, matches = ".+")
     @Test
     void testTablestoreEmbeddingStore_shouldReturnEmbeddingStore() throws Exception {
         RunContext runContext = runContextFactory.of(
             Map.of(
-                "apiKey", GEMINI_API_KEY,
-                "modelName", "gemini-embedding-001",
                 "endpoint", TABLESTORE_ENDPOINT,
                 "instanceName", TABLESTORE_INSTANCE_NAME,
                 "accessKeyId", TABLESTORE_ACCESS_KEY_ID,
@@ -60,11 +56,7 @@ class TablestoreTest {
 
         var task = IngestDocument.builder()
             .provider(
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .apiKey(Property.ofExpression("{{ apiKey }}"))
-                    .modelName(Property.ofExpression("{{ modelName }}"))
-                    .build()
+                VertexAITestEnv.embeddingProvider()
             )
             .embeddings(
                 Tablestore.builder()
@@ -82,7 +74,7 @@ class TablestoreTest {
             IngestDocument.Output output = task.run(runContext);
             assertThat(output.getIngestedDocuments()).isEqualTo(1);
         } catch (RateLimitException e) {
-            abort("Skipped: Gemini rate limited (429)");
+            abort("Skipped: Vertex AI rate limited (429)");
         }
     }
 }

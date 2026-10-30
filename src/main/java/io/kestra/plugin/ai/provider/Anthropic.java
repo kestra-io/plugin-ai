@@ -111,6 +111,9 @@ public class Anthropic extends ModelProvider {
         var thinkingEnabled = runContext.render(configuration.getThinkingEnabled()).as(Boolean.class).orElse(false);
         var thinkingBudgetTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
         var maxTokens = runContext.render(this.getMaxTokens()).as(Integer.class).orElse(null);
+        if (maxTokens == null) {
+            maxTokens = runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null);
+        }
         if (isInvalidThinkingConfig(thinkingEnabled, thinkingBudgetTokens, maxTokens)) {
             throw new IllegalArgumentException(
                 "`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."
@@ -131,11 +134,10 @@ public class Anthropic extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .listeners(allListeners)
-            .maxTokens(maxTokens) // Anthropic max tokens
+            .maxTokens(maxTokens)
             .thinkingType(thinkingEnabled ? ENABLED : null)
             .thinkingBudgetTokens(thinkingBudgetTokens)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
-            .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .cacheSystemMessages(runContext.render(configuration.getPromptCaching()).as(Boolean.class).orElse(null))
             .cacheTools(runContext.render(configuration.getPromptCaching()).as(Boolean.class).orElse(null))
             .timeout(timeout);
