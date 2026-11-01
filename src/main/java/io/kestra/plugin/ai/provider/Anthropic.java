@@ -64,6 +64,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                         configuration:
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024
+                          maxToken: 2048
                           returnThinking: false
                         messages:
                           - type: SYSTEM
@@ -179,11 +180,13 @@ public class Anthropic extends ModelProvider {
         throw new UnsupportedOperationException("Anthropic is currently not supported for embedding models.");
     }
 
+    // langchain4j-anthropic falls back to this value when no max tokens are set.
+    private static final int DEFAULT_MAX_TOKENS = 1024;
+
     private boolean isInvalidThinkingConfig(final boolean thinkingEnabled, final Integer thinkingBudgetTokens,
         final Integer maxTokens) {
         return thinkingEnabled
             && Objects.nonNull(thinkingBudgetTokens)
-            && Objects.nonNull(maxTokens)
-            && thinkingBudgetTokens > maxTokens;
+            && thinkingBudgetTokens >= Objects.requireNonNullElse(maxTokens, DEFAULT_MAX_TOKENS);
     }
 }
