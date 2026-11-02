@@ -109,7 +109,9 @@ public class ZhiPuAI extends ModelProvider {
 
     @Schema(
         title = "Maximum output tokens",
-        description = "Maximum number of tokens returned by a single request. Defaults to `512`.",
+        description = """
+            Maximum number of tokens returned by a single request. Ignored when `configuration.maxToken` is set. \
+            Defaults to `512`.""",
         example = "512"
     )
     @PluginProperty(group = "execution")
@@ -138,6 +140,9 @@ public class ZhiPuAI extends ModelProvider {
         allListeners.add(new TimingChatModelListener());
         allListeners.addAll(additionalListeners);
 
+        var rProviderMaxToken = runContext.render(this.maxToken).as(Integer.class).orElse(512);
+        var rMaxToken = runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(rProviderMaxToken);
+
         return ZhipuAiChatModel.builder()
             .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL))
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
@@ -148,7 +153,7 @@ public class ZhiPuAI extends ModelProvider {
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(0.7))
             .stops(runContext.render(this.stops).asList(String.class))
             .maxRetries(runContext.render(this.maxRetries).as(Integer.class).orElse(3))
-            .maxToken(runContext.render(this.maxToken).as(Integer.class).orElse(512))
+            .maxToken(rMaxToken)
             .listeners(allListeners)
             .build();
     }
