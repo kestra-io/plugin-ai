@@ -75,6 +75,7 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.rag.IngestDocument`
 - `io.kestra.plugin.ai.rag.Search`
 - `io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever`
+- `io.kestra.plugin.ai.retriever.FirecrawlWebSearch`
 - `io.kestra.plugin.ai.retriever.GoogleCustomWebSearch`
 - `io.kestra.plugin.ai.retriever.SqlDatabaseRetriever`
 - `io.kestra.plugin.ai.retriever.TavilyWebSearch`
@@ -82,6 +83,7 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.tool.AIAgent`
 - `io.kestra.plugin.ai.tool.CodeExecution`
 - `io.kestra.plugin.ai.tool.DockerMcpClient`
+- `io.kestra.plugin.ai.tool.FirecrawlWebSearch`
 - `io.kestra.plugin.ai.tool.GoogleCustomWebSearch`
 - `io.kestra.plugin.ai.tool.KestraFlow`
 - `io.kestra.plugin.ai.tool.KestraTask`
