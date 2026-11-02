@@ -72,7 +72,57 @@ class AnthropicTest {
     }
 
     @Test
-    void chatModel_shouldRejectThinkingBudgetWhenMaxTokensIsUnsetAndDefaultsToSameValue() {
+    void chatModel_shouldAcceptThinkingBudgetBelowProviderMaxTokens() throws Exception {
+        var provider = Anthropic.builder()
+            .type(Anthropic.class.getName())
+            .apiKey(Property.ofValue("test-anthropic-key"))
+            .modelName(Property.ofValue("claude-3-7-sonnet-20250219"))
+            .maxTokens(Property.ofValue(2048))
+            .build();
+        var configuration = ChatConfiguration.builder()
+            .thinkingEnabled(Property.ofValue(true))
+            .thinkingBudgetTokens(Property.ofValue(1024))
+            .build();
+
+        assertThat(provider.chatModel(runContextFactory.of(Map.of()), configuration)).isNotNull();
+    }
+
+    @Test
+    void chatModel_shouldAcceptThinkingBudgetBelowConfigurationMaxToken() throws Exception {
+        var provider = Anthropic.builder()
+            .type(Anthropic.class.getName())
+            .apiKey(Property.ofValue("test-anthropic-key"))
+            .modelName(Property.ofValue("claude-3-7-sonnet-20250219"))
+            .build();
+        var configuration = ChatConfiguration.builder()
+            .thinkingEnabled(Property.ofValue(true))
+            .thinkingBudgetTokens(Property.ofValue(1024))
+            .maxToken(Property.ofValue(2048))
+            .build();
+
+        assertThat(provider.chatModel(runContextFactory.of(Map.of()), configuration)).isNotNull();
+    }
+
+    @Test
+    void chatModel_shouldRejectThinkingBudgetEqualToConfigurationMaxToken() {
+        var provider = Anthropic.builder()
+            .type(Anthropic.class.getName())
+            .apiKey(Property.ofValue("test-anthropic-key"))
+            .modelName(Property.ofValue("claude-3-7-sonnet-20250219"))
+            .build();
+        var configuration = ChatConfiguration.builder()
+            .thinkingEnabled(Property.ofValue(true))
+            .thinkingBudgetTokens(Property.ofValue(2048))
+            .maxToken(Property.ofValue(2048))
+            .build();
+
+        assertThatThrownBy(() -> provider.chatModel(runContextFactory.of(Map.of()), configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("max tokens is 2048");
+    }
+
+    @Test
+    void chatModel_shouldExplainDefaultAndFixWhenMaxTokensIsUnset() {
         // With no max tokens configured the client sends its default (1024), which a 1024 budget does not stay under.
         var provider = Anthropic.builder()
             .type(Anthropic.class.getName())
@@ -86,7 +136,9 @@ class AnthropicTest {
 
         assertThatThrownBy(() -> provider.chatModel(runContextFactory.of(Map.of()), configuration))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("`max_tokens` must be greater than `thinking.budget_tokens`");
+            .hasMessageContaining("`max_tokens` must be greater than `thinking.budget_tokens`")
+            .hasMessageContaining("max tokens is 1024 (the default when unset)")
+            .hasMessageContaining("`configuration.maxToken`");
     }
 
     @Test

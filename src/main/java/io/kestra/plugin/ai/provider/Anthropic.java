@@ -60,7 +60,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                         provider:
                           type: io.kestra.plugin.ai.provider.Anthropic
                           apiKey: "{{ secret('ANTHROPIC_API_KEY') }}"
-                          modelName: claude-3-haiku-20240307
+                          modelName: claude-haiku-4-5-20251001
                         configuration:
                           thinkingEnabled: true
                           thinkingBudgetTokens: 1024
@@ -79,6 +79,9 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class Anthropic extends ModelProvider {
     private static final String ENABLED = "enabled";
+    // langchain4j-anthropic falls back to this value when no max tokens are set.
+    private static final int DEFAULT_MAX_TOKENS = 1024;
+
     @Schema(
         title = "API Key",
         description = "Anthropic API key used to authenticate requests. Store it as a Kestra secret rather than inline. No default: this property is required.",
@@ -89,7 +92,7 @@ public class Anthropic extends ModelProvider {
     private Property<String> apiKey;
     @Schema(
         title = "Maximum Tokens",
-        description = "Maximum number of tokens the model may generate in its response. Not set by default, in which case the Anthropic client default applies. When thinking is enabled, this must be greater than `configuration.thinkingBudgetTokens` or the task fails.",
+        description = "Maximum number of tokens the model may generate in its response. Defaults to 1024 when neither this property nor `configuration.maxToken` is set. When thinking is enabled, this must be greater than `configuration.thinkingBudgetTokens` or the task fails.",
         example = "1024"
     )
     @PluginProperty(group = "execution")
@@ -115,9 +118,13 @@ public class Anthropic extends ModelProvider {
         if (maxTokens == null) {
             maxTokens = runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null);
         }
-        if (isInvalidThinkingConfig(thinkingEnabled, thinkingBudgetTokens, maxTokens)) {
+        var effectiveMaxTokens = Objects.requireNonNullElse(maxTokens, DEFAULT_MAX_TOKENS);
+        if (isInvalidThinkingConfig(thinkingEnabled, thinkingBudgetTokens, effectiveMaxTokens)) {
             throw new IllegalArgumentException(
-                "`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models."
+                "`max_tokens` must be greater than `thinking.budget_tokens` for thinking-enabled Anthropic models. "
+                    + "Thinking budget is " + thinkingBudgetTokens + " but max tokens is " + effectiveMaxTokens
+                    + (maxTokens == null ? " (the default when unset)" : "")
+                    + ". Set `maxTokens` (or `configuration.maxToken`) above `configuration.thinkingBudgetTokens`."
             );
         }
 
@@ -135,7 +142,7 @@ public class Anthropic extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .listeners(allListeners)
-            .maxTokens(maxTokens)
+            .maxTokens(effectiveMaxTokens)
             .thinkingType(thinkingEnabled ? ENABLED : null)
             .thinkingBudgetTokens(thinkingBudgetTokens)
             .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
@@ -180,13 +187,10 @@ public class Anthropic extends ModelProvider {
         throw new UnsupportedOperationException("Anthropic is currently not supported for embedding models.");
     }
 
-    // langchain4j-anthropic falls back to this value when no max tokens are set.
-    private static final int DEFAULT_MAX_TOKENS = 1024;
-
     private boolean isInvalidThinkingConfig(final boolean thinkingEnabled, final Integer thinkingBudgetTokens,
-        final Integer maxTokens) {
+        final int effectiveMaxTokens) {
         return thinkingEnabled
             && Objects.nonNull(thinkingBudgetTokens)
-            && thinkingBudgetTokens >= Objects.requireNonNullElse(maxTokens, DEFAULT_MAX_TOKENS);
+            && thinkingBudgetTokens >= effectiveMaxTokens;
     }
 }
