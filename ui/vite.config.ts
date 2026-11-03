@@ -1,6 +1,5 @@
 // Custom vite config that extends @kestra-io/artifact-sdk/vite.config while
-// adding support for the `topology-task-modal` slot introduced in
-// https://github.com/kestra-io/kestra/pull/16795 and the `execution-artifact/details` slot.
+// adding support for the `execution-artifact/details` slot.
 //
 // Once @kestra-io/artifact-sdk ships a version that includes this slot name in
 // its KnownSlotNames list, replace this file with the one-liner:
@@ -12,210 +11,69 @@ import { federation } from "@module-federation/vite";
 import { createHash } from "node:crypto";
 import { createRequire } from "module";
 
-const SLOT_NAMES = [
-    "topology-details",
-    "topology-task-drawer",
-    "topology-task-modal",
-    "execution-artifact/details",
-];
+const SLOT_NAMES = ["execution-artifact/details"];
 
 const ARTIFACT_FILENAME = "plugin-ui.js";
 const PLUGIN_ID = "io.kestra.plugin.ai";
 
-const SHOW_AI_DETAILS = { label: "Show Details", taskProp: "", lang: "" };
-const TOPOLOGY_DETAILS = "./src/components/AITopologyDetails.vue";
-const TOPOLOGY_MODAL = "./src/components/AITopologyModal.vue";
+const ARTIFACT_MODAL = "./src/components/AITopologyModal.vue";
 
+// Only the execution-artifact tab is registered. The topology cards, drawer and
+// modal are gone from the topology redesign (kestra-io/kestra#22001).
 const exposes = {
     "agent.AIAgent": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                // base (56) + 2 rows × ~32px
-                height: 120,
-                heightWithExecution: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.ChatCompletion": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                height: 120,
-                heightWithExecution: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.Classification": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                height: 120,
-                heightWithExecution: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.ImageGeneration": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                height: 120,
-                heightWithExecution: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.JSONStructuredExtraction": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                height: 120,
-                heightWithExecution: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.ChatCompletion": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                // base (56) + 3 rows × ~32px (Provider + Model + Retriever)
-                height: 151,
-                heightWithExecution: 151,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.IngestDocument": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                height: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.Search": [
         {
-            slotName: "topology-details",
-            path: TOPOLOGY_DETAILS,
-            additionalProperties: {
-                height: 120,
-                customAction: SHOW_AI_DETAILS,
-            },
-        },
-        {
-            slotName: "topology-task-drawer",
-            path: TOPOLOGY_DETAILS,
-        },
-        {
-            slotName: "topology-task-modal",
-            path: TOPOLOGY_MODAL,
-        },
-        {
             slotName: "execution-artifact/details",
-            path: TOPOLOGY_MODAL,
+            path: ARTIFACT_MODAL,
             additionalProperties: { title: "Execution details" },
         },
     ],
