@@ -24,15 +24,15 @@
   "devDependencies": {
     "@storybook/addon-docs": "10.3.4",
     "@storybook/addon-themes": "10.3.4",
-    "@storybook/vue3-vite": "10.3.4",
+    "@storybook/vue3-vite": "10.6.5",
     "@vitejs/plugin-vue": "6.0.5",
     "jsdom": "29.1.1",
     "oxfmt": "0.72.0",
     "oxlint": "1.64.0",
-    "storybook": "10.4.6",
+    "storybook": "10.6.5",
     "typescript": "6.0.2",
     "vite": "8.3.5",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "overrides": {
     "katex": "0.19.0"
