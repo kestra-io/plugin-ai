@@ -44,8 +44,8 @@ tasks.withType(JavaCompile).configureEach {
 // Security: the platform BOM pins Jackson 2.22.1, affected by the databind and core advisories. Force the patched
 // release until the platform ships it. Jackson 2 is enforced by enforcedPlatform, so a strict constraint conflicts.
 configurations.configureEach {
-    resolutionStrategy.force 'com.fasterxml.jackson.core:jackson-databind:2.22.3',
-        'com.fasterxml.jackson.core:jackson-core:2.22.3'
+    resolutionStrategy.force 'com.fasterxml.jackson.core:jackson-databind:2.22.4',
+        'com.fasterxml.jackson.core:jackson-core:2.22.4'
 }
 
 dependencies {
