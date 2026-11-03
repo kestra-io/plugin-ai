@@ -1,6 +1,6 @@
 // Custom vite config that extends @kestra-io/artifact-sdk/vite.config while
 // adding support for the `topology-task-modal` slot introduced in
-// https://github.com/kestra-io/kestra/pull/16795.
+// https://github.com/kestra-io/kestra/pull/16795 and the `execution-artifact/details` slot.
 //
 // Once @kestra-io/artifact-sdk ships a version that includes this slot name in
 // its KnownSlotNames list, replace this file with the one-liner:
@@ -16,6 +16,7 @@ const SLOT_NAMES = [
     "topology-details",
     "topology-task-drawer",
     "topology-task-modal",
+    "execution-artifact/details",
 ];
 
 const ARTIFACT_FILENAME = "plugin-ui.js";
@@ -45,6 +46,11 @@ const exposes = {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
         },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
+        },
     ],
     "completion.ChatCompletion": [
         {
@@ -63,6 +69,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.Classification": [
@@ -83,6 +94,11 @@ const exposes = {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
         },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
+        },
     ],
     "completion.ImageGeneration": [
         {
@@ -102,6 +118,11 @@ const exposes = {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
         },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
+        },
     ],
     "completion.JSONStructuredExtraction": [
         {
@@ -120,6 +141,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.ChatCompletion": [
@@ -141,6 +167,11 @@ const exposes = {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
         },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
+        },
     ],
     "rag.IngestDocument": [
         {
@@ -159,6 +190,11 @@ const exposes = {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
         },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
+        },
     ],
     "rag.Search": [
         {
@@ -176,6 +212,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
 };
