@@ -41,6 +41,13 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add("-parameters")
 }
 
+// Security: the platform BOM pins Jackson 2.22.1, affected by the databind and core advisories. Force the patched
+// release until the platform ships it. Jackson 2 is enforced by enforcedPlatform, so a strict constraint conflicts.
+configurations.configureEach {
+    resolutionStrategy.force 'com.fasterxml.jackson.core:jackson-databind:2.22.3',
+        'com.fasterxml.jackson.core:jackson-core:2.22.3'
+}
+
 dependencies {
     // Platform: Langchain4J libraries are defines inside it
     annotationProcessor enforcedPlatform("io.kestra:platform:$kestraVersion")
@@ -134,6 +141,12 @@ dependencies {
 
     // in-process ONNX embeddings (OnnxBertBiEncoder); brings onnxruntime + DJL tokenizers natives
     implementation "dev.langchain4j:langchain4j-embeddings:${langchain4jBetaVersion}"
+
+    // Security: Jackson 3 resolves at 3.0.0 (runtime) and 3.1.4 (tests); force the patched release
+    constraints {
+        implementation('tools.jackson.core:jackson-databind') { version { strictly '3.1.7' } }
+        implementation('tools.jackson.core:jackson-core') { version { strictly '3.1.7' } }
+    }
 
     implementation "com.azure:azure-identity" // For Azure OpenAI
 
