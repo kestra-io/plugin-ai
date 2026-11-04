@@ -3,7 +3,7 @@ import { within, expect } from "storybook/test";
 import AITopologyDetails from "./components/AITopologyDetails.vue";
 
 const meta: Meta<typeof AITopologyDetails> = {
-    title: "Plugin UI / topology-details / AITopologyDetails",
+    title: "Plugin UI / execution-artifact / AITopologyDetails",
     component: AITopologyDetails,
     tags: ["autodocs"],
 };
@@ -44,21 +44,6 @@ const ragTask = {
     contentRetriever: { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
 };
 
-const geminiProvider = {
-    type: "io.kestra.plugin.ai.provider.GoogleGemini",
-    modelName: "gemini-embedding-001",
-    apiKey: "{{ secret('GEMINI_API_KEY') }}",
-};
-
-const ingestDocumentTask = {
-    id: "ingest",
-    type: "io.kestra.plugin.ai.rag.IngestDocument",
-    provider: geminiProvider,
-    embeddings: {
-        type: "io.kestra.plugin.ai.embeddings.KestraKVStore",
-    },
-};
-
 // Pebble-templated fields: shown raw and marked before a run, model read from outputs after.
 const expressionAgentTask = {
     id: "ai-agent",
@@ -72,118 +57,12 @@ const expressionAgentTask = {
     prompt: "{{ inputs.question }}",
 };
 
-const compactFullHouseTask = {
-    id: "ai-agent-full",
-    type: "io.kestra.plugin.ai.agent.AIAgent",
-    provider: openAIProvider,
-    systemPrompt: "You are a helpful assistant that answers questions about Kestra workflows.",
-    prompt: "List the last 3 executions of the etl-pipeline flow.",
-    tools: [
-        { type: "io.kestra.plugin.ai.tool.KestraFlow" },
-        { type: "io.kestra.plugin.ai.tool.TavilyWebSearch" },
-        { type: "io.kestra.plugin.ai.tool.CodeExecution" },
-    ],
-    memory: { type: "io.kestra.plugin.ai.memory.KestraKVStore" },
-    contentRetrievers: [
-        { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
-        { type: "io.kestra.plugin.ai.retriever.TavilyWebSearch" },
-    ],
-};
-
-export const CompactProviderAndModelOnly: Story = {
-    name: "Compact node (provider + model only)",
-    args: {
-        task: chatTask,
-        namespace: "company.team",
-        flowId: "ai-pipeline",
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        expect(canvas.getByText("Provider")).toBeInTheDocument();
-        expect(canvas.getByText("OpenAI")).toBeInTheDocument();
-        expect(canvas.getByText("Model")).toBeInTheDocument();
-        expect(canvas.getByText("gpt-4o")).toBeInTheDocument();
-        expect(canvas.queryByText("Tools")).not.toBeInTheDocument();
-        expect(canvas.queryByText("Memory")).not.toBeInTheDocument();
-        expect(canvas.queryByText("Retrievers")).not.toBeInTheDocument();
-    },
-};
-
-export const CompactProviderModelAndTools: Story = {
-    name: "Compact node (provider + model + tools)",
-    args: {
-        task: agentTask,
-        namespace: "company.team",
-        flowId: "ai-pipeline",
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        expect(canvas.getByText("Tools")).toBeInTheDocument();
-        expect(canvas.getByText("KestraFlow +1")).toBeInTheDocument();
-        expect(canvas.queryByText("Memory")).not.toBeInTheDocument();
-        expect(canvas.queryByText("Retrievers")).not.toBeInTheDocument();
-    },
-};
-
-export const CompactFullHouse: Story = {
-    name: "Compact node (tools + memory + retrievers, node stays legible)",
-    args: {
-        task: compactFullHouseTask,
-        namespace: "company.team",
-        flowId: "ai-pipeline",
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        expect(canvas.getByText("Tools")).toBeInTheDocument();
-        expect(canvas.getByText("KestraFlow +2")).toBeInTheDocument();
-        expect(canvas.getByText("Memory")).toBeInTheDocument();
-        expect(canvas.getByText("KestraKVStore")).toBeInTheDocument();
-        expect(canvas.getByText("Retrievers")).toBeInTheDocument();
-        expect(canvas.getByText("EmbeddingStoreRetriever +1")).toBeInTheDocument();
-    },
-};
-
-export const CompactRagIngestDocument: Story = {
-    name: "Compact node (RAG IngestDocument with provider + model)",
-    args: {
-        task: ingestDocumentTask,
-        namespace: "company.team",
-        flowId: "ai-rag-daily-ingestion-gemini",
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        expect(canvas.getByText("Provider")).toBeInTheDocument();
-        expect(canvas.getByText("GoogleGemini")).toBeInTheDocument();
-        expect(canvas.getByText("Model")).toBeInTheDocument();
-        expect(canvas.getByText("gemini-embedding-001")).toBeInTheDocument();
-    },
-};
-
-export const CompactRagChatCompletion: Story = {
-    name: "Compact node (RAG ChatCompletion with chatProvider + model)",
-    args: {
-        task: ragTask,
-        namespace: "company.team",
-        flowId: "ai-rag-pipeline",
-    },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        expect(canvas.getByText("Provider")).toBeInTheDocument();
-        expect(canvas.getByText("OpenAI")).toBeInTheDocument();
-        expect(canvas.getByText("Model")).toBeInTheDocument();
-        expect(canvas.getByText("gpt-4o")).toBeInTheDocument();
-        expect(canvas.getByText("Retrievers")).toBeInTheDocument();
-        expect(canvas.getByText("EmbeddingStoreRetriever")).toBeInTheDocument();
-    },
-};
-
 export const PreExecution: Story = {
     name: "Pre-execution (AIAgent with tools + system prompt)",
     args: {
         task: agentTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
     },
 };
 
@@ -193,7 +72,6 @@ export const ChatCompletionPostExecution: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: {
             id: "exec-chat-001",
             namespace: "company.team",
@@ -230,7 +108,6 @@ export const AgentWithToolCalls: Story = {
         task: agentTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: {
             id: "exec-agent-002",
             namespace: "company.team",
@@ -306,7 +183,6 @@ export const RagCompletion: Story = {
         task: ragTask,
         namespace: "company.team",
         flowId: "rag-pipeline",
-        displayMode: "full",
         execution: {
             id: "exec-rag-003",
             namespace: "company.team",
@@ -377,7 +253,6 @@ export const ThinkingEnabled: Story = {
         },
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: {
             id: "exec-think-004",
             namespace: "company.team",
@@ -426,7 +301,6 @@ export const GuardrailViolation: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: {
             id: "exec-guard-005",
             namespace: "company.team",
@@ -460,7 +334,6 @@ export const ExpressionsShownRaw: Story = {
         task: expressionAgentTask,
         namespace: "company.ai",
         flowId: "ai_pebble_resolution_test",
-        displayMode: "full",
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -486,12 +359,15 @@ export const TemplatedModelPostExecution: Story = {
         task: expressionAgentTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: executionWith("exec-tpl-007", "ai-agent", {
             modelName: "claude-sonnet-4-5",
             textOutput: "Done.",
             finishReason: "STOP",
-            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            tokenUsage: {
+                inputTokenCount: 1_000_000,
+                outputTokenCount: 1_000_000,
+                totalTokenCount: 2_000_000,
+            },
             guardrailViolated: false,
         }),
     },
@@ -509,12 +385,15 @@ export const DatedModelNameKeepsCostEstimate: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: executionWith("exec-dated-010", "chat-completion", {
             modelName: "gpt-4o-2024-08-06",
             textOutput: "Done.",
             finishReason: "STOP",
-            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            tokenUsage: {
+                inputTokenCount: 1_000_000,
+                outputTokenCount: 1_000_000,
+                totalTokenCount: 2_000_000,
+            },
             guardrailViolated: false,
         }),
     },
@@ -531,12 +410,15 @@ export const UnpricedSiblingModelHasNoCostEstimate: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: executionWith("exec-unpriced-011", "chat-completion", {
             modelName: "o1-mini-2024-09-12",
             textOutput: "Done.",
             finishReason: "STOP",
-            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            tokenUsage: {
+                inputTokenCount: 1_000_000,
+                outputTokenCount: 1_000_000,
+                totalTokenCount: 2_000_000,
+            },
             guardrailViolated: false,
         }),
     },
@@ -559,12 +441,15 @@ export const FallbackModelPostExecution: Story = {
         },
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: executionWith("exec-fb-008", "chat-completion", {
             modelName: "gemini-2.5-flash",
             textOutput: "Kestra is an orchestration platform.",
             finishReason: "STOP",
-            tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
+            tokenUsage: {
+                inputTokenCount: 1_000_000,
+                outputTokenCount: 1_000_000,
+                totalTokenCount: 2_000_000,
+            },
             guardrailViolated: false,
         }),
     },
@@ -581,7 +466,6 @@ export const MissingModelOutputPostExecution: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: executionWith("exec-old-009", "chat-completion", {
             textOutput: "Kestra is an orchestration platform.",
             finishReason: "STOP",
@@ -603,7 +487,6 @@ export const MaxTokensHit: Story = {
         task: chatTask,
         namespace: "company.team",
         flowId: "ai-pipeline",
-        displayMode: "full",
         execution: {
             id: "exec-len-006",
             namespace: "company.team",

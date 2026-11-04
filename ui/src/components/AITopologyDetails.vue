@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import type { KnownSlotProps } from "@kestra-io/artifact-sdk";
 import { KsTopologyDetails, KsTag, KsAlert } from "@kestra-io/design-system";
-import { computed, ref, watch, useAttrs } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps<KnownSlotProps["topology-details"]>();
-const attrs = useAttrs();
-const isFullView = computed(() => attrs.displayMode === "full");
 
 const taskId = computed(() => props.task?.id as string | undefined);
 
@@ -30,19 +28,20 @@ const rawModelName = computed(() => {
     return activeProvider.value?.modelName as string | undefined;
 });
 
-const rawSystemMessage = computed(() =>
-    (taskConfig.value.systemPrompt ?? taskConfig.value.systemMessage) as string | undefined
+const rawSystemMessage = computed(
+    () => (taskConfig.value.systemPrompt ?? taskConfig.value.systemMessage) as string | undefined,
 );
 
 const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
 
 // Before a run the raw definition is shown; after a run the model comes only from outputs (what actually ran).
-const isTemplate = (v: unknown): boolean => typeof v === "string" && (v.includes("{{") || v.includes("{%"));
+const isTemplate = (v: unknown): boolean =>
+    typeof v === "string" && (v.includes("{{") || v.includes("{%"));
 const TEMPLATE_MARKER = "template";
 const EMPTY_VALUE = "-";
 
 const modelName = computed(() =>
-    hasExecution.value ? (outputs.value?.modelName as string | undefined) : rawModelName.value
+    hasExecution.value ? (outputs.value?.modelName as string | undefined) : rawModelName.value,
 );
 const systemMessage = computed(() => rawSystemMessage.value);
 const prompt = computed(() => rawPrompt.value);
@@ -58,7 +57,14 @@ const toolNames = computed<string[]>(() => {
 
 const toArray = (v: any): any[] => {
     if (Array.isArray(v)) return v;
-    if (typeof v === "string") { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } }
+    if (typeof v === "string") {
+        try {
+            const p = JSON.parse(v);
+            return Array.isArray(p) ? p : [];
+        } catch {
+            return [];
+        }
+    }
     return [];
 };
 
@@ -113,12 +119,16 @@ const observabilityType = computed(() => {
 const guardrailsInfo = computed(() => {
     const g = taskConfig.value.guardrails as Record<string, any> | undefined;
     if (!g) return null;
-    const inputRules: string[] = toArray(g.inputGuardrails ?? g.input).map((r: any) => lastSegment(r?.type) ?? String(r));
-    const outputRules: string[] = toArray(g.outputGuardrails ?? g.output).map((r: any) => lastSegment(r?.type) ?? String(r));
+    const inputRules: string[] = toArray(g.inputGuardrails ?? g.input).map(
+        (r: any) => lastSegment(r?.type) ?? String(r),
+    );
+    const outputRules: string[] = toArray(g.outputGuardrails ?? g.output).map(
+        (r: any) => lastSegment(r?.type) ?? String(r),
+    );
     return { inputRules, outputRules };
 });
 
-// ── Summary rows for compact node ────────────────────────────────────────────
+// ── Summary rows ─────────────────────────────────────────────────────────────
 
 function overflowSummary(names: string[]): string | undefined {
     if (names.length === 0) return undefined;
@@ -139,7 +149,7 @@ const summaryRows = computed(() => {
     return rows;
 });
 
-const fullViewRows = computed(() => {
+const toolRows = computed(() => {
     const rows: { label: string; value: string }[] = [];
     if (toolNames.value.length > 0) {
         rows.push({ label: "Tools", value: toolNames.value.join(", ") });
@@ -183,16 +193,22 @@ async function loadTaskOutputs(execId: string) {
     }
 }
 
-watch(executionId, (id) => {
-    if (id) loadTaskOutputs(id);
-}, { immediate: true });
+watch(
+    executionId,
+    (id) => {
+        if (id) loadTaskOutputs(id);
+    },
+    { immediate: true },
+);
 
 const outputs = computed(() => fetchedOutputs.value ?? taskRun.value?.outputs ?? null);
 const textOutput = computed(() => outputs.value?.textOutput as string | undefined);
 const jsonOutput = computed(() => outputs.value?.jsonOutput as Record<string, unknown> | undefined);
 const finishReason = computed(() => outputs.value?.finishReason as string | undefined);
 const guardrailViolated = computed(() => outputs.value?.guardrailViolated === true);
-const guardrailMessage = computed(() => outputs.value?.guardrailViolationMessage as string | undefined);
+const guardrailMessage = computed(
+    () => outputs.value?.guardrailViolationMessage as string | undefined,
+);
 const tokenUsage = computed(() => outputs.value?.tokenUsage as Record<string, number> | undefined);
 const toolExecutions = computed<any[]>(() => outputs.value?.toolExecutions ?? []);
 const intermediateResponses = computed<any[]>(() => outputs.value?.intermediateResponses ?? []);
@@ -203,25 +219,37 @@ const thinkingTruncated = ref(true);
 const THINKING_TRUNCATE = 300;
 const thinkingDisplay = computed(() => {
     if (!thinking.value) return undefined;
-    if (!thinkingTruncated.value || thinking.value.length <= THINKING_TRUNCATE) return thinking.value;
+    if (!thinkingTruncated.value || thinking.value.length <= THINKING_TRUNCATE)
+        return thinking.value;
     return thinking.value.slice(0, THINKING_TRUNCATE) + "…";
 });
 
 function formatJson(v: unknown): string {
-    try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+    try {
+        return JSON.stringify(v, null, 2);
+    } catch {
+        return String(v);
+    }
 }
 
 const finishReasonType = computed((): "success" | "warning" | "danger" | "info" | "" => {
     switch (finishReason.value) {
-        case "STOP": return "success";
-        case "LENGTH": return "warning";
-        case "CONTENT_FILTER": return "danger";
-        case "TOOL_EXECUTION": return "info";
-        default: return "";
+        case "STOP":
+            return "success";
+        case "LENGTH":
+            return "warning";
+        case "CONTENT_FILTER":
+            return "danger";
+        case "TOOL_EXECUTION":
+            return "info";
+        default:
+            return "";
     }
 });
 
-const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.value || !!jsonOutput.value));
+const hasResponse = computed(
+    () => !guardrailViolated.value && (!!textOutput.value || !!jsonOutput.value),
+);
 
 // ── Cost estimate ─────────────────────────────────────────────────────────────
 // USD per 1M tokens — snapshot prices, approximate only
@@ -232,7 +260,7 @@ const PRICING: Record<string, { input: number; output: number }> = {
     "gpt-4o-mini": { input: 0.15, output: 0.6 },
     "gpt-4-turbo": { input: 10, output: 30 },
     "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
-    "o1": { input: 15, output: 60 },
+    o1: { input: 15, output: 60 },
     "o3-mini": { input: 1.1, output: 4.4 },
     // Anthropic
     "claude-opus-4-8": { input: 15, output: 75 },
@@ -266,9 +294,12 @@ const VERSION_SUFFIX = /^-(\d{4}-\d{2}-\d{2}|\d{8}|\d{3}|latest)$/;
 // A "-latest" key also prices the dated ID the provider reports for that alias.
 function findPricingKey(name: string): string | undefined {
     return Object.keys(PRICING)
-        .filter(k => {
+        .filter((k) => {
             const base = k.replace(/-latest$/, "");
-            return name === k || (name.startsWith(base) && VERSION_SUFFIX.test(name.slice(base.length)));
+            return (
+                name === k ||
+                (name.startsWith(base) && VERSION_SUFFIX.test(name.slice(base.length)))
+            );
         })
         .sort((a, b) => b.length - a.length)[0];
 }
@@ -279,211 +310,236 @@ const costEstimate = computed(() => {
     const p = key ? PRICING[key] : undefined;
     if (!p) return null;
     const total =
-        (tokenUsage.value.inputTokenCount ?? 0) / 1_000_000 * p.input +
-        (tokenUsage.value.outputTokenCount ?? 0) / 1_000_000 * p.output;
+        ((tokenUsage.value.inputTokenCount ?? 0) / 1_000_000) * p.input +
+        ((tokenUsage.value.outputTokenCount ?? 0) / 1_000_000) * p.output;
     return total < 0.000001 ? "<$0.000001" : `~$${total.toFixed(6)}`;
 });
 
 const tokenMax = computed(() =>
-    Math.max(tokenUsage.value?.inputTokenCount ?? 0, tokenUsage.value?.outputTokenCount ?? 0, 1)
+    Math.max(tokenUsage.value?.inputTokenCount ?? 0, tokenUsage.value?.outputTokenCount ?? 0, 1),
 );
 const tokenInputPct = computed(() =>
-    Math.round(((tokenUsage.value?.inputTokenCount ?? 0) / tokenMax.value) * 100)
+    Math.round(((tokenUsage.value?.inputTokenCount ?? 0) / tokenMax.value) * 100),
 );
 const tokenOutputPct = computed(() =>
-    Math.round(((tokenUsage.value?.outputTokenCount ?? 0) / tokenMax.value) * 100)
+    Math.round(((tokenUsage.value?.outputTokenCount ?? 0) / tokenMax.value) * 100),
 );
 </script>
 
 <template>
     <div class="ai-details">
-        <!-- Provider + model always shown in compact node -->
         <KsTopologyDetails :rows="summaryRows" />
 
-        <!-- Everything below: full view (modal / drawer) only -->
-        <template v-if="isFullView">
+        <!-- ── Full tool list ── -->
+        <KsTopologyDetails v-if="toolRows.length > 0" :rows="toolRows" />
 
-            <!-- ── Full-view-only metadata rows (Tools, etc.) ── -->
-            <KsTopologyDetails v-if="fullViewRows.length > 0" :rows="fullViewRows" />
+        <!-- ── System message ── -->
+        <details v-if="systemMessage" class="ai-section" open>
+            <summary class="ai-section__title">
+                System message
+                <KsTag v-if="isTemplate(systemMessage)" size="small" type="info">{{
+                    TEMPLATE_MARKER
+                }}</KsTag>
+            </summary>
+            <pre class="ai-pre">{{ systemMessage }}</pre>
+        </details>
 
-            <!-- ── System message ── -->
-            <details v-if="systemMessage" class="ai-section" open>
+        <!-- ── Prompt ── -->
+        <details v-if="prompt" class="ai-section" open>
+            <summary class="ai-section__title">
+                Prompt
+                <KsTag v-if="isTemplate(prompt)" size="small" type="info">{{
+                    TEMPLATE_MARKER
+                }}</KsTag>
+            </summary>
+            <pre class="ai-pre">{{ prompt }}</pre>
+        </details>
+
+        <!-- ── Chat Configuration ── -->
+        <details v-if="chatConfigRows.length > 0 || maxSeqTools" class="ai-accordion">
+            <summary class="ai-accordion__title">Chat Configuration</summary>
+            <div class="ai-kv">
+                <template v-for="row in chatConfigRows" :key="row.label">
+                    <span class="ai-kv__key">{{ row.label }}</span>
+                    <span class="ai-kv__val">
+                        {{ row.value }}
+                        <KsTag v-if="isTemplate(row.value)" size="small" type="info">{{
+                            TEMPLATE_MARKER
+                        }}</KsTag>
+                    </span>
+                </template>
+                <template v-if="maxSeqTools">
+                    <span class="ai-kv__key">Max tool calls</span>
+                    <span class="ai-kv__val">
+                        {{ maxSeqTools }}
+                        <KsTag v-if="isTemplate(maxSeqTools)" size="small" type="info">{{
+                            TEMPLATE_MARKER
+                        }}</KsTag>
+                    </span>
+                </template>
+            </div>
+        </details>
+
+        <!-- ── Content Retrievers ── -->
+        <details v-if="retrieverNames.length > 0" class="ai-accordion">
+            <summary class="ai-accordion__title">Content Retrievers</summary>
+            <div class="ai-tags ai-tags--gap">
+                <KsTag v-for="name in retrieverNames" :key="name" size="small" type="info">{{
+                    name
+                }}</KsTag>
+            </div>
+        </details>
+
+        <!-- ── Memory ── -->
+        <details v-if="memoryType" class="ai-accordion">
+            <summary class="ai-accordion__title">Memory</summary>
+            <div class="ai-kv">
+                <span class="ai-kv__key">Type</span>
+                <span class="ai-kv__val">{{ memoryType }}</span>
+            </div>
+        </details>
+
+        <!-- ── Observability ── -->
+        <details v-if="observabilityType" class="ai-accordion">
+            <summary class="ai-accordion__title">Observability</summary>
+            <div class="ai-kv">
+                <span class="ai-kv__key">Provider</span>
+                <span class="ai-kv__val">{{ observabilityType }}</span>
+            </div>
+        </details>
+
+        <!-- ── Guardrails ── -->
+        <details v-if="guardrailsInfo" class="ai-accordion">
+            <summary class="ai-accordion__title">Guardrails</summary>
+            <div class="ai-kv">
+                <template v-if="guardrailsInfo.inputRules.length > 0">
+                    <span class="ai-kv__key">Input</span>
+                    <span class="ai-kv__val">{{ guardrailsInfo.inputRules.join(", ") }}</span>
+                </template>
+                <template v-if="guardrailsInfo.outputRules.length > 0">
+                    <span class="ai-kv__key">Output</span>
+                    <span class="ai-kv__val">{{ guardrailsInfo.outputRules.join(", ") }}</span>
+                </template>
+            </div>
+        </details>
+
+        <!-- ── Execution outputs ── -->
+        <template v-if="hasExecution && outputs">
+            <KsAlert
+                v-if="guardrailViolated"
+                type="error"
+                :title="guardrailMessage ?? 'Guardrail violated'"
+                show-icon
+                class="ai-alert"
+            />
+
+            <details v-if="hasResponse || finishReason || tokenUsage" class="ai-section" open>
                 <summary class="ai-section__title">
-                    System message
-                    <KsTag v-if="isTemplate(systemMessage)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
+                    Answer
+                    <KsTag v-if="finishReason" :type="finishReasonType" size="small">{{
+                        finishReason
+                    }}</KsTag>
                 </summary>
-                <pre class="ai-pre">{{ systemMessage }}</pre>
+
+                <template v-if="hasResponse">
+                    <pre v-if="textOutput" class="ai-pre">{{ textOutput }}</pre>
+                    <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{
+                        formatJson(jsonOutput)
+                    }}</pre>
+                </template>
+
+                <div v-if="tokenUsage" class="ai-tokens">
+                    <div class="ai-token-bar">
+                        <span class="ai-token-bar__label">Input</span>
+                        <div class="ai-token-bar__track">
+                            <div
+                                class="ai-token-bar__fill ai-token-bar__fill--input"
+                                :style="{ width: tokenInputPct + '%' }"
+                            ></div>
+                        </div>
+                        <span class="ai-token-bar__count">{{
+                            tokenUsage.inputTokenCount ?? "—"
+                        }}</span>
+                    </div>
+                    <div class="ai-token-bar">
+                        <span class="ai-token-bar__label">Output</span>
+                        <div class="ai-token-bar__track">
+                            <div
+                                class="ai-token-bar__fill ai-token-bar__fill--output"
+                                :style="{ width: tokenOutputPct + '%' }"
+                            ></div>
+                        </div>
+                        <span class="ai-token-bar__count">{{
+                            tokenUsage.outputTokenCount ?? "—"
+                        }}</span>
+                    </div>
+                    <div class="ai-token-summary">
+                        <div class="ai-token-box">
+                            <span class="ai-token-box__label">Total tokens</span>
+                            <span class="ai-token-box__value">{{
+                                tokenUsage.totalTokenCount ?? "—"
+                            }}</span>
+                        </div>
+                        <div v-if="costEstimate" class="ai-token-box">
+                            <span class="ai-token-box__label">Cost est.</span>
+                            <span class="ai-token-box__value">{{ costEstimate }}</span>
+                        </div>
+                    </div>
+                </div>
             </details>
 
-            <!-- ── Prompt ── -->
-            <details v-if="prompt" class="ai-section" open>
-                <summary class="ai-section__title">
-                    Prompt
-                    <KsTag v-if="isTemplate(prompt)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
+            <!-- Tool call timeline -->
+            <details v-if="toolExecutions.length > 0" class="ai-accordion">
+                <summary class="ai-accordion__title">
+                    Tool calls ({{ toolExecutions.length }})
                 </summary>
-                <pre class="ai-pre">{{ prompt }}</pre>
-            </details>
-
-            <!-- ── Chat Configuration ── -->
-            <details v-if="chatConfigRows.length > 0 || maxSeqTools" class="ai-accordion">
-                <summary class="ai-accordion__title">Chat Configuration</summary>
-                <div class="ai-kv">
-                    <template v-for="row in chatConfigRows" :key="row.label">
-                        <span class="ai-kv__key">{{ row.label }}</span>
-                        <span class="ai-kv__val">
-                            {{ row.value }}
-                            <KsTag v-if="isTemplate(row.value)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
-                        </span>
-                    </template>
-                    <template v-if="maxSeqTools">
-                        <span class="ai-kv__key">Max tool calls</span>
-                        <span class="ai-kv__val">
-                            {{ maxSeqTools }}
-                            <KsTag v-if="isTemplate(maxSeqTools)" size="small" type="info">{{ TEMPLATE_MARKER }}</KsTag>
-                        </span>
-                    </template>
+                <div
+                    v-for="(exec, i) in toolExecutions"
+                    :key="exec.requestId ?? i"
+                    class="ai-tool-call"
+                >
+                    <span class="ai-tool-call__name">{{ exec.requestName }}</span>
+                    <pre class="ai-pre ai-pre--json">{{ formatJson(exec.requestArguments) }}</pre>
+                    <pre v-if="exec.result" class="ai-pre">{{ exec.result }}</pre>
                 </div>
             </details>
 
-            <!-- ── Content Retrievers ── -->
-            <details v-if="retrieverNames.length > 0" class="ai-accordion">
-                <summary class="ai-accordion__title">Content Retrievers</summary>
-                <div class="ai-tags ai-tags--gap">
-                    <KsTag v-for="name in retrieverNames" :key="name" size="small" type="info">{{ name }}</KsTag>
-                </div>
-            </details>
-
-            <!-- ── Memory ── -->
-            <details v-if="memoryType" class="ai-accordion">
-                <summary class="ai-accordion__title">Memory</summary>
-                <div class="ai-kv">
-                    <span class="ai-kv__key">Type</span>
-                    <span class="ai-kv__val">{{ memoryType }}</span>
-                </div>
-            </details>
-
-            <!-- ── Observability ── -->
-            <details v-if="observabilityType" class="ai-accordion">
-                <summary class="ai-accordion__title">Observability</summary>
-                <div class="ai-kv">
-                    <span class="ai-kv__key">Provider</span>
-                    <span class="ai-kv__val">{{ observabilityType }}</span>
-                </div>
-            </details>
-
-            <!-- ── Guardrails ── -->
-            <details v-if="guardrailsInfo" class="ai-accordion">
-                <summary class="ai-accordion__title">Guardrails</summary>
-                <div class="ai-kv">
-                    <template v-if="guardrailsInfo.inputRules.length > 0">
-                        <span class="ai-kv__key">Input</span>
-                        <span class="ai-kv__val">{{ guardrailsInfo.inputRules.join(", ") }}</span>
-                    </template>
-                    <template v-if="guardrailsInfo.outputRules.length > 0">
-                        <span class="ai-kv__key">Output</span>
-                        <span class="ai-kv__val">{{ guardrailsInfo.outputRules.join(", ") }}</span>
-                    </template>
-                </div>
-            </details>
-
-            <!-- ── Execution outputs ── -->
-            <template v-if="hasExecution && outputs">
-                <KsAlert
-                    v-if="guardrailViolated"
-                    type="error"
-                    :title="guardrailMessage ?? 'Guardrail violated'"
-                    show-icon
-                    class="ai-alert"
-                />
-
-                <details v-if="hasResponse || finishReason || tokenUsage" class="ai-section" open>
-                    <summary class="ai-section__title">
-                        Answer
-                        <KsTag v-if="finishReason" :type="finishReasonType" size="small">{{ finishReason }}</KsTag>
-                    </summary>
-
-                    <template v-if="hasResponse">
-                        <pre v-if="textOutput" class="ai-pre">{{ textOutput }}</pre>
-                        <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
-                    </template>
-
-                    <div v-if="tokenUsage" class="ai-tokens">
-                        <div class="ai-token-bar">
-                            <span class="ai-token-bar__label">Input</span>
-                            <div class="ai-token-bar__track">
-                                <div class="ai-token-bar__fill ai-token-bar__fill--input" :style="{ width: tokenInputPct + '%' }"></div>
-                            </div>
-                            <span class="ai-token-bar__count">{{ tokenUsage.inputTokenCount ?? "—" }}</span>
-                        </div>
-                        <div class="ai-token-bar">
-                            <span class="ai-token-bar__label">Output</span>
-                            <div class="ai-token-bar__track">
-                                <div class="ai-token-bar__fill ai-token-bar__fill--output" :style="{ width: tokenOutputPct + '%' }"></div>
-                            </div>
-                            <span class="ai-token-bar__count">{{ tokenUsage.outputTokenCount ?? "—" }}</span>
-                        </div>
-                        <div class="ai-token-summary">
-                            <div class="ai-token-box">
-                                <span class="ai-token-box__label">Total tokens</span>
-                                <span class="ai-token-box__value">{{ tokenUsage.totalTokenCount ?? "—" }}</span>
-                            </div>
-                            <div v-if="costEstimate" class="ai-token-box">
-                                <span class="ai-token-box__label">Cost est.</span>
-                                <span class="ai-token-box__value">{{ costEstimate }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </details>
-
-                <!-- Tool call timeline -->
-                <details v-if="toolExecutions.length > 0" class="ai-accordion">
-                    <summary class="ai-accordion__title">Tool calls ({{ toolExecutions.length }})</summary>
-                    <div
-                        v-for="(exec, i) in toolExecutions"
-                        :key="exec.requestId ?? i"
-                        class="ai-tool-call"
+            <!-- Reasoning chain -->
+            <details v-if="thinking || intermediateResponses.length > 0" class="ai-accordion">
+                <summary class="ai-accordion__title">Reasoning chain</summary>
+                <template v-if="thinking">
+                    <pre class="ai-pre">{{ thinkingDisplay }}</pre>
+                    <button
+                        v-if="thinking.length > THINKING_TRUNCATE"
+                        class="ai-show-more"
+                        @click="thinkingTruncated = !thinkingTruncated"
                     >
-                        <span class="ai-tool-call__name">{{ exec.requestName }}</span>
-                        <pre class="ai-pre ai-pre--json">{{ formatJson(exec.requestArguments) }}</pre>
-                        <pre v-if="exec.result" class="ai-pre">{{ exec.result }}</pre>
-                    </div>
-                </details>
+                        {{ thinkingTruncated ? "Show more" : "Show less" }}
+                    </button>
+                </template>
+                <div
+                    v-for="(resp, i) in intermediateResponses"
+                    :key="resp.id ?? i"
+                    class="ai-intermediate"
+                >
+                    <span class="ai-intermediate__step">{{ i + 1 }}</span>
+                    <span class="ai-intermediate__text">{{ resp.completion }}</span>
+                </div>
+            </details>
 
-                <!-- Reasoning chain -->
-                <details v-if="thinking || intermediateResponses.length > 0" class="ai-accordion">
-                    <summary class="ai-accordion__title">Reasoning chain</summary>
-                    <template v-if="thinking">
-                        <pre class="ai-pre">{{ thinkingDisplay }}</pre>
-                        <button
-                            v-if="thinking.length > THINKING_TRUNCATE"
-                            class="ai-show-more"
-                            @click="thinkingTruncated = !thinkingTruncated"
-                        >{{ thinkingTruncated ? "Show more" : "Show less" }}</button>
-                    </template>
-                    <div
-                        v-for="(resp, i) in intermediateResponses"
-                        :key="resp.id ?? i"
-                        class="ai-intermediate"
-                    >
-                        <span class="ai-intermediate__step">{{ i + 1 }}</span>
-                        <span class="ai-intermediate__text">{{ resp.completion }}</span>
-                    </div>
-                </details>
-
-                <!-- RAG sources -->
-                <details v-if="sources.length > 0" class="ai-accordion">
-                    <summary class="ai-accordion__title">RAG Sources ({{ sources.length }})</summary>
-                    <div v-for="(src, i) in sources" :key="i" class="ai-source">
-                        <p class="ai-source__content">{{ src.content }}</p>
-                        <dl v-if="src.metadata" class="ai-source__meta">
-                            <template v-for="(val, key) in src.metadata" :key="key">
-                                <dt>{{ key }}</dt><dd>{{ val }}</dd>
-                            </template>
-                        </dl>
-                    </div>
-                </details>
-            </template>
-
+            <!-- RAG sources -->
+            <details v-if="sources.length > 0" class="ai-accordion">
+                <summary class="ai-accordion__title">RAG Sources ({{ sources.length }})</summary>
+                <div v-for="(src, i) in sources" :key="i" class="ai-source">
+                    <p class="ai-source__content">{{ src.content }}</p>
+                    <dl v-if="src.metadata" class="ai-source__meta">
+                        <template v-for="(val, key) in src.metadata" :key="key">
+                            <dt>{{ key }}</dt>
+                            <dd>{{ val }}</dd>
+                        </template>
+                    </dl>
+                </div>
+            </details>
         </template>
     </div>
 </template>
@@ -496,8 +552,8 @@ const tokenOutputPct = computed(() =>
     --ai-fw-medium: 500;
     --ai-fw-bold: 700;
     --ai-radius: 4px;
-    --ai-color-border: var(--ks-border-subtle, rgba(255,255,255,.1));
-    --ai-color-surface: var(--ks-surface-secondary, rgba(255,255,255,.04));
+    --ai-color-border: var(--ks-border-subtle, rgba(255, 255, 255, 0.1));
+    --ai-color-surface: var(--ks-surface-secondary, rgba(255, 255, 255, 0.04));
     --ai-color-text-muted: var(--ks-text-secondary, #9ca3af);
     --ai-color-primary: var(--ks-color-primary, #7c3aed);
 
@@ -537,7 +593,9 @@ const tokenOutputPct = computed(() =>
     list-style: none;
 }
 
-.ai-section__title::-webkit-details-marker { display: none; }
+.ai-section__title::-webkit-details-marker {
+    display: none;
+}
 
 .ai-section__title::after {
     content: "▲";
@@ -582,7 +640,9 @@ details[open] > .ai-accordion__title::before {
 }
 
 /* hide default marker in Safari / Firefox */
-.ai-accordion__title::-webkit-details-marker { display: none; }
+.ai-accordion__title::-webkit-details-marker {
+    display: none;
+}
 
 /* ── key-value grid ─────────────────────────────────────────────────── */
 .ai-kv {
@@ -662,8 +722,12 @@ details[open] > .ai-accordion__title::before {
     transition: width 0.3s ease;
 }
 
-.ai-token-bar__fill--input  { background: #7c86ef; }
-.ai-token-bar__fill--output { background: #34d399; }
+.ai-token-bar__fill--input {
+    background: #7c86ef;
+}
+.ai-token-bar__fill--output {
+    background: #34d399;
+}
 
 .ai-token-bar__count {
     width: 2.5rem;
@@ -758,11 +822,20 @@ details[open] > .ai-accordion__title::before {
     color: var(--ai-color-text-muted);
 }
 
-.ai-source__meta dt { font-weight: var(--ai-fw-medium); }
-.ai-source__meta dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-source__meta dt {
+    font-weight: var(--ai-fw-medium);
+}
+.ai-source__meta dd {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 /* ── alert spacing ──────────────────────────────────────────────────── */
-.ai-alert { margin-top: 0.5rem; }
+.ai-alert {
+    margin-top: 0.5rem;
+}
 
 /* ── show more button ───────────────────────────────────────────────── */
 .ai-show-more {

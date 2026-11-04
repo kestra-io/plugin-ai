@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import AITopologyDetails from "./components/AITopologyDetails.vue";
+import AITopologyModal from "./components/AITopologyModal.vue";
 import { SLOTS } from "@kestra-io/artifact-sdk";
 </script>
 
 <template>
     <div style="padding: 1rem; font-family: sans-serif">
-        <AITopologyDetails v-bind="SLOTS['topology-details'].defaultProps" />
+        <AITopologyModal v-bind="SLOTS['execution-artifact'].defaultProps" />
     </div>
 </template>
