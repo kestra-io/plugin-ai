@@ -100,7 +100,7 @@ plugin-ai/
 ├── src/test/java/io/kestra/plugin/ai/tool/
 ├── ui/                          # Plugin UI (Vue 3 / Module Federation)
 │   ├── src/components/
-│   │   └── AITopologyDetails.vue  # Details component, rendered by AITopologyModal
+│   │   └── AITopologyDetails.vue  # Shared topology-details component
 │   ├── src/AITopologyDetails.stories.ts
 │   ├── vite.config.ts
 │   └── package.json
