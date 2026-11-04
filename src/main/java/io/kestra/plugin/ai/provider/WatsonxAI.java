@@ -90,7 +90,11 @@ public class WatsonxAI extends ModelProvider {
             .projectId(runContext.render(this.projectId).as(String.class).orElseThrow())
             .modelName(runContext.render(this.getModelName()).as(String.class).orElse("ibm/granite-3-3-8b-instruct"))
             .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(0.7))
-            .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(512))
+            .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
+            .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
+            .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
+            .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
+            .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .build();
     }
 
