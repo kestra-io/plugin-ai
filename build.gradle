@@ -125,6 +125,14 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-mcp:${langchain4jMcpVersion}"
     implementation "dev.langchain4j:langchain4j-mcp-docker:${langchain4jMcpVersion}"
 
+    // Kestra 2.1 manages okhttp 5 but not these siblings, so transitive 4.12.0 jars (pulled by
+    // langchain4j-mcp and dashscope) stay on the classpath and fail with
+    // NoClassDefFoundError: okhttp3.internal.Util. Keep them aligned with okhttp.
+    constraints {
+        implementation("com.squareup.okhttp3:okhttp-sse:5.4.0")
+        implementation("com.squareup.okhttp3:logging-interceptor:5.4.0")
+    }
+
     // retrievers
     implementation "dev.langchain4j:langchain4j-experimental-sql:${langchain4jBetaVersion}"
 
