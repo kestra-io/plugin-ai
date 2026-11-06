@@ -1,11 +1,5 @@
-// Custom vite config that extends @kestra-io/artifact-sdk/vite.config while
-// adding support for the `topology-task-modal` slot introduced in
-// https://github.com/kestra-io/kestra/pull/16795.
-//
-// Once @kestra-io/artifact-sdk ships a version that includes this slot name in
-// its KnownSlotNames list, replace this file with the one-liner:
-//   import defaultViteConfig from "@kestra-io/artifact-sdk/vite.config";
-//   export default defaultViteConfig({ plugin: "io.kestra.plugin.ai", exposes: { ... } });
+// Custom vite config instead of the SDK `defaultViteConfig`: the SDK names the federation
+// remote from package.json (`io.kestra.plugin.ai`), this config keeps `io_kestra_plugin_ai`.
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { federation } from "@module-federation/vite";
@@ -16,6 +10,7 @@ const SLOT_NAMES = [
     "topology-details",
     "topology-task-drawer",
     "topology-task-modal",
+    "execution-artifact/details",
 ];
 
 const ARTIFACT_FILENAME = "plugin-ui.js";
@@ -25,15 +20,18 @@ const SHOW_AI_DETAILS = { label: "Show Details", taskProp: "", lang: "" };
 const TOPOLOGY_DETAILS = "./src/components/AITopologyDetails.vue";
 const TOPOLOGY_MODAL = "./src/components/AITopologyModal.vue";
 
+// Kestra 2.0.x renders the topology slots, 2.1+ ignores them and renders
+// `execution-artifact/details` (Artifacts button and tab) instead.
 const exposes = {
     "agent.AIAgent": [
         {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                // base (56) + 2 rows × ~32px
-                height: 120,
-                heightWithExecution: 120,
+                // base (56) + 5 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model, Tools, Memory, Retrievers.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
+                height: 214,
+                heightWithExecution: 244,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -44,6 +42,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.ChatCompletion": [
@@ -51,8 +54,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                height: 120,
-                heightWithExecution: 120,
+                // base (56) + 3 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model, Tools.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
+                height: 151,
+                heightWithExecution: 181,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -63,6 +68,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.Classification": [
@@ -70,8 +80,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
+                // base (56) + 2 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
                 height: 120,
-                heightWithExecution: 120,
+                heightWithExecution: 150,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -82,6 +94,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.ImageGeneration": [
@@ -89,8 +106,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
+                // base (56) + 2 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
                 height: 120,
-                heightWithExecution: 120,
+                heightWithExecution: 150,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -101,6 +120,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "completion.JSONStructuredExtraction": [
@@ -108,8 +132,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
+                // base (56) + 2 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
                 height: 120,
-                heightWithExecution: 120,
+                heightWithExecution: 150,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -120,6 +146,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.ChatCompletion": [
@@ -127,9 +158,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
-                // base (56) + 3 rows × ~32px (Provider + Model + Retriever)
-                height: 151,
-                heightWithExecution: 151,
+                // base (56) + 5 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model, Tools, Memory, Retrievers.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
+                height: 214,
+                heightWithExecution: 244,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -140,6 +172,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.IngestDocument": [
@@ -147,7 +184,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
+                // base (56) + 2 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
                 height: 120,
+                heightWithExecution: 150,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -158,6 +198,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
     "rag.Search": [
@@ -165,7 +210,10 @@ const exposes = {
             slotName: "topology-details",
             path: TOPOLOGY_DETAILS,
             additionalProperties: {
+                // base (56) + 2 rows x 31.5, rounded up. Compact card rows (summaryRows): Provider, Model.
+                // heightWithExecution adds the ~30px badge row the host draws under the node with an execution.
                 height: 120,
+                heightWithExecution: 150,
                 customAction: SHOW_AI_DETAILS,
             },
         },
@@ -176,6 +224,11 @@ const exposes = {
         {
             slotName: "topology-task-modal",
             path: TOPOLOGY_MODAL,
+        },
+        {
+            slotName: "execution-artifact/details",
+            path: TOPOLOGY_MODAL,
+            additionalProperties: { title: "Execution details" },
         },
     ],
 };
@@ -241,28 +294,33 @@ export default defineConfig({
         cssCodeSplit: false,
     },
     plugins: [
-        ...(isStorybook ? [] : [manifestPlugin(), federation({
-            filename: ARTIFACT_FILENAME,
-            name: PLUGIN_ID.replaceAll(".", "_"),
-            manifest: true,
-            exposes: Object.entries(exposes).reduce(
-                (acc: Record<string, string>, [task, modules]) => {
-                    for (const { slotName, path: modulePath } of modules) {
-                        acc[`./${task}/${slotName}`] = modulePath;
-                    }
-                    return acc;
-                },
-                {},
-            ),
-            shared: {
-                vue: { singleton: true, requiredVersion: "^3" },
-                "@kestra-io/design-system": { singleton: true },
-                ...(tryResolve("vue-i18n/package.json")
-                    ? { "vue-i18n": { singleton: true, requiredVersion: "^11" } }
-                    : {}),
-            },
-            dts: false,
-        })]),
+        ...(isStorybook
+            ? []
+            : [
+                  manifestPlugin(),
+                  federation({
+                      filename: ARTIFACT_FILENAME,
+                      name: PLUGIN_ID.replaceAll(".", "_"),
+                      manifest: true,
+                      exposes: Object.entries(exposes).reduce(
+                          (acc: Record<string, string>, [task, modules]) => {
+                              for (const { slotName, path: modulePath } of modules) {
+                                  acc[`./${task}/${slotName}`] = modulePath;
+                              }
+                              return acc;
+                          },
+                          {},
+                      ),
+                      shared: {
+                          vue: { singleton: true, requiredVersion: "^3" },
+                          "@kestra-io/design-system": { singleton: true },
+                          ...(tryResolve("vue-i18n/package.json")
+                              ? { "vue-i18n": { singleton: true, requiredVersion: "^11" } }
+                              : {}),
+                      },
+                      dts: false,
+                  }),
+              ]),
         vue(),
     ],
 });
