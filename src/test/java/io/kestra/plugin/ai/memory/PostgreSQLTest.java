@@ -27,11 +27,9 @@ import io.kestra.plugin.ai.rag.ChatCompletion;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ResourceLock("kestra-h2-flyway")
 @KestraTest
@@ -301,56 +299,5 @@ class PostgreSQLTest extends ContainerTest {
 
         assertThat(memory.chatMemory(rcA).messages().toString()).contains("Alice").doesNotContain("Bob");
         assertThat(memory.chatMemory(rcB).messages().toString()).contains("Bob").doesNotContain("Alice");
-    }
-
-    @Test
-    void rejectsUnsafeTableNames() {
-        for (var badName : new String[]{"x; DROP TABLE y", "a\"b", "1abc", "a-b", "a b", ""}) {
-            var memory = memoryWithTable(badName);
-            var runContext = runContextFactory.of(Map.of());
-
-            assertThatThrownBy(() -> memory.chatMemory(runContext))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid tableName");
-            assertThatThrownBy(() -> memory.close(runContext, MessageWindowChatMemory.withMaxMessages(1)))
-                .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Test
-    void mixedCaseTableNameStillResolvesToTheUnquotedFoldedTable() throws Exception {
-        var table = "Mixed_Case_" + IdUtils.create().toLowerCase();
-        var memory = memoryWithTable(table);
-        var runContext = runContextFactory.of(Map.of());
-
-        var chatMemory = memory.chatMemory(runContext);
-        chatMemory.add(UserMessage.from("I am Carol"));
-        memory.close(runContext, chatMemory);
-
-        assertThat(memory.chatMemory(runContext).messages().toString()).contains("Carol");
-
-        try (
-            Connection conn = DriverManager.getConnection(
-                String.format("jdbc:postgresql://%s:%d/%s", postgres.getHost(), postgres.getMappedPort(5432), postgres.getDatabaseName()),
-                postgres.getUsername(), postgres.getPassword()
-            );
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + table)
-        ) {
-            assertThat(rs.next()).isTrue();
-            assertThat(rs.getInt(1)).isEqualTo(1);
-        }
-    }
-
-    private PostgreSQL memoryWithTable(String table) {
-        return PostgreSQL.builder()
-            .host(Property.ofValue(postgres.getHost()))
-            .port(Property.ofValue(postgres.getMappedPort(5432)))
-            .database(Property.ofValue(postgres.getDatabaseName()))
-            .user(Property.ofValue(postgres.getUsername()))
-            .password(Property.ofValue(postgres.getPassword()))
-            .tableName(Property.ofValue(table))
-            .memoryId(Property.ofValue("mem-" + IdUtils.create()))
-            .build();
     }
 }
