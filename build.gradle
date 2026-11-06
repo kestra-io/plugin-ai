@@ -301,6 +301,16 @@ configurations.runtimeClasspath {
     exclude group: "org.junit.jupiter"
     exclude group: "org.junit.platform"
     exclude group: "org.apache.ant"
+    // Jackson is provided by Kestra at runtime and shadowJar below excludes every com/fasterxml/jackson class, but the
+    // artifacts would still leak their META-INF/services entries into the merged service files. Those entries then point
+    // at classes the JAR does not contain, ServiceLoader throws "Provider ... not found", and langchain4j's Json can no
+    // longer initialise, failing every agent tool call (#531).
+    exclude group: "com.fasterxml.jackson"
+    exclude group: "com.fasterxml.jackson.core"
+    exclude group: "com.fasterxml.jackson.dataformat"
+    exclude group: "com.fasterxml.jackson.datatype"
+    exclude group: "com.fasterxml.jackson.jaxrs"
+    exclude group: "com.fasterxml.jackson.module"
 }
 
 shadowJar {
@@ -380,6 +390,35 @@ tasks.register("verifyShadedGrpc") {
     }
 }
 check.dependsOn verifyShadedGrpc
+
+// mergeServiceFiles() merges META-INF/services from every dependency, including the ones whose classes shadowJar
+// excludes. A Jackson module listed but not present in the JAR makes ServiceLoader fail, and langchain4j's Json then
+// cannot initialise, which breaks every AIAgent tool call (#531).
+tasks.register("verifyShadedJacksonModules") {
+    dependsOn shadowJar
+    doLast {
+        def jarFile = shadowJar.archiveFile.get().asFile
+        new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
+            def services = zip.getEntry("META-INF/services/com.fasterxml.jackson.databind.Module")
+            if (services == null) {
+                throw new GradleException("META-INF/services/com.fasterxml.jackson.databind.Module is missing in ${jarFile.name} -- JsonNullableModule would no longer be registered.")
+            }
+            def entries = zip.getInputStream(services).getText("UTF-8").readLines()*.trim().findAll { it && !it.startsWith("#") }
+            def missing = entries.findAll { zip.getEntry(it.replace('.', '/') + ".class") == null }
+            if (missing) {
+                throw new GradleException(
+                    "META-INF/services/com.fasterxml.jackson.databind.Module in ${jarFile.name} lists classes the JAR does not contain: ${missing} " +
+                    "-- ServiceLoader will throw 'Provider ... not found' and every AIAgent tool call breaks."
+                )
+            }
+            // a file emptied instead of pruned would silently drop JsonNullableModule
+            if (!entries.contains("org.openapitools.jackson.nullable.JsonNullableModule")) {
+                throw new GradleException("JsonNullableModule is no longer registered in ${jarFile.name} -- META-INF/services/com.fasterxml.jackson.databind.Module was emptied instead of pruned.")
+            }
+        }
+    }
+}
+check.dependsOn verifyShadedJacksonModules
 
 /**********************************************************************************************************************\
  * Version
