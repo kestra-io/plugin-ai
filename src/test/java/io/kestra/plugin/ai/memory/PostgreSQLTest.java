@@ -313,7 +313,8 @@ class PostgreSQLTest extends ContainerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid tableName");
             assertThatThrownBy(() -> memory.close(runContext, MessageWindowChatMemory.withMaxMessages(1)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid tableName");
         }
     }
 
@@ -330,16 +331,28 @@ class PostgreSQLTest extends ContainerTest {
         assertThat(memory.chatMemory(runContext).messages().toString()).contains("Carol");
 
         try (
-            Connection conn = DriverManager.getConnection(
+            var conn = DriverManager.getConnection(
                 String.format("jdbc:postgresql://%s:%d/%s", postgres.getHost(), postgres.getMappedPort(5432), postgres.getDatabaseName()),
                 postgres.getUsername(), postgres.getPassword()
             );
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + table)
+            var stmt = conn.createStatement();
+            var rs = stmt.executeQuery("SELECT COUNT(*) FROM " + table)
         ) {
             assertThat(rs.next()).isTrue();
             assertThat(rs.getInt(1)).isEqualTo(1);
         }
+    }
+
+    @Test
+    void reservedWordTableNameWorksThanksToQuoting() throws Exception {
+        var memory = memoryWithTable("order");
+        var runContext = runContextFactory.of(Map.of());
+
+        var chatMemory = memory.chatMemory(runContext);
+        chatMemory.add(UserMessage.from("I am Dave"));
+        memory.close(runContext, chatMemory);
+
+        assertThat(memory.chatMemory(runContext).messages().toString()).contains("Dave");
     }
 
     private PostgreSQL memoryWithTable(String table) {

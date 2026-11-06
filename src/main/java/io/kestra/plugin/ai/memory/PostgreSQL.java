@@ -137,8 +137,9 @@ public class PostgreSQL extends MemoryProvider {
         try (Connection conn = connection(config)) {
             ensureTableExists(conn, config.tableName());
 
+            // identifier is allowlisted and quoted, values are bound
             try (
-                PreparedStatement stmt = conn.prepareStatement( // nosemgrep: identifier is allowlisted and quoted, values are bound
+                var stmt = conn.prepareStatement( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                     "SELECT memory_json, expires_at FROM " + config.tableName() + " WHERE memory_id = ?"
                 )
             ) {
@@ -185,8 +186,9 @@ public class PostgreSQL extends MemoryProvider {
                 String memoryJson = ChatMessageSerializer.messagesToJson(chatMemory.messages());
                 Instant expiresAt = Instant.now().plus(ttl);
 
+                // identifier is allowlisted and quoted, values are bound
                 try (
-                    PreparedStatement upsert = conn.prepareStatement( // nosemgrep: identifier is allowlisted and quoted, values are bound
+                    var upsert = conn.prepareStatement( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                         "INSERT INTO " + config.tableName() + " (memory_id, memory_json, expires_at) " +
                             "VALUES (?, ?, ?) " +
                             "ON CONFLICT (memory_id) " +
@@ -244,7 +246,8 @@ public class PostgreSQL extends MemoryProvider {
 
     private void ensureTableExists(Connection conn, String tableName) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute( // nosemgrep: identifier is allowlisted and quoted
+            // identifier is allowlisted and quoted
+            stmt.execute( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                 "CREATE TABLE IF NOT EXISTS " + tableName + " (" +
                     "memory_id VARCHAR(255) PRIMARY KEY, " +
                     "memory_json TEXT NOT NULL, " +
@@ -254,8 +257,9 @@ public class PostgreSQL extends MemoryProvider {
     }
 
     private void deleteMemory(Connection conn, String key, String tableName) throws SQLException {
+        // identifier is allowlisted and quoted, values are bound
         try (
-            PreparedStatement stmt = conn.prepareStatement( // nosemgrep: identifier is allowlisted and quoted, values are bound
+            var stmt = conn.prepareStatement( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                 "DELETE FROM " + tableName + " WHERE memory_id = ?"
             )
         ) {
