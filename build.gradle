@@ -401,7 +401,7 @@ tasks.register("verifyShadedJacksonModules") {
         new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
             def services = zip.getEntry("META-INF/services/com.fasterxml.jackson.databind.Module")
             if (services == null) {
-                throw new GradleException("META-INF/services/com.fasterxml.jackson.databind.Module is missing in ${jarFile.name} -- JsonNullableModule would no longer be registered.")
+                throw new GradleException("META-INF/services/com.fasterxml.jackson.databind.Module is missing in ${jarFile.name} -- no Jackson module would be registered.")
             }
             def entries = zip.getInputStream(services).getText("UTF-8").readLines()*.trim().findAll { it && !it.startsWith("#") }
             def missing = entries.findAll { zip.getEntry(it.replace('.', '/') + ".class") == null }
@@ -411,9 +411,16 @@ tasks.register("verifyShadedJacksonModules") {
                     "-- ServiceLoader will throw 'Provider ... not found' and every AIAgent tool call breaks."
                 )
             }
-            // a file emptied instead of pruned would silently drop JsonNullableModule
-            if (!entries.contains("org.openapitools.jackson.nullable.JsonNullableModule")) {
-                throw new GradleException("JsonNullableModule is no longer registered in ${jarFile.name} -- META-INF/services/com.fasterxml.jackson.databind.Module was emptied instead of pruned.")
+            // A module whose class is packaged but no longer registered would break tool calls at
+            // runtime. The entry is contributed by the dependency that ships the class, so only
+            // require it while that dependency is still on the classpath.
+            def nullableModule = "org.openapitools.jackson.nullable.JsonNullableModule"
+            if (zip.getEntry(nullableModule.replace('.', '/') + ".class") != null && !entries.contains(nullableModule)) {
+                throw new GradleException(
+                    "${nullableModule} is packaged in ${jarFile.name} but no longer registered in " +
+                    "META-INF/services/com.fasterxml.jackson.databind.Module -- the file was emptied instead of pruned. " +
+                    "The entry is contributed by the jackson-databind-nullable dependency."
+                )
             }
         }
     }
