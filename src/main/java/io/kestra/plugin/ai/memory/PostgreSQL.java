@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -136,8 +137,9 @@ public class PostgreSQL extends MemoryProvider {
         try (Connection conn = connection(config)) {
             ensureTableExists(conn, config.tableName());
 
+            // identifier is allowlisted and quoted, values are bound
             try (
-                PreparedStatement stmt = conn.prepareStatement(
+                var stmt = conn.prepareStatement( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                     "SELECT memory_json, expires_at FROM " + config.tableName() + " WHERE memory_id = ?"
                 )
             ) {
@@ -184,8 +186,9 @@ public class PostgreSQL extends MemoryProvider {
                 String memoryJson = ChatMessageSerializer.messagesToJson(chatMemory.messages());
                 Instant expiresAt = Instant.now().plus(ttl);
 
+                // identifier is allowlisted and quoted, values are bound
                 try (
-                    PreparedStatement upsert = conn.prepareStatement(
+                    var upsert = conn.prepareStatement( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                         "INSERT INTO " + config.tableName() + " (memory_id, memory_json, expires_at) " +
                             "VALUES (?, ?, ?) " +
                             "ON CONFLICT (memory_id) " +
@@ -225,7 +228,12 @@ public class PostgreSQL extends MemoryProvider {
             );
         }
 
-        return new ResolvedConfig(rHost, rPort, rDb, rUser, rPass, rTable, rDrop);
+        return new ResolvedConfig(rHost, rPort, rDb, rUser, rPass, quoteIdentifier(rTable), rDrop);
+    }
+
+    /** Lowercased to match PostgreSQL's folding of unquoted identifiers, so existing mixed-case table names keep resolving to the same table. */
+    private static String quoteIdentifier(String validatedName) {
+        return "\"" + validatedName.toLowerCase(Locale.ROOT) + "\"";
     }
 
     private Connection connection(ResolvedConfig cfg) throws SQLException {
@@ -238,19 +246,20 @@ public class PostgreSQL extends MemoryProvider {
 
     private void ensureTableExists(Connection conn, String tableName) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE IF NOT EXISTS %s (
-                        memory_id VARCHAR(255) PRIMARY KEY,
-                        memory_json TEXT NOT NULL,
-                        expires_at TIMESTAMP NULL
-                    )
-                """.formatted(tableName));
+            // identifier is allowlisted and quoted
+            stmt.execute( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
+                "CREATE TABLE IF NOT EXISTS " + tableName + " (" +
+                    "memory_id VARCHAR(255) PRIMARY KEY, " +
+                    "memory_json TEXT NOT NULL, " +
+                    "expires_at TIMESTAMP NULL)"
+            );
         }
     }
 
     private void deleteMemory(Connection conn, String key, String tableName) throws SQLException {
+        // identifier is allowlisted and quoted, values are bound
         try (
-            PreparedStatement stmt = conn.prepareStatement(
+            var stmt = conn.prepareStatement( // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
                 "DELETE FROM " + tableName + " WHERE memory_id = ?"
             )
         ) {
