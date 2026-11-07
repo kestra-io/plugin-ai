@@ -126,6 +126,14 @@ public class AmazonBedrock extends ModelProvider {
         var awsAccessKeyId = runContext.render(this.accessKeyId).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Access Key ID cannot be null"));
         var awsSecretAccessKey = runContext.render(this.secretAccessKey).as(String.class).orElseThrow(() -> new IllegalVariableEvaluationException("AWS Secret Access Key cannot be null"));
         var thinkingBudgetTokens = runContext.render(configuration.getThinkingBudgetTokens()).as(Integer.class).orElse(null);
+        var maxToken = runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null);
+        if (thinkingBudgetTokens != null && maxToken != null && thinkingBudgetTokens >= maxToken) {
+            throw new IllegalArgumentException(
+                "`maxToken` must be greater than `thinkingBudgetTokens` when extended thinking is enabled on Amazon Bedrock. "
+                    + "Thinking budget is " + thinkingBudgetTokens + " but max tokens is " + maxToken
+                    + ". Set `configuration.maxToken` above `configuration.thinkingBudgetTokens`."
+            );
+        }
 
         var credentials = AwsBasicCredentials.create(awsAccessKeyId, awsSecretAccessKey);
         var credentialsProvider = StaticCredentialsProvider.create(credentials);
@@ -144,7 +152,7 @@ public class AmazonBedrock extends ModelProvider {
                     .temperature(runContext.render(configuration.getTemperature()).as(Double.class).orElse(null))
                     .responseFormat(configuration.computeResponseFormat(runContext))
                     .enableReasoning(thinkingBudgetTokens)
-                    .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+                    .maxOutputTokens(maxToken)
                     .build()
             )
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
