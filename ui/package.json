@@ -26,7 +26,7 @@
     "@storybook/addon-themes": "10.3.4",
     "@storybook/vue3-vite": "10.3.4",
     "@vitejs/plugin-vue": "6.0.5",
-    "jsdom": "29.1.1",
+    "jsdom": "30.1.3",
     "oxfmt": "0.72.0",
     "oxlint": "1.64.0",
     "storybook": "10.6.6",
