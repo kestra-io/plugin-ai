@@ -2,7 +2,6 @@ package io.kestra.plugin.ai.provider;
 
 import java.util.Map;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
@@ -21,12 +20,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AmazonBedrockTest {
     @Inject
     private TestRunContextFactory runContextFactory;
-
-    @BeforeAll
-    static void region() {
-        // the AWS client resolves a region at build time; no network call is made
-        System.setProperty("aws.region", "us-east-1");
-    }
 
     private AmazonBedrock provider() {
         return AmazonBedrock.builder()
@@ -56,6 +49,17 @@ class AmazonBedrockTest {
             .maxToken(Property.ofValue(2048))
             .build();
 
-        assertThat(provider().chatModel(runContextFactory.of(Map.of()), configuration)).isNotNull();
+        // the AWS client resolves a region at build time; no network call is made
+        var previousRegion = System.getProperty("aws.region");
+        System.setProperty("aws.region", "us-east-1");
+        try {
+            assertThat(provider().chatModel(runContextFactory.of(Map.of()), configuration)).isNotNull();
+        } finally {
+            if (previousRegion == null) {
+                System.clearProperty("aws.region");
+            } else {
+                System.setProperty("aws.region", previousRegion);
+            }
+        }
     }
 }
