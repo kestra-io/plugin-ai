@@ -87,7 +87,7 @@ public class ChatConfiguration {
 
     @Schema(
         title = "Thinking Token Budget",
-        description = "Maximum number of tokens the model may spend on internal reasoning before producing its final answer. Not set by default. For Google Gemini, when neither this property nor `thinkingEnabled` is set, Gemini 2.x models get a budget of `0` (thinking disabled), while Gemini 3 and later are sent no budget and apply their own; set this property to cap it on those models.",
+        description = "Maximum number of tokens the model may spend on internal reasoning before producing its final answer. Not set by default. For Google Gemini, when neither this property nor `thinkingEnabled` is set, Gemini 2.x models get a budget of `0` (thinking disabled), while Gemini 3 and later are sent no budget and apply their own; set this property to cap it on those models. On Anthropic and Amazon Bedrock, `maxToken` must be greater than this value, otherwise the task fails.",
         example = "1024"
     )
     @PluginProperty(group = "advanced")
