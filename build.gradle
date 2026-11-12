@@ -16,7 +16,7 @@ plugins {
 def isBuildSnapshot = version.toString().endsWith("-SNAPSHOT")
 
 def langchain4jVersion = "1.22.0"
-def langchain4jBetaVersion = "1.22.0-beta32"
+def langchain4jBetaVersion = "1.23.0-beta33"
 
 repositories {
     mavenLocal()
@@ -44,10 +44,10 @@ tasks.withType(JavaCompile).configureEach {
 // Security: the platform BOM pins Jackson 2.22.1, affected by the databind and core advisories. Force the patched
 // release until the platform ships it. Jackson 2 is enforced by enforcedPlatform, so a strict constraint conflicts.
 configurations.configureEach {
-    resolutionStrategy.force 'com.fasterxml.jackson.core:jackson-databind:2.22.3',
-        'com.fasterxml.jackson.core:jackson-core:2.22.3'
+    resolutionStrategy.force 'com.fasterxml.jackson.core:jackson-databind:2.22.4',
+        'com.fasterxml.jackson.core:jackson-core:2.22.4'
     // SEC-0369: platform BOM pins guava 33.7.1-jre, remove once it ships >= 33.7.2.
-    resolutionStrategy.force 'com.google.guava:guava:33.7.2-jre'
+    resolutionStrategy.force 'com.google.guava:guava:33.8.0-jre'
 }
 
 dependencies {
@@ -63,7 +63,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
-    implementation "io.kestra:kestra-api-client:2.0.3"
+    implementation "io.kestra:kestra-api-client:2.0.4"
 
     // compileOnly as it comes from Kestra script library
     compileOnly('com.github.docker-java:docker-java') {
@@ -73,7 +73,7 @@ dependencies {
     compileOnly 'com.github.docker-java:docker-java-transport-httpclient5'
 
     // Shared GCP authentication (same behavior as plugin-gcp)
-    implementation 'io.kestra.plugin:plugin-gcp-lib:1.1.1'
+    implementation 'io.kestra.plugin:plugin-gcp-lib:1.1.3'
 
     // Langchain4j model providers (stable)
     implementation "dev.langchain4j:langchain4j:${langchain4jVersion}"
@@ -99,7 +99,7 @@ dependencies {
     implementation "dev.langchain4j:langchain4j-watsonx:${langchain4jBetaVersion}"
 
     implementation('org.bouncycastle:bcpkix-jdk18on') // for PEM
-    implementation "org.apache.tika:tika-core:4.1.0"
+    implementation "org.apache.tika:tika-core:4.2.0"
 
     implementation "dev.langchain4j:langchain4j-code-execution-engine-judge0:${langchain4jBetaVersion}"
 
@@ -123,7 +123,7 @@ dependencies {
     // via an "endpoint" SSE event) with no replacement - StreamableHttpMcpTransport only speaks
     // the modern Streamable HTTP protocol (direct POST), so it 404s against legacy SSE-only
     // servers such as mcp/everything's sse.js.
-    def langchain4jMcpVersion = "1.13.0-beta23"
+    def langchain4jMcpVersion = "1.22.0-beta32"
     implementation "dev.langchain4j:langchain4j-mcp:${langchain4jMcpVersion}"
     implementation "dev.langchain4j:langchain4j-mcp-docker:${langchain4jMcpVersion}"
 
@@ -197,7 +197,7 @@ dependencies {
     testImplementation "org.wiremock:wiremock-jetty12"
 
     // used in KestraTaskTest to exercise a real RunnableTask (log fetching) as an AI tool
-    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.3.1"
+    testImplementation group: "io.kestra.plugin", name: "plugin-kestra", version: "2.3.5"
 
     testImplementation 'org.testcontainers:testcontainers-ollama:2.0.5'
     testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'
