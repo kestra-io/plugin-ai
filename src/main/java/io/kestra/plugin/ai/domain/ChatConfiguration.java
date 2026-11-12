@@ -170,7 +170,7 @@ public class ChatConfiguration {
 
         @Schema(
             title = "Schema description",
-            description = "Natural-language explanation of the schema, which helps the model produce the right fields. Not set by default.",
+            description = "Natural-language explanation of the schema, which helps the model produce the right fields. When not set, the schema's own description (or title) is used.",
             example = "Classify a customer ticket into category and priority."
         )
         @PluginProperty(group = "advanced")
