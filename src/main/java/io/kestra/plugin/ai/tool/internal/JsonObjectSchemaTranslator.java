@@ -18,16 +18,16 @@ public final class JsonObjectSchemaTranslator {
     @SuppressWarnings("unchecked")
     public static JsonObjectSchema fromOpenAPISchema(Map<String, Object> schema, String description) {
         var definitions = mapDefinitions((Map<String, Object>) schema.get("$defs"));
-        var properties = mapProperties((Map<String, Object>) schema.get("properties"));
-
-        // some LLM didn't support definitions, so we will remove them and replace them by their schema.
         definitions = replaceDefinitions(definitions, definitions);
+        var properties = mapProperties((Map<String, Object>) schema.get("properties"), definitions);
         properties = replaceDefinitions(properties, definitions);
+
+        var effectiveDescription = description != null ? description : descriptionOf(schema);
 
         return JsonObjectSchema.builder()
             .addProperties(properties)
             .required((List<String>) schema.get("required"))
-            .description(description)
+            .description(effectiveDescription)
             .build();
     }
 
@@ -47,13 +47,13 @@ public final class JsonObjectSchemaTranslator {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, JsonSchemaElement> mapProperties(Map<String, Object> properties) {
+    private static Map<String, JsonSchemaElement> mapProperties(Map<String, Object> properties, Map<String, JsonSchemaElement> definitions) {
         return MapUtils.emptyOnNull(properties).entrySet().stream()
             .filter(prop -> !prop.getKey().equals("type"))
             .map(entry ->
             {
                 var schema = (Map<String, Object>) entry.getValue();
-                var jsonSchemaElement = mapSchema(schema);
+                var jsonSchemaElement = mapSchema(schema, definitions);
                 return Map.entry(
                     entry.getKey(),
                     jsonSchemaElement
@@ -63,54 +63,95 @@ public final class JsonObjectSchemaTranslator {
             .collect(toOrderedMap());
     }
 
+    private static String descriptionOf(Map<String, Object> schema) {
+        if (schema == null) {
+            return null;
+        }
+        var description = (String) schema.get("description");
+        return description != null ? description : (String) schema.get("title");
+    }
+
     @SuppressWarnings("unchecked")
-    private static JsonSchemaElement mapSchema(Map<String, Object> schema) {
+    private static JsonSchemaElement mapSchema(Map<String, Object> schema, Map<String, JsonSchemaElement> definitions) {
         if (schema == null) {
             return new JsonStringSchema();
         }
 
         var type = (String) schema.get("type");
-        var title = (String) schema.get("title");
+        // JSON Schema "description" carries field instructions; "title" is only a label.
+        var description = descriptionOf(schema);
         var _enum = (List<String>) schema.get("enum");
         var anyOf = (List<Map<String, Object>>) schema.get("anyOf");
         var ref = (String) schema.get("$ref");
         if (_enum != null) {
-            return JsonEnumSchema.builder().description(title).enumValues(_enum).build();
+            return JsonEnumSchema.builder().description(description).enumValues(_enum).build();
         }
         if (anyOf != null) {
             // anyOf is not supported by all LLM (for ex gemini).
             // So instead, we try to find a type which is not a string and return it as it's supposed to be more specific.
             return anyOf.stream()
-                .filter(subSchema -> !"string".equals(subSchema.get("type")))
-                .map(subSchema -> mapSchema(subSchema))
+                .filter(subSchema -> !"string".equals(subSchema.get("type")) && !"null".equals(subSchema.get("type")))
+                .map(subSchema -> mapSchema(subSchema, definitions))
                 .findAny()
-                .orElse(JsonStringSchema.builder().description(title).build());
+                .map(element -> schema.get("description") != null ? withDescription(element, description) : applyDescriptionIfAbsent(element, description))
+                .orElse(JsonStringSchema.builder().description(description).build());
         }
         if (ref != null) {
             // reference starts with "#/$defs/"
-            String referenceType = ref.substring(8);
+            var referenceType = ref.substring(8);
+            if (definitions != null && definitions.containsKey(referenceType)) {
+                var resolved = definitions.get(referenceType);
+                return schema.get("description") != null ? withDescription(resolved, description) : applyDescriptionIfAbsent(resolved, description);
+            }
             return JsonReferenceSchema.builder().reference(referenceType).build();
         }
 
         return switch (type) {
-            case "number" -> JsonNumberSchema.builder().description(title).build();
-            case "integer" -> JsonIntegerSchema.builder().description(title).build();
-            case "boolean" -> JsonBooleanSchema.builder().description(title).build();
+            case "number" -> JsonNumberSchema.builder().description(description).build();
+            case "integer" -> JsonIntegerSchema.builder().description(description).build();
+            case "boolean" -> JsonBooleanSchema.builder().description(description).build();
             case "null" -> new JsonNullSchema();
             case "object" -> JsonObjectSchema.builder()
-                .description(title)
+                .description(description)
                 .required((List<String>) schema.get("required"))
-                .addProperties(mapProperties((Map<String, Object>) schema.get("properties")))
+                .addProperties(mapProperties((Map<String, Object>) schema.get("properties"), definitions))
                 .build();
             case "array" ->
                 JsonArraySchema.builder()
-                    .description(title)
-                    .items(mapSchema((Map<String, Object>) schema.get("items")))
+                    .description(description)
+                    .items(mapSchema((Map<String, Object>) schema.get("items"), definitions))
                     .build();
             // it should not happen, but in this case we use String as it's the most proficient type for an LLM
-            case null -> new JsonStringSchema();
+            case null -> JsonStringSchema.builder().description(description).build();
             // we coalesce other types to String for now...
-            default -> JsonStringSchema.builder().description(title).build();
+            default -> JsonStringSchema.builder().description(description).build();
+        };
+    }
+
+    private static JsonSchemaElement applyDescriptionIfAbsent(JsonSchemaElement element, String description) {
+        if (description == null || element == null || element.description() != null) {
+            return element;
+        }
+        return withDescription(element, description);
+    }
+
+    private static JsonSchemaElement withDescription(JsonSchemaElement element, String description) {
+        if (element == null) {
+            return null;
+        }
+        return switch (element) {
+            case JsonStringSchema s -> JsonStringSchema.builder().description(description).build();
+            case JsonIntegerSchema s -> JsonIntegerSchema.builder().description(description).build();
+            case JsonNumberSchema s -> JsonNumberSchema.builder().description(description).build();
+            case JsonBooleanSchema s -> JsonBooleanSchema.builder().description(description).build();
+            case JsonEnumSchema s -> JsonEnumSchema.builder().description(description).enumValues(s.enumValues()).build();
+            case JsonArraySchema s -> JsonArraySchema.builder().description(description).items(s.items()).build();
+            case JsonObjectSchema s -> JsonObjectSchema.builder()
+                .description(description)
+                .required(s.required())
+                .addProperties(s.properties())
+                .build();
+            default -> element;
         };
     }
 
