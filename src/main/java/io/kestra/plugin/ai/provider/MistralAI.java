@@ -118,6 +118,7 @@ public class MistralAI extends ModelProvider {
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .logger(runContext.logger())
             .responseFormat(responseFormat)
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .listeners(allListeners)
             .timeout(timeout)
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null));
