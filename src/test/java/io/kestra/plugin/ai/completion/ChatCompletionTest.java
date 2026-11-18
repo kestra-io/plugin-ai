@@ -166,8 +166,8 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(
             Map.of(
                 "apiKey", GEMINI_API_KEY,
-                // Gemini 3 models cannot turn thinking off, so a 10 token budget may be spent thinking and
-                // never reach the answer. We only assert the cap is respected, not that text is returned.
+                // Gemini 3 models cannot turn thinking off, so a tiny budget is spent thinking and no count is
+                // reported. Use a budget large enough to get a count back, then assert the cap is applied.
                 "modelName", "gemini-3.8-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
@@ -179,7 +179,7 @@ class ChatCompletionTest extends ContainerTest {
             // Use a low temperature and a fixed seed so the completion would be more deterministic
             .configuration(
                 ChatConfiguration.builder().temperature(Property.ofValue(0.1)).seed(Property.ofValue(123456789))
-                    .maxToken(Property.ofValue(10)).build()
+                    .maxToken(Property.ofValue(200)).build()
             )
             .messages(Property.ofExpression("{{ messages }}"))
             .provider(
@@ -197,8 +197,8 @@ class ChatCompletionTest extends ContainerTest {
             assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
             assertTrue(output.getSources().isEmpty());
-            // Gemini 3 spends the whole budget on thinking and then reports no output token count
-            assertThat(output.getTokenUsage().getOutputTokenCount(), anyOf(nullValue(), lessThanOrEqualTo(10)));
+            // Thinking tokens count toward maxOutputTokens but not the reported output token count
+            assertThat(output.getTokenUsage().getOutputTokenCount(), allOf(greaterThan(0), lessThanOrEqualTo(200)));
         } catch (RateLimitException e) {
             abort("Skipped: Gemini rate limited (429)");
         }

@@ -1624,8 +1624,8 @@ class AIAgentTest {
 
     /**
      * Backward-compatibility check: {@code returnThinking=true} (default) and
-     * {@code sendThinking=true} (always on) must be a no-op for models that never
-     * produce {@code thought_signature} values (gemini-3.6-flash).
+     * {@code sendThinking=true} (always on) must not break a Gemini 3 thinking model
+     * (gemini-3.6-flash), which may emit {@code thought_signature} values.
      * <p>
      * We only assert that the agent completes without throwing (no API errors, no
      * NullPointerExceptions from the new defaults) and that a text response is produced.
@@ -1634,7 +1634,7 @@ class AIAgentTest {
      */
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
     @Test
-    void withKestraTaskTool_gemini20Flash_returnThinkingDefaultsShouldBeNoOp() throws Exception {
+    void withKestraTaskTool_gemini36Flash_returnThinkingDefaultsShouldNotBreak() throws Exception {
         var runContext = runContextFactory.of(
             "namespace", Map.of(
                 "apiKey", GOOGLE_API_KEY
@@ -1671,7 +1671,7 @@ class AIAgentTest {
 
         try {
             // The key check is that no exception is thrown: returnThinking=true and
-            // sendThinking=true must not break a model that produces no thought_signatures.
+            // sendThinking=true must not break a thinking model.
             var output = agent.run(runContext);
             assertThat(output.getTextOutput()).isNotNull();
         } catch (RateLimitException e) {
