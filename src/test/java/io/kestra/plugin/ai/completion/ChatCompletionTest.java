@@ -196,9 +196,9 @@ class ChatCompletionTest extends ContainerTest {
 
             assertThat(output.getRequestDuration(), anyOf(nullValue(), greaterThanOrEqualTo(0L)));
             assertThat(output.getSources(), notNullValue());
-            // Gemini 3 spends the whole budget on thinking and then reports no output token count
             assertTrue(output.getSources().isEmpty());
-            assertThat(output.getTokenUsage().getOutputTokenCount(), lessThanOrEqualTo(10));
+            // Gemini 3 spends the whole budget on thinking and then reports no output token count
+            assertThat(output.getTokenUsage().getOutputTokenCount(), anyOf(nullValue(), lessThanOrEqualTo(10)));
         } catch (RateLimitException e) {
             abort("Skipped: Gemini rate limited (429)");
         }
