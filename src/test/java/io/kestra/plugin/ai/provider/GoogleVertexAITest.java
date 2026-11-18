@@ -145,7 +145,7 @@ class GoogleVertexAITest {
     void chatModel_shouldUseGlobalEndpointForGlobalLocation() throws Exception {
         var provider = GoogleVertexAI.builder()
             .type(GoogleVertexAI.class.getName())
-            .modelName(Property.ofValue("gemini-2.5-pro"))
+            .modelName(Property.ofValue("gemini-3.8-flash"))
             .location(Property.ofValue("global"))
             .serviceAccount(Property.ofValue(serviceAccountJson()))
             .build();
@@ -159,7 +159,7 @@ class GoogleVertexAITest {
     void chatModel_shouldUseRegionalEndpointForRegionalLocation() throws Exception {
         var provider = GoogleVertexAI.builder()
             .type(GoogleVertexAI.class.getName())
-            .modelName(Property.ofValue("gemini-2.5-pro"))
+            .modelName(Property.ofValue("gemini-3.8-flash"))
             .location(Property.ofValue("us-central1"))
             .serviceAccount(Property.ofValue(serviceAccountJson()))
             .build();

@@ -561,7 +561,7 @@ export const FallbackModelPostExecution: Story = {
         flowId: "ai-pipeline",
         displayMode: "full",
         execution: executionWith("exec-fb-008", "chat-completion", {
-            modelName: "gemini-2.5-flash",
+            modelName: "gemini-3.8-flash",
             textOutput: "Kestra is an orchestration platform.",
             finishReason: "STOP",
             tokenUsage: { inputTokenCount: 1_000_000, outputTokenCount: 1_000_000, totalTokenCount: 2_000_000 },
@@ -570,8 +570,8 @@ export const FallbackModelPostExecution: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        expect(canvas.getByText("gemini-2.5-flash")).toBeInTheDocument();
-        expect(canvas.getByText("~$2.800000")).toBeInTheDocument();
+        expect(canvas.getByText("gemini-3.8-flash")).toBeInTheDocument();
+        expect(canvas.getByText("~$4.500000")).toBeInTheDocument();
     },
 };
 

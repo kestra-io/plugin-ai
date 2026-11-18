@@ -10,8 +10,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.github.tomakehurst.wiremock.WireMockServer;
 
 import io.kestra.core.context.TestRunContextFactory;
 import io.kestra.core.junit.annotations.KestraTest;
@@ -28,8 +28,8 @@ import io.kestra.plugin.ai.domain.LangfuseObservability;
 import io.kestra.plugin.ai.domain.ModelProvider;
 import io.kestra.plugin.ai.domain.ToolProvider;
 import io.kestra.plugin.ai.memory.KestraKVStore;
-import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.Fallback;
+import io.kestra.plugin.ai.provider.GoogleGemini;
 import io.kestra.plugin.ai.provider.OpenAI;
 import io.kestra.plugin.ai.rag.IngestDocument;
 import io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever;
@@ -144,7 +144,7 @@ class AIAgentTest {
     private static GoogleGemini googleGemini() {
         return GoogleGemini.builder()
             .type(GoogleGemini.class.getName())
-            .modelName(Property.ofValue("gemini-2.5-flash"))
+            .modelName(Property.ofValue("gemini-3.8-flash"))
             .apiKey(Property.ofValue("placeholder"))
             .build();
     }
@@ -208,7 +208,8 @@ class AIAgentTest {
             String expectedResponse = "fallback integration succeeded";
             AtomicInteger successfulProviderCalls = new AtomicInteger();
             AtomicReference<JsonNode> receivedMessages = new AtomicReference<>();
-            llm.reply(messages -> {
+            llm.reply(messages ->
+            {
                 successfulProviderCalls.incrementAndGet();
                 receivedMessages.set(messages.deepCopy());
                 return expectedResponse;
@@ -296,7 +297,8 @@ class AIAgentTest {
             );
 
             AtomicInteger firstProviderCalls = new AtomicInteger();
-            llm.reply(messages -> {
+            llm.reply(messages ->
+            {
                 firstProviderCalls.incrementAndGet();
                 return "first provider response that fails the output guardrail";
             });
@@ -1596,13 +1598,15 @@ class AIAgentTest {
             .tools(
                 List.of(
                     KestraTask.builder()
-                        .tasks(List.of(
-                            Log.builder()
-                                .id("log")
-                                .type(Log.class.getName())
-                                .message(Property.ofValue("..."))
-                                .build()
-                        ))
+                        .tasks(
+                            List.of(
+                                Log.builder()
+                                    .id("log")
+                                    .type(Log.class.getName())
+                                    .message(Property.ofValue("..."))
+                                    .build()
+                            )
+                        )
                         .build()
                 )
             )
@@ -1620,17 +1624,17 @@ class AIAgentTest {
 
     /**
      * Backward-compatibility check: {@code returnThinking=true} (default) and
-     * {@code sendThinking=true} (always on) must be a no-op for models that never
-     * produce {@code thought_signature} values (gemini-2.0-flash).
+     * {@code sendThinking=true} (always on) must not break a Gemini 3 thinking model
+     * (gemini-3.6-flash), which may emit {@code thought_signature} values.
      * <p>
      * We only assert that the agent completes without throwing (no API errors, no
      * NullPointerExceptions from the new defaults) and that a text response is produced.
-     * Whether the model chooses to call the tool is left to its discretion; gemini-2.0-flash
+     * Whether the model chooses to call the tool is left to its discretion; gemini-3.6-flash
      * may answer directly without tool use, and that is fine for this regression check.
      */
     @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
     @Test
-    void withKestraTaskTool_gemini20Flash_returnThinkingDefaultsShouldBeNoOp() throws Exception {
+    void withKestraTaskTool_gemini36Flash_returnThinkingDefaultsShouldNotBreak() throws Exception {
         var runContext = runContextFactory.of(
             "namespace", Map.of(
                 "apiKey", GOOGLE_API_KEY
@@ -1641,7 +1645,7 @@ class AIAgentTest {
             .provider(
                 GoogleGemini.builder()
                     .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-2.0-flash"))
+                    .modelName(Property.ofValue("gemini-3.6-flash"))
                     .apiKey(Property.ofExpression("{{ apiKey }}"))
                     .build()
             )
@@ -1651,13 +1655,15 @@ class AIAgentTest {
             .tools(
                 List.of(
                     KestraTask.builder()
-                        .tasks(List.of(
-                            Log.builder()
-                                .id("log")
-                                .type(Log.class.getName())
-                                .message(Property.ofValue("..."))
-                                .build()
-                        ))
+                        .tasks(
+                            List.of(
+                                Log.builder()
+                                    .id("log")
+                                    .type(Log.class.getName())
+                                    .message(Property.ofValue("..."))
+                                    .build()
+                            )
+                        )
                         .build()
                 )
             )
@@ -1665,7 +1671,7 @@ class AIAgentTest {
 
         try {
             // The key check is that no exception is thrown: returnThinking=true and
-            // sendThinking=true must not break a model that produces no thought_signatures.
+            // sendThinking=true must not break a thinking model.
             var output = agent.run(runContext);
             assertThat(output.getTextOutput()).isNotNull();
         } catch (RateLimitException e) {
@@ -1699,12 +1705,14 @@ class AIAgentTest {
                                 Skill.SkillDefinition.builder()
                                     .name(Property.ofValue("translation_expert"))
                                     .description(Property.ofValue("Expert translator for multiple languages"))
-                                    .content(Property.ofValue(
-                                        "You are an expert translator. When translating text:\n" +
-                                        "1. Preserve the original meaning and tone\n" +
-                                        "2. Use natural phrasing in the target language\n" +
-                                        "3. Keep proper nouns unchanged"
-                                    ))
+                                    .content(
+                                        Property.ofValue(
+                                            "You are an expert translator. When translating text:\n" +
+                                                "1. Preserve the original meaning and tone\n" +
+                                                "2. Use natural phrasing in the target language\n" +
+                                                "3. Keep proper nouns unchanged"
+                                        )
+                                    )
                                     .build()
                             )
                         )

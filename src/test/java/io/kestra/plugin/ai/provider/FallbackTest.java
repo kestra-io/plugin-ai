@@ -11,8 +11,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
-import io.swagger.v3.oas.annotations.media.Schema;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.inject.Inject;
 import jakarta.validation.Validator;
 
@@ -37,7 +37,7 @@ class FallbackTest {
                     modelName: gpt-5-mini
                     apiKey: openai-test-key
                   - type: io.kestra.plugin.ai.provider.GoogleGemini
-                    modelName: gemini-2.5-flash
+                    modelName: gemini-3.8-flash
                     apiKey: gemini-test-key
                 """,
             Fallback.class
@@ -51,25 +51,29 @@ class FallbackTest {
         assertThat(providers.get(0)).isExactlyInstanceOf(OpenAI.class);
         assertThat(runContext.render(((OpenAI) providers.get(0)).getModelName()).as(String.class).orElseThrow()).isEqualTo("gpt-5-mini");
         assertThat(providers.get(1)).isExactlyInstanceOf(GoogleGemini.class);
-        assertThat(runContext.render(((GoogleGemini) providers.get(1)).getModelName()).as(String.class).orElseThrow()).isEqualTo("gemini-2.5-flash");
+        assertThat(runContext.render(((GoogleGemini) providers.get(1)).getModelName()).as(String.class).orElseThrow()).isEqualTo("gemini-3.8-flash");
     }
 
     @Test
     void validatesFallbackWithoutOuterModelName() {
         Fallback fallback = Fallback.builder()
             .type(Fallback.class.getName())
-            .providers(Property.ofValue(List.of(
-                OpenAI.builder()
-                    .type(OpenAI.class.getName())
-                    .modelName(Property.ofValue("gpt-5-mini"))
-                    .apiKey(Property.ofValue("openai-test-key"))
-                    .build(),
-                GoogleGemini.builder()
-                    .type(GoogleGemini.class.getName())
-                    .modelName(Property.ofValue("gemini-2.5-flash"))
-                    .apiKey(Property.ofValue("gemini-test-key"))
-                    .build()
-            )))
+            .providers(
+                Property.ofValue(
+                    List.of(
+                        OpenAI.builder()
+                            .type(OpenAI.class.getName())
+                            .modelName(Property.ofValue("gpt-5-mini"))
+                            .apiKey(Property.ofValue("openai-test-key"))
+                            .build(),
+                        GoogleGemini.builder()
+                            .type(GoogleGemini.class.getName())
+                            .modelName(Property.ofValue("gemini-3.8-flash"))
+                            .apiKey(Property.ofValue("gemini-test-key"))
+                            .build()
+                    )
+                )
+            )
             .build();
 
         assertThat(fallback.getModelName()).isNull();
@@ -80,13 +84,17 @@ class FallbackTest {
     void validatesFallbackWithoutOuterConnectionProperties() {
         Fallback fallback = Fallback.builder()
             .type(Fallback.class.getName())
-            .providers(Property.ofValue(List.of(
-                OpenAI.builder()
-                    .type(OpenAI.class.getName())
-                    .modelName(Property.ofValue("gpt-5-mini"))
-                    .apiKey(Property.ofValue("openai-test-key"))
-                    .build()
-            )))
+            .providers(
+                Property.ofValue(
+                    List.of(
+                        OpenAI.builder()
+                            .type(OpenAI.class.getName())
+                            .modelName(Property.ofValue("gpt-5-mini"))
+                            .apiKey(Property.ofValue("openai-test-key"))
+                            .build()
+                    )
+                )
+            )
             .build();
 
         assertThat(validator.validate(fallback)).isEmpty();
@@ -117,13 +125,17 @@ class FallbackTest {
     private static Fallback.FallbackBuilder<?, ?> fallbackWithProvider() {
         return Fallback.builder()
             .type(Fallback.class.getName())
-            .providers(Property.ofValue(List.of(
-                OpenAI.builder()
-                    .type(OpenAI.class.getName())
-                    .modelName(Property.ofValue("gpt-5-mini"))
-                    .apiKey(Property.ofValue("openai-test-key"))
-                    .build()
-            )));
+            .providers(
+                Property.ofValue(
+                    List.of(
+                        OpenAI.builder()
+                            .type(OpenAI.class.getName())
+                            .modelName(Property.ofValue("gpt-5-mini"))
+                            .apiKey(Property.ofValue("openai-test-key"))
+                            .build()
+                    )
+                )
+            );
     }
 
     @Test
