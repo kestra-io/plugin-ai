@@ -59,7 +59,7 @@ import lombok.experimental.SuperBuilder;
                               apiKey: "{{ secret('OPENAI_API_KEY') }}"
                               baseUrl: https://api.openai.com/v1
                             - type: io.kestra.plugin.ai.provider.GoogleGemini
-                              modelName: gemini-2.5-flash
+                              modelName: gemini-3.8-flash
                               apiKey: "{{ secret('GEMINI_API_KEY') }}"
                         systemMessage: You are a helpful assistant. Answer clearly and concisely.
                         prompt: "{{ inputs.prompt }}"

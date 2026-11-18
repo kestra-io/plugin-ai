@@ -169,7 +169,7 @@ class ChatCompletionTest extends ContainerTest {
                 // Deliberately a Gemini 2.x model: thinking tokens count towards maxOutputTokens, and
                 // Gemini 3 models cannot have thinking turned off, so a budget of 10 output tokens would
                 // be spent thinking and never reach the answer.  Only on 2.x can we assert the cap exactly.
-                "modelName", "gemini-2.5-flash",
+                "modelName", "gemini-3.8-flash",
                 "messages", List.of(
                     ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John").build()
                 )
@@ -366,9 +366,13 @@ class ChatCompletionTest extends ContainerTest {
         RunContext runContext = runContextFactory.of(Map.of());
 
         ChatCompletion task = ChatCompletion.builder()
-            .messages(Property.ofValue(List.of(
-                ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
-            )))
+            .messages(
+                Property.ofValue(
+                    List.of(
+                        ChatMessage.builder().type(ChatMessageType.USER).content("Hello, my name is John. I was born on January 1, 2000.").build()
+                    )
+                )
+            )
             .configuration(
                 ChatConfiguration.builder()
                     .temperature(Property.ofValue(0.1))
@@ -376,14 +380,18 @@ class ChatCompletionTest extends ContainerTest {
                     .responseFormat(
                         ChatConfiguration.ResponseFormat.builder()
                             .type(Property.ofValue(ResponseFormatType.JSON))
-                            .jsonSchema(Property.ofValue(Map.of(
-                                "type", "object",
-                                "required", List.of("name", "birth"),
-                                "properties", Map.of(
-                                    "name", Map.of("type", "string"),
-                                    "birth", Map.of("type", "string")
+                            .jsonSchema(
+                                Property.ofValue(
+                                    Map.of(
+                                        "type", "object",
+                                        "required", List.of("name", "birth"),
+                                        "properties", Map.of(
+                                            "name", Map.of("type", "string"),
+                                            "birth", Map.of("type", "string")
+                                        )
+                                    )
                                 )
-                            )))
+                            )
                             .build()
                     )
                     .build()

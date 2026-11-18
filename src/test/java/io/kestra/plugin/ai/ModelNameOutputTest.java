@@ -58,12 +58,12 @@ class ModelNameOutputTest {
         var runContext = runContextFactory.of(Map.of());
         var response = ChatResponse.builder()
             .aiMessage(AiMessage.from("hello"))
-            .metadata(ChatResponseMetadata.builder().modelName("gemini-2.5-flash").build())
+            .metadata(ChatResponseMetadata.builder().modelName("gemini-3.8-flash").build())
             .build();
-        var result = Result.<AiMessage>builder().content(response.aiMessage()).finalResponse(response).build();
+        var result = Result.<AiMessage> builder().content(response.aiMessage()).finalResponse(response).build();
 
         var output = AIOutput.from(runContext, result, ResponseFormatType.TEXT, Fallback.builder().build());
 
-        assertThat(output.getModelName()).isEqualTo("gemini-2.5-flash");
+        assertThat(output.getModelName()).isEqualTo("gemini-3.8-flash");
     }
 }
