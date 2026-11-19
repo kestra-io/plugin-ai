@@ -1,5 +1,7 @@
 package io.kestra.plugin.ai.provider;
 
+import java.time.Duration;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -77,7 +79,11 @@ public class LocalAI extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration) throws IllegalVariableEvaluationException {
+        return chatModel(runContext, configuration, Duration.ofSeconds(120));
+    }
 
+    @Override
+    public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
         return LocalAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(this.baseUrl).as(String.class).orElseThrow()) // for local, it is required
@@ -86,6 +92,7 @@ public class LocalAI extends ModelProvider {
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .timeout(timeout)
             .build();
     }
 
