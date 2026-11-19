@@ -4,7 +4,9 @@ Run AI completions, structured extraction, image generation, RAG pipelines, and 
 
 ## Authentication
 
-All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each concrete provider (or each nested provider when using `Fallback`). Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `Cohere`, `Fallback`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, `Langdock`, `Onnx`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
+All tasks require a `provider` object that selects the LLM backend and carries its credentials. Set `modelName` on each concrete provider (or each nested provider when using `Fallback`). Available providers: `OpenAI`, `Anthropic`, `GoogleGemini`, `GoogleVertexAI`, `AzureOpenAI`, `Ollama`, `MistralAI`, `AmazonBedrock`, `GitHubModels`, `HuggingFace`, `LocalAI`, `OciGenAI`, `OpenRouter`, `DeepSeek`, `HuaweiMaaS`, `Cohere`, `Fallback`, `DashScope`, `WatsonxAI`, `WorkersAI`, `ZhiPuAI`, `DockerModel`, `Langdock`, `Onnx`, and `OpenAICompliantProvider` for any OpenAI-compatible endpoint.
+
+`HuaweiMaaS` connects to Huawei Cloud ModelArts Studio through its OpenAI-compatible chat API. Set `apiKey` and `modelName`, and optionally override `baseUrl`. The default endpoint is `https://api-ap-southeast-1.modelarts-maas.com/openai/v1`. This API is currently supported only in the CN-Hong Kong region, and API keys must match the region and endpoint. Image generation and embeddings are not supported by this provider implementation.
 
 `Langdock` reaches OpenAI/Azure OpenAI-backed models via `modelFamily: OPENAI` (default) or Claude models via `modelFamily: ANTHROPIC` — set `apiKey`, `modelFamily`, and `region` (`EU` default or `US`). Embeddings always use the OpenAI route (use a workspace key with the Embedding API scope if your key is refused); image generation is unsupported. Use `langdock.ListModels` to discover valid `modelName` values for a given family.
 
