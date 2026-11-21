@@ -21,7 +21,7 @@ const agentTask = {
     id: "ai-agent",
     type: "io.kestra.plugin.ai.agent.AIAgent",
     provider: openAIProvider,
-    systemPrompt: "You are a helpful assistant that answers questions about Kestra workflows.",
+    systemMessage: "You are a helpful assistant that answers questions about Kestra workflows.",
     prompt: "List the last 3 executions of the etl-pipeline flow.",
     tools: [
         { type: "io.kestra.plugin.ai.tool.KestraFlow" },
@@ -33,7 +33,7 @@ const chatTask = {
     id: "chat-completion",
     type: "io.kestra.plugin.ai.completion.ChatCompletion",
     provider: openAIProvider,
-    systemPrompt: "You are a helpful assistant.\nAnswer concisely in one sentence.",
+    systemMessage: "You are a helpful assistant.\nAnswer concisely in one sentence.",
     prompt: "What is Kestra?",
 };
 
@@ -41,7 +41,8 @@ const ragTask = {
     id: "rag-chat",
     type: "io.kestra.plugin.ai.rag.ChatCompletion",
     chatProvider: openAIProvider,
-    contentRetriever: { type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" },
+    contentRetrievers: [{ type: "io.kestra.plugin.ai.retriever.EmbeddingStoreRetriever" }],
+    chatConfiguration: { temperature: 0, logRequests: false },
 };
 
 const geminiProvider = {
@@ -68,7 +69,7 @@ const expressionAgentTask = {
         modelName: "{{ vars.model }}", // templated: shown raw with a template marker before an execution
         apiKey: "{{ secret('ANTHROPIC_API_KEY') }}",
     },
-    systemPrompt: "You are {{ vars.persona }}.\nAuth token: {{ secret('ANTHROPIC_API_KEY') }}",
+    systemMessage: "You are {{ vars.persona }}.\nAuth token: {{ secret('ANTHROPIC_API_KEY') }}",
     prompt: "{{ inputs.question }}",
 };
 
@@ -76,7 +77,7 @@ const compactFullHouseTask = {
     id: "ai-agent-full",
     type: "io.kestra.plugin.ai.agent.AIAgent",
     provider: openAIProvider,
-    systemPrompt: "You are a helpful assistant that answers questions about Kestra workflows.",
+    systemMessage: "You are a helpful assistant that answers questions about Kestra workflows.",
     prompt: "List the last 3 executions of the etl-pipeline flow.",
     tools: [
         { type: "io.kestra.plugin.ai.tool.KestraFlow" },
@@ -222,6 +223,10 @@ export const ChatCompletionPostExecution: Story = {
             ],
         },
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText(/Kestra is an open-source orchestration platform/)).toBeInTheDocument();
+    },
 };
 
 export const AgentWithToolCalls: Story = {
@@ -298,6 +303,10 @@ export const AgentWithToolCalls: Story = {
             ],
         },
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText(/I found 3 recent executions/)).toBeInTheDocument();
+    },
 };
 
 export const RagCompletion: Story = {
@@ -360,6 +369,13 @@ export const RagCompletion: Story = {
                 },
             ],
         },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText(/Based on the documentation/)).toBeInTheDocument();
+        expect(canvas.getByText("Temperature")).toBeInTheDocument();
+        expect(canvas.getByText("0")).toBeInTheDocument();
+        expect(canvas.getByText("false")).toBeInTheDocument();
     },
 };
 
@@ -631,5 +647,86 @@ export const MaxTokensHit: Story = {
                 },
             ],
         },
+    },
+};
+
+export const Classification: Story = {
+    args: {
+        task: { id: "classify", type: "io.kestra.plugin.ai.completion.Classification", provider: openAIProvider, prompt: "I love this product!", classes: ["positive", "negative", "neutral"] },
+        displayMode: "full",
+        execution: executionWith("exec-classify", "classify", { classification: "positive", modelName: "gpt-4o" }),
+    },
+    play: async ({ canvasElement }) => {
+        expect(within(canvasElement).getByText("positive")).toBeInTheDocument();
+    },
+};
+
+export const StructuredExtraction: Story = {
+    args: {
+        task: { id: "extract", type: "io.kestra.plugin.ai.completion.JSONStructuredExtraction", provider: openAIProvider, prompt: "Ada is 36 years old.", jsonFields: ["name", "age"] },
+        displayMode: "full",
+        execution: executionWith("exec-extract", "extract", { extractedJson: '{"name":"Ada","age":36}', modelName: "gpt-4o" }),
+    },
+    play: async ({ canvasElement }) => {
+        expect(canvasElement.querySelector(".ai-pre--json")?.textContent).toBe(JSON.stringify({ name: "Ada", age: 36 }, null, 2));
+    },
+};
+
+export const ImageGeneration: Story = {
+    args: {
+        task: { id: "image", type: "io.kestra.plugin.ai.completion.ImageGeneration", provider: { ...openAIProvider, modelName: "dall-e-3" }, prompt: "An orchestration diagram" },
+        displayMode: "full",
+        execution: executionWith("exec-image", "image", { imageUrl: "https://kestra.io/banner.png", modelName: "dall-e-3" }),
+    },
+    play: async ({ canvasElement }) => {
+        expect(within(canvasElement).getByAltText("Generated image")).toHaveAttribute("src", "https://kestra.io/banner.png");
+    },
+};
+
+export const IngestDocument: Story = {
+    args: {
+        task: { ...ingestDocumentTask, fromExternalURLs: ["https://kestra.io/docs"] },
+        displayMode: "full",
+        execution: executionWith("exec-ingest", "ingest", { ingestedDocuments: 3, modelName: "gemini-embedding-001", inputTokenCount: 150, outputTokenCount: 0, totalTokenCount: 150 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Ingested documents")).toBeInTheDocument();
+        expect(canvas.getByText("3")).toBeInTheDocument();
+        expect(canvas.getByText("0")).toBeInTheDocument();
+        expect(canvas.getAllByText("150")).toHaveLength(2);
+    },
+};
+
+export const Search: Story = {
+    args: {
+        task: { id: "search", type: "io.kestra.plugin.ai.rag.Search", provider: geminiProvider, embeddings: ingestDocumentTask.embeddings, query: "What is Kestra?", fetchType: "FETCH" },
+        displayMode: "full",
+        execution: executionWith("exec-search", "search", { results: ["Kestra orchestrates workflows.", "Flows are defined in YAML."], size: 2 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Results")).toBeInTheDocument();
+        expect(canvas.getByText("2")).toBeInTheDocument();
+        expect(canvas.getByText(/Kestra orchestrates workflows/)).toBeInTheDocument();
+    },
+};
+
+export const GuardrailRules: Story = {
+    args: {
+        ...PreExecution.args,
+        task: {
+            ...agentTask,
+            guardrails: {
+                input: [{ expression: "{{ message.length < 10000 }}", message: "Message too long" }],
+                output: [{ expression: "{{ response.length > 0 }}" }],
+            },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText("Message too long")).toBeInTheDocument();
+        expect(canvas.getByText("{{ response.length > 0 }}")).toBeInTheDocument();
+        expect(canvas.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
     },
 };
