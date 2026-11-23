@@ -20,6 +20,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ResourceLock("kestra-h2-flyway")
@@ -51,6 +52,15 @@ class LocalAITest {
 
         assertThatThrownBy(() -> model.chat("Hello"))
             .hasStackTraceContaining("timed out");
+    }
+
+    @Test
+    void chatModel_shouldReturnResponse() throws Exception {
+        wireMock.stubFor(post(urlPathMatching(".*/chat/completions")).willReturn(okJson(RESPONSE)));
+
+        var model = localAi().chatModel(runContextFactory.of(Map.of()), ChatConfiguration.builder().build(), Duration.ofSeconds(5));
+
+        assertThat(model.chat("Hello")).isEqualTo("Hello John");
     }
 
     private LocalAI localAi() {
