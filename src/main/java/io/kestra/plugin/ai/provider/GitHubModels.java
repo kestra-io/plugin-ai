@@ -108,6 +108,7 @@ public class GitHubModels extends ModelProvider {
             .topP(runContext.render(configuration.getTopP()).as(Double.class).orElse(null))
             .seed(seed)
             .responseFormat(toAzureResponseFormat(runContext, configuration))
+            .returnThinking(runContext.render(configuration.getReturnThinking()).as(Boolean.class).orElse(null))
             .maxCompletionTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
             .logRequests(logRequests)
             .logResponses(logResponses)
