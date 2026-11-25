@@ -205,7 +205,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
                 break;
             case FETCH_ONE:
                 output = Output.builder()
-                    .results(List.of(results.getFirst()))
+                    .results(results.isEmpty() ? List.of() : List.of(results.getFirst()))
                     .size(fetchedItemsCount)
                     .build();
                 runContext.metric(Counter.of("fetch.size", fetchedItemsCount, "fetch", "true", "store", "false"));
