@@ -36,11 +36,28 @@ describe("task results", () => {
     test.each(["http://example.com/image.png", "https://example.com/image.png"])("renders explicit URL %s", async imageUrl => {
         const view = await render({ imageUrl });
         expect(view.querySelector("img")?.getAttribute("src")).toBe(imageUrl);
+        expect(view.querySelector("img")?.getAttribute("referrerpolicy")).toBe("no-referrer");
     });
 
-    test.each([['{"broken":', '"{\\"broken\\":"'], ["false", "false"], ["0", "0"]])("handles extracted JSON %s", async (extractedJson, expected) => {
+    test.each(["false", "0", "null"])("formats valid extracted JSON %s", async extractedJson => {
         const view = await render({ extractedJson });
-        expect(view.querySelector(".ai-pre--json")?.textContent).toBe(expected);
+        expect(view.querySelector(".ai-pre--json")?.textContent).toBe(extractedJson);
+    });
+
+    test.each(['{"broken":', '```json\n{"name": "Ada"}\n```', '{\n  "name": "Ada'])
+        ("preserves malformed extracted JSON as raw text: %s", async extractedJson => {
+            const view = await render({ extractedJson });
+            expect(view.querySelector(".ai-pre--json")?.textContent).toBe(extractedJson);
+        });
+
+    test("hides empty text output", async () => {
+        const view = await render({ textOutput: "" });
+        expect(view.querySelector(".ai-section")).toBeNull();
+    });
+
+    test("shows JSON when text output is empty", async () => {
+        const view = await render({ textOutput: "", jsonOutput: { name: "Ada" } });
+        expect(view.querySelector(".ai-pre--json")?.textContent).toBe(JSON.stringify({ name: "Ada" }, null, 2));
     });
 
     test("shows zero documents and token counts", async () => {

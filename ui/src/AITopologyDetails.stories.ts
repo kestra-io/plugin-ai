@@ -33,8 +33,10 @@ const chatTask = {
     id: "chat-completion",
     type: "io.kestra.plugin.ai.completion.ChatCompletion",
     provider: openAIProvider,
-    systemMessage: "You are a helpful assistant.\nAnswer concisely in one sentence.",
-    prompt: "What is Kestra?",
+    messages: [
+        { type: "SYSTEM", content: "You are a helpful assistant.\nAnswer concisely in one sentence." },
+        { type: "USER", content: "What is Kestra?" },
+    ],
 };
 
 const ragTask = {

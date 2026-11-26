@@ -188,16 +188,26 @@ const outputs = computed(() => fetchedOutputs.value ?? taskRun.value?.outputs ??
 const textOutput = computed(() => (outputs.value?.textOutput ?? outputs.value?.classification) as string | undefined);
 const jsonOutput = computed(() => {
     const value = outputs.value?.extractedJson;
-    if (value == null) return outputs.value?.jsonOutput;
-    try { return JSON.parse(value); } catch { return value; }
+    if (value == null) {
+        return outputs.value?.jsonOutput == null ? undefined : formatJson(outputs.value.jsonOutput);
+    }
+    try {
+        return formatJson(JSON.parse(value));
+    } catch {
+        return value;
+    }
 });
 const imageUrl = computed(() => {
     const value = outputs.value?.imageUrl;
-    if (typeof value !== "string" || !/^https?:\/\//i.test(value)) return undefined;
+    if (typeof value !== "string") {
+        return undefined;
+    }
     try {
         const url = new URL(value);
         return ["http:", "https:"].includes(url.protocol) ? value : undefined;
-    } catch { return undefined; }
+    } catch {
+        return undefined;
+    }
 });
 const ingestedDocuments = computed(() => outputs.value?.ingestedDocuments as number | undefined);
 const searchResults = computed(() => outputs.value?.results as string[] | undefined);
@@ -206,9 +216,13 @@ const finishReason = computed(() => outputs.value?.finishReason as string | unde
 const guardrailViolated = computed(() => outputs.value?.guardrailViolated === true);
 const guardrailMessage = computed(() => outputs.value?.guardrailViolationMessage as string | undefined);
 const tokenUsage = computed(() => {
-    if (outputs.value?.tokenUsage) return outputs.value.tokenUsage as Record<string, number>;
+    if (outputs.value?.tokenUsage) {
+        return outputs.value.tokenUsage as Record<string, number>;
+    }
     const { inputTokenCount, outputTokenCount, totalTokenCount } = outputs.value ?? {};
-    if (inputTokenCount == null && outputTokenCount == null && totalTokenCount == null) return undefined;
+    if (inputTokenCount == null && outputTokenCount == null && totalTokenCount == null) {
+        return undefined;
+    }
     return { inputTokenCount, outputTokenCount, totalTokenCount };
 });
 const toolExecutions = computed<any[]>(() => outputs.value?.toolExecutions ?? []);
@@ -239,7 +253,7 @@ const finishReasonType = computed((): "success" | "warning" | "danger" | "info" 
 });
 
 const hasResponse = computed(() => !guardrailViolated.value && (
-    textOutput.value != null || jsonOutput.value != null || imageUrl.value != null ||
+    !!textOutput.value || jsonOutput.value != null || imageUrl.value != null ||
     ingestedDocuments.value != null || searchResults.value != null || searchSize.value != null
 ));
 
@@ -425,9 +439,9 @@ const tokenOutputPct = computed(() =>
                     </summary>
 
                     <template v-if="hasResponse">
-                        <pre v-if="textOutput != null" class="ai-pre">{{ textOutput }}</pre>
-                        <pre v-else-if="jsonOutput != null" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
-                        <img v-if="imageUrl" :src="imageUrl" alt="Generated image" class="ai-image" />
+                        <pre v-if="textOutput" class="ai-pre">{{ textOutput }}</pre>
+                        <pre v-else-if="jsonOutput != null" class="ai-pre ai-pre--json">{{ jsonOutput }}</pre>
+                        <img v-if="imageUrl" :src="imageUrl" alt="Generated image" referrerpolicy="no-referrer" class="ai-image" />
                         <div v-if="ingestedDocuments != null || searchSize != null" class="ai-kv">
                             <template v-if="ingestedDocuments != null">
                                 <span class="ai-kv__key">Ingested documents</span>
