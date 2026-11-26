@@ -61,6 +61,7 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.provider.GoogleGemini`
 - `io.kestra.plugin.ai.provider.GoogleVertexAI`
 - `io.kestra.plugin.ai.provider.HuggingFace`
+- `io.kestra.plugin.ai.provider.HuaweiMaaS`
 - `io.kestra.plugin.ai.provider.Langdock`
 - `io.kestra.plugin.ai.provider.LocalAI`
 - `io.kestra.plugin.ai.provider.MistralAI`
