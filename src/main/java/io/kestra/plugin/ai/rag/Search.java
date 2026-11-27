@@ -153,7 +153,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
 
     @Schema(
         title = "Fetch type",
-        description = "What the task returns: `NONE` emits only the match count, `FETCH` returns all matches in `results`, `FETCH_ONE` returns the single best match, and `STORE` writes the matches to Kestra internal storage and emits their `uri`. Defaults to `NONE`.",
+        description = "What the task returns: `NONE` emits only the match count, `FETCH` returns all matches in `results`, `FETCH_ONE` returns the single best match, or an empty list when nothing matches, and `STORE` writes the matches to Kestra internal storage and emits their `uri`. Defaults to `NONE`.",
         example = "FETCH"
     )
     @NotNull
