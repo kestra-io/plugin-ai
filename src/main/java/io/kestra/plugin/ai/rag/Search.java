@@ -153,7 +153,13 @@ public class Search extends Task implements RunnableTask<Search.Output> {
 
     @Schema(
         title = "Fetch type",
-        description = "What the task returns: `NONE` emits only the match count, `FETCH` returns all matches in `results`, `FETCH_ONE` returns the single best match, and `STORE` writes the matches to Kestra internal storage and emits their `uri`. Defaults to `NONE`.",
+        description = """
+            What the task returns:
+            `NONE` emits only the match count,
+            `FETCH` returns all matches in `results`,
+            `FETCH_ONE` returns the single best match, or an empty list when nothing matches,
+            and `STORE` writes the matches to Kestra internal storage and emits their `uri`.
+            Defaults to `NONE`.""",
         example = "FETCH"
     )
     @NotNull
@@ -205,7 +211,7 @@ public class Search extends Task implements RunnableTask<Search.Output> {
                 break;
             case FETCH_ONE:
                 output = Output.builder()
-                    .results(List.of(results.getFirst()))
+                    .results(results.isEmpty() ? List.of() : List.of(results.getFirst()))
                     .size(fetchedItemsCount)
                     .build();
                 runContext.metric(Counter.of("fetch.size", fetchedItemsCount, "fetch", "true", "store", "false"));
