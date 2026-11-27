@@ -31,22 +31,7 @@ class SearchFetchOneTest {
 
     @Test
     void returnsEmptyResultsWhenNoMatchIsFound() throws Exception {
-        var provider = new Ollama() {
-            @Override
-            public EmbeddingModel embeddingModel(RunContext runContext) {
-                return new EmbeddingModel() {
-                    @Override
-                    public Response<Embedding> embed(String text) {
-                        return Response.from(Embedding.from(new float[] { 1.0f }));
-                    }
-
-                    @Override
-                    public int dimension() {
-                        return 1;
-                    }
-                };
-            }
-        };
+        var provider = fixedEmbeddingProvider(1.0f);
 
         var task = Search.builder()
             .provider(provider)
@@ -69,22 +54,7 @@ class SearchFetchOneTest {
         store.add(Embedding.from(new float[] { 1.0f, 1.0f }), TextSegment.from("Apple"));
         store.add(Embedding.from(new float[] { 1.0f, 0.0f }), TextSegment.from("Banana"));
 
-        var provider = new Ollama() {
-            @Override
-            public EmbeddingModel embeddingModel(RunContext runContext) {
-                return new EmbeddingModel() {
-                    @Override
-                    public Response<Embedding> embed(String text) {
-                        return Response.from(Embedding.from(new float[] { 1.0f, 0.0f }));
-                    }
-
-                    @Override
-                    public int dimension() {
-                        return 2;
-                    }
-                };
-            }
-        };
+        var provider = fixedEmbeddingProvider(1.0f, 0.0f);
 
         var embeddings = new EmbeddingStoreProvider() {
             @Override
@@ -106,5 +76,24 @@ class SearchFetchOneTest {
 
         assertThat(output.getResults()).containsExactly("Banana");
         assertThat(output.getSize()).isEqualTo(2);
+    }
+
+    private static Ollama fixedEmbeddingProvider(float... vector) {
+        return new Ollama() {
+            @Override
+            public EmbeddingModel embeddingModel(RunContext runContext) {
+                return new EmbeddingModel() {
+                    @Override
+                    public Response<Embedding> embed(String text) {
+                        return Response.from(Embedding.from(vector));
+                    }
+
+                    @Override
+                    public int dimension() {
+                        return vector.length;
+                    }
+                };
+            }
+        };
     }
 }
