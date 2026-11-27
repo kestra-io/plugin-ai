@@ -71,6 +71,7 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.ai.provider.OpenRouter`
 - `io.kestra.plugin.ai.provider.WatsonxAI`
 - `io.kestra.plugin.ai.provider.WorkersAI`
+- `io.kestra.plugin.ai.provider.XAI`
 - `io.kestra.plugin.ai.provider.ZhiPuAI`
 - `io.kestra.plugin.ai.rag.ChatCompletion`
 - `io.kestra.plugin.ai.rag.IngestDocument`
