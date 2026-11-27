@@ -50,6 +50,34 @@ import io.kestra.core.models.annotations.PluginProperty;
                             content: "{{ inputs.prompt }}"
                     """
             }
+        ),
+        @Example(
+            title = "Chat completion with an OpenAI-compatible endpoint (Groq)",
+            full = true,
+            code = {
+                """
+                    id: chat_completion_openai_compatible
+                    namespace: company.ai
+
+                    inputs:
+                      - id: prompt
+                        type: STRING
+
+                    tasks:
+                      - id: chat_completion
+                        type: io.kestra.plugin.ai.completion.ChatCompletion
+                        provider:
+                          type: io.kestra.plugin.ai.provider.OpenAI
+                          apiKey: "{{ secret('GROQ_API_KEY') }}"
+                          baseUrl: https://api.groq.com/openai/v1
+                          modelName: llama-3.3-70b-versatile
+                        messages:
+                          - type: SYSTEM
+                            content: You are a helpful assistant, answer concisely.
+                          - type: USER
+                            content: "{{ inputs.prompt }}"
+                    """
+            }
         )
     },
     aliases = "io.kestra.plugin.langchain4j.provider.OpenAI"
@@ -57,7 +85,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 public class OpenAI extends OpenAICompliantProvider {
     @Schema(
         title = "API base URL",
-        description = "Base URL of the OpenAI-compatible API. Override it to target Azure OpenAI, a proxy, or a self-hosted gateway. Defaults to `https://api.openai.com/v1`.",
+        description = "Base URL of the OpenAI-compatible API. Override it to target Azure OpenAI, a proxy, a self-hosted gateway, or another vendor that exposes an OpenAI-compatible API, for example Groq. Support for tool calling, structured output, and image generation depends on the vendor. Defaults to `https://api.openai.com/v1`.",
         example = "https://api.openai.com/v1"
     )
     @Builder.Default
