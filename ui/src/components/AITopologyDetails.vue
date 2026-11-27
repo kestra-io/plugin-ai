@@ -31,7 +31,7 @@ const rawModelName = computed(() => {
 });
 
 const rawSystemMessage = computed(() =>
-    (taskConfig.value.systemPrompt ?? taskConfig.value.systemMessage) as string | undefined
+    taskConfig.value.systemMessage as string | undefined
 );
 
 const rawPrompt = computed(() => taskConfig.value.prompt as string | undefined);
@@ -63,15 +63,12 @@ const toArray = (v: any): any[] => {
 };
 
 const retrieverNames = computed<string[]>(() => {
-    const cfgTask = taskConfig.value;
-    const single = cfgTask.contentRetriever ?? cfgTask.retriever;
-    const multi = toArray(cfgTask.contentRetrievers ?? cfgTask.retrievers);
-    const all = single ? [single, ...multi] : multi;
-    return all.map((r: any) => lastSegment(r?.type) ?? String(r)).filter(Boolean);
+    return toArray(taskConfig.value.contentRetrievers)
+        .map((r: any) => lastSegment(r?.type) ?? String(r)).filter(Boolean);
 });
 
 const chatConfigRows = computed(() => {
-    const cfg = taskConfig.value.configuration as Record<string, any> | undefined;
+    const cfg = (taskConfig.value.chatConfiguration ?? taskConfig.value.configuration) as Record<string, any> | undefined;
     if (!cfg) return [];
     const LABELS: Record<string, string> = {
         temperature: "Temperature",
@@ -113,8 +110,8 @@ const observabilityType = computed(() => {
 const guardrailsInfo = computed(() => {
     const g = taskConfig.value.guardrails as Record<string, any> | undefined;
     if (!g) return null;
-    const inputRules: string[] = toArray(g.inputGuardrails ?? g.input).map((r: any) => lastSegment(r?.type) ?? String(r));
-    const outputRules: string[] = toArray(g.outputGuardrails ?? g.output).map((r: any) => lastSegment(r?.type) ?? String(r));
+    const inputRules: string[] = toArray(g.input).map((r: any) => r.message || r.expression).filter(Boolean);
+    const outputRules: string[] = toArray(g.output).map((r: any) => r.message || r.expression).filter(Boolean);
     return { inputRules, outputRules };
 });
 
@@ -188,12 +185,46 @@ watch(executionId, (id) => {
 }, { immediate: true });
 
 const outputs = computed(() => fetchedOutputs.value ?? taskRun.value?.outputs ?? null);
-const textOutput = computed(() => outputs.value?.textOutput as string | undefined);
-const jsonOutput = computed(() => outputs.value?.jsonOutput as Record<string, unknown> | undefined);
+const textOutput = computed(() => (outputs.value?.textOutput ?? outputs.value?.classification) as string | undefined);
+const jsonOutput = computed(() => {
+    const value = outputs.value?.extractedJson;
+    if (value == null) {
+        return outputs.value?.jsonOutput == null ? undefined : formatJson(outputs.value.jsonOutput);
+    }
+    try {
+        return formatJson(JSON.parse(value));
+    } catch {
+        return value;
+    }
+});
+const imageUrl = computed(() => {
+    const value = outputs.value?.imageUrl;
+    if (typeof value !== "string") {
+        return undefined;
+    }
+    try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) ? value : undefined;
+    } catch {
+        return undefined;
+    }
+});
+const ingestedDocuments = computed(() => outputs.value?.ingestedDocuments as number | undefined);
+const searchResults = computed(() => outputs.value?.results as string[] | undefined);
+const searchSize = computed(() => outputs.value?.size as number | undefined);
 const finishReason = computed(() => outputs.value?.finishReason as string | undefined);
 const guardrailViolated = computed(() => outputs.value?.guardrailViolated === true);
 const guardrailMessage = computed(() => outputs.value?.guardrailViolationMessage as string | undefined);
-const tokenUsage = computed(() => outputs.value?.tokenUsage as Record<string, number> | undefined);
+const tokenUsage = computed(() => {
+    if (outputs.value?.tokenUsage) {
+        return outputs.value.tokenUsage as Record<string, number>;
+    }
+    const { inputTokenCount, outputTokenCount, totalTokenCount } = outputs.value ?? {};
+    if (inputTokenCount == null && outputTokenCount == null && totalTokenCount == null) {
+        return undefined;
+    }
+    return { inputTokenCount, outputTokenCount, totalTokenCount };
+});
 const toolExecutions = computed<any[]>(() => outputs.value?.toolExecutions ?? []);
 const intermediateResponses = computed<any[]>(() => outputs.value?.intermediateResponses ?? []);
 const thinking = computed(() => outputs.value?.thinking as string | undefined);
@@ -221,7 +252,10 @@ const finishReasonType = computed((): "success" | "warning" | "danger" | "info" 
     }
 });
 
-const hasResponse = computed(() => !guardrailViolated.value && (!!textOutput.value || !!jsonOutput.value));
+const hasResponse = computed(() => !guardrailViolated.value && (
+    !!textOutput.value || jsonOutput.value != null || imageUrl.value != null ||
+    ingestedDocuments.value != null || searchResults.value != null || searchSize.value != null
+));
 
 // ── Cost estimate ─────────────────────────────────────────────────────────────
 // USD per 1M tokens — snapshot prices, approximate only
@@ -406,7 +440,19 @@ const tokenOutputPct = computed(() =>
 
                     <template v-if="hasResponse">
                         <pre v-if="textOutput" class="ai-pre">{{ textOutput }}</pre>
-                        <pre v-else-if="jsonOutput" class="ai-pre ai-pre--json">{{ formatJson(jsonOutput) }}</pre>
+                        <pre v-else-if="jsonOutput != null" class="ai-pre ai-pre--json">{{ jsonOutput }}</pre>
+                        <img v-if="imageUrl" :src="imageUrl" alt="Generated image" referrerpolicy="no-referrer" class="ai-image" />
+                        <div v-if="ingestedDocuments != null || searchSize != null" class="ai-kv">
+                            <template v-if="ingestedDocuments != null">
+                                <span class="ai-kv__key">Ingested documents</span>
+                                <span class="ai-kv__val">{{ ingestedDocuments }}</span>
+                            </template>
+                            <template v-if="searchSize != null">
+                                <span class="ai-kv__key">Results</span>
+                                <span class="ai-kv__val">{{ searchSize }}</span>
+                            </template>
+                        </div>
+                        <pre v-if="searchResults != null" class="ai-pre ai-pre--json">{{ formatJson(searchResults) }}</pre>
                     </template>
 
                     <div v-if="tokenUsage" class="ai-tokens">
@@ -625,6 +671,14 @@ details[open] > .ai-accordion__title::before {
 .ai-pre--json {
     background: var(--ks-color-surface-code, #1e1e2e);
     color: var(--ks-color-text-code, #cdd6f4);
+}
+
+.ai-image {
+    display: block;
+    max-width: 100%;
+    max-height: 20rem;
+    margin-top: var(--ai-gap-xs);
+    object-fit: contain;
 }
 
 /* ── token progress bars ────────────────────────────────────────────── */
