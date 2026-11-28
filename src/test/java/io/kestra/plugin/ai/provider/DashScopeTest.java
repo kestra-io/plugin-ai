@@ -18,6 +18,7 @@ import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ChatMessage;
 import io.kestra.plugin.ai.domain.ChatMessageType;
 
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import jakarta.inject.Inject;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -83,6 +84,39 @@ class DashScopeTest {
         wireMock.verify(
             postRequestedFor(urlPathMatching(".*/generation"))
                 .withRequestBody(matchingJsonPath("$.parameters.max_tokens", equalTo("64")))
+        );
+    }
+
+    @Test
+    void chatCompletion_shouldSendConfigurationResponseFormat() throws Exception {
+        wireMock.stubFor(
+            post(urlPathMatching(".*/generation"))
+                .willReturn(okJson("""
+                    {
+                      "request_id": "dashscope-test",
+                      "output": {
+                        "choices": [{
+                          "finish_reason": "stop",
+                          "message": {"role": "assistant", "content": "{\\"name\\": \\"John\\"}"}
+                        }]
+                      },
+                      "usage": {"input_tokens": 10, "output_tokens": 3, "total_tokens": 13}
+                    }"""))
+        );
+
+        var task = ChatCompletion.builder()
+            .messages(Property.ofValue(List.of(ChatMessage.builder().type(ChatMessageType.USER).content("Reply in JSON").build())))
+            .configuration(ChatConfiguration.builder()
+                .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
+                .build())
+            .provider(dashScope().build())
+            .build();
+
+        task.run(runContextFactory.of(Map.of()));
+
+        wireMock.verify(
+            postRequestedFor(urlPathMatching(".*/generation"))
+                .withRequestBody(matchingJsonPath("$.parameters.response_format.type", equalTo("json_object")))
         );
     }
 

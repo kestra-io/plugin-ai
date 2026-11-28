@@ -10,6 +10,8 @@ import io.kestra.core.models.property.Property;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +40,15 @@ class WatsonxAITest {
 
         assertThat(parameters.maxOutputTokens()).isEqualTo(2048);
         assertThat(parameters.topP()).isEqualTo(0.5);
+    }
+
+    @Test
+    void chatModel_shouldForwardResponseFormat() throws Exception {
+        var configuration = ChatConfiguration.builder()
+            .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
+            .build();
+
+        assertThat(chatModel(configuration).defaultRequestParameters().responseFormat()).isEqualTo(ResponseFormat.JSON);
     }
 
     // Building the model does not call watsonx.ai.

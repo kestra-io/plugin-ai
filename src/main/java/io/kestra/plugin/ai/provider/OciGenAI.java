@@ -17,6 +17,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiChatModel;
 import dev.langchain4j.community.model.oracle.oci.genai.OciGenAiCohereChatModel;
 import dev.langchain4j.model.chat.ChatModel;
@@ -140,6 +141,9 @@ public class OciGenAI extends ModelProvider {
             .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .defaultRequestParameters(ChatRequestParameters.builder()
+                .responseFormat(configuration.getResponseFormat() == null ? null : configuration.computeResponseFormat(runContext))
+                .build())
             .build();
     }
 
@@ -154,6 +158,9 @@ public class OciGenAI extends ModelProvider {
             .topK(runContext.render(configuration.getTopK()).as(Integer.class).orElse(null))
             .seed(runContext.render(configuration.getSeed()).as(Integer.class).orElse(null))
             .maxTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .defaultRequestParameters(ChatRequestParameters.builder()
+                .responseFormat(configuration.getResponseFormat() == null ? null : configuration.computeResponseFormat(runContext))
+                .build())
             .build();
     }
 }

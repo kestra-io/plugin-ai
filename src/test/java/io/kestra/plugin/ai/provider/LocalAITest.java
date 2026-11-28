@@ -14,6 +14,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import jakarta.inject.Inject;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
@@ -61,6 +62,16 @@ class LocalAITest {
         var model = localAi().chatModel(runContextFactory.of(Map.of()), ChatConfiguration.builder().build(), Duration.ofSeconds(5));
 
         assertThat(model.chat("Hello")).isEqualTo("Hello John");
+    }
+
+    @Test
+    void chatModel_shouldRejectJsonResponseFormat() {
+        var configuration = ChatConfiguration.builder()
+            .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
+            .build();
+
+        assertThatThrownBy(() -> localAi().chatModel(runContextFactory.of(Map.of()), configuration, Duration.ofSeconds(5)))
+            .hasMessageContaining("LocalAI models do not support");
     }
 
     private LocalAI localAi() {

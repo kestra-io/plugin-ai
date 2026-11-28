@@ -95,6 +95,7 @@ public class WatsonxAI extends ModelProvider {
             .logRequests(runContext.render(configuration.getLogRequests()).as(Boolean.class).orElse(false))
             .logResponses(runContext.render(configuration.getLogResponses()).as(Boolean.class).orElse(false))
             .maxOutputTokens(runContext.render(configuration.getMaxToken()).as(Integer.class).orElse(null))
+            .responseFormat(configuration.getResponseFormat() == null ? null : configuration.computeResponseFormat(runContext))
             .build();
     }
 
