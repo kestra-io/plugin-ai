@@ -12,6 +12,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.image.ImageModel;
@@ -84,6 +85,9 @@ public class LocalAI extends ModelProvider {
 
     @Override
     public ChatModel chatModel(RunContext runContext, ChatConfiguration configuration, Duration timeout) throws IllegalVariableEvaluationException {
+        if (configuration.computeResponseFormat(runContext).type() == ResponseFormatType.JSON) {
+            throw new IllegalArgumentException("LocalAI models do not support configuring a JSON response format.");
+        }
         return LocalAiChatModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .baseUrl(runContext.render(this.baseUrl).as(String.class).orElseThrow()) // for local, it is required

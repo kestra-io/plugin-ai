@@ -19,6 +19,8 @@ import io.kestra.core.models.property.Property;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import jakarta.inject.Inject;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +76,22 @@ class OciGenAITest {
         assertThat(chatModel("cohere.command-r-plus")).isNotNull();
     }
 
+    @Test
+    void chatModel_shouldForwardResponseFormat() throws Exception {
+        var configuration = ChatConfiguration.builder()
+            .responseFormat(ChatConfiguration.ResponseFormat.builder().type(Property.ofValue(ResponseFormatType.JSON)).build())
+            .build();
+
+        for (var modelName : List.of("meta.llama-3.3-70b-instruct", "cohere.command-r-plus")) {
+            assertThat(chatModel(modelName, configuration).defaultRequestParameters().responseFormat()).isEqualTo(ResponseFormat.JSON);
+        }
+    }
+
     private ChatModel chatModel(String modelName) throws Exception {
+        return chatModel(modelName, ChatConfiguration.empty());
+    }
+
+    private ChatModel chatModel(String modelName, ChatConfiguration configuration) throws Exception {
         var provider = OciGenAI.builder()
             .type(OciGenAI.class.getName())
             .modelName(Property.ofValue(modelName))
@@ -82,6 +99,6 @@ class OciGenAITest {
             .region(Property.ofValue("us-chicago-1"))
             .build();
 
-        return provider.chatModel(runContextFactory.of(Map.of()), ChatConfiguration.empty());
+        return provider.chatModel(runContextFactory.of(Map.of()), configuration);
     }
 }

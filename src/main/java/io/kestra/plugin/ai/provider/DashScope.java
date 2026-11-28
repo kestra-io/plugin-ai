@@ -16,6 +16,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.ai.domain.ChatConfiguration;
 import io.kestra.plugin.ai.domain.ModelProvider;
 
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.community.model.dashscope.*;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -162,6 +163,9 @@ public class DashScope extends ModelProvider {
             .repetitionPenalty(runContext.render(this.repetitionPenalty).as(Float.class).orElse(null))
             .temperature(fTemperature)
             .maxTokens(rMaxTokens)
+            .defaultRequestParameters(ChatRequestParameters.builder()
+                .responseFormat(configuration.getResponseFormat() == null ? null : configuration.computeResponseFormat(runContext))
+                .build())
             .listeners(allListeners)
             .build();
     }
