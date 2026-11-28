@@ -150,12 +150,17 @@ public class MistralAI extends ModelProvider {
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        return MistralAiEmbeddingModel.builder()
+        var embeddingModelBuilder = MistralAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse(null))
-            .build();
+            .baseUrl(runContext.render(this.baseUrl).as(String.class).orElse(null));
 
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            embeddingModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        return embeddingModelBuilder.build();
     }
 
 }

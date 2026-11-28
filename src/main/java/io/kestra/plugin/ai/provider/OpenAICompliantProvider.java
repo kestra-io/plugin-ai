@@ -121,10 +121,16 @@ public abstract class OpenAICompliantProvider extends ModelProvider {
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        return OpenAiEmbeddingModel.builder()
+        var embeddingModelBuilder = OpenAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(resolveApiKey(runContext))
-            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow())
-            .build();
+            .baseUrl(runContext.render(getBaseUrl()).as(String.class).orElseThrow());
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            embeddingModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        return embeddingModelBuilder.build();
     }
 }

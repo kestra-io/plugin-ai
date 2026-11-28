@@ -132,9 +132,15 @@ public class Ollama extends ModelProvider {
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        return OllamaEmbeddingModel.builder()
+        var embeddingModelBuilder = OllamaEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(this.endpoint).as(String.class).orElseThrow())
-            .build();
+            .baseUrl(runContext.render(this.endpoint).as(String.class).orElseThrow());
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            embeddingModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        return embeddingModelBuilder.build();
     }
 }

@@ -132,11 +132,17 @@ public class OpenRouter extends ModelProvider {
 
     @Override
     public EmbeddingModel embeddingModel(RunContext runContext) throws IllegalVariableEvaluationException {
-        return OpenAiEmbeddingModel.builder()
+        var embeddingModelBuilder = OpenAiEmbeddingModel.builder()
             .modelName(runContext.render(this.getModelName()).as(String.class).orElseThrow())
             .apiKey(runContext.render(this.apiKey).as(String.class).orElseThrow())
-            .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL))
-            .build();
+            .baseUrl(runContext.render(baseUrl).as(String.class).orElse(BASE_URL));
+
+        JdkHttpClientBuilder httpClientBuilder = buildHttpClientWithPemIfAvailable(runContext);
+        if (httpClientBuilder != null) {
+            embeddingModelBuilder.httpClientBuilder(httpClientBuilder);
+        }
+
+        return embeddingModelBuilder.build();
     }
 
 }
